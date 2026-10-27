@@ -42,8 +42,8 @@ skills/
    ```bash
    npx skills@latest add mattpocock/skills      # выбрать grilling
    ```
-2. Humanizer — убирает следы ИИ из прозы spec, slices и ADR (`/sdd-spec`, `/sdd-slices`, `/sdd-adr`
-   вызывают его последним шагом; без него шаг пропускается):
+2. Humanizer — по желанию, убирает следы ИИ из прозы spec, slices и ADR перед checkpoint
+   (скиллы напоминают о нём в конце, запускаете вы):
    ```bash
    npx skills@latest add blader/humanizer
    ```
@@ -71,10 +71,9 @@ skills/
 - **Механику проверяет скрипт, а не модель.** Покрытие, ID, циклы, стоп-слова — `sdd-lint`.
   Модели остаются смысловые проверки по чеклисту.
 - **Генерация и ревью разделены.** `/sdd-review` запускается в новой сессии и ничего не правит.
-- **Humanizer правит только прозу.** В file mode он не трогает блоки кода, поэтому FR и AC,
-  ID, шапки и тексты сообщений в «ёлочках» остаются как написаны, а lint после него ловит поломки.
-  Цена — ещё ~400 строк в контексте на последнем шаге; если модель не справляется, шаг можно
-  убрать и запускать `/humanizer <файл>` вручную перед checkpoint.
+- **Humanizer — отдельно, перед checkpoint.** Его ~400 строк в контексте сбивали бы flash-модель
+  на последнем шаге, поэтому скиллы только подсказывают `/humanizer <файл>`. Правило в AGENTS.md
+  не даёт ему трогать FR/AC, ID, тексты сообщений, числа и варианты.
 - **Шаблоны и справка — в отдельных файлах** (`assets/`, `references/`) и грузятся, когда нужны.
 
 ## Против перенарезки slices
@@ -90,7 +89,6 @@ skills/
 
 ## Источники
 
-- Процесс — по докладу «Spec-Driven Backend с Claude» (HolyJS 2026), доработан под команду.
 - `grilling` и условия для ADR — [mattpocock/skills](https://github.com/mattpocock/skills) (MIT).
 - `humanizer` — [blader/humanizer](https://github.com/blader/humanizer) (MIT).
 - Структура скиллов и тесты — skill-creator от Anthropic.
