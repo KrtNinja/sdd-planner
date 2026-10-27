@@ -69,7 +69,8 @@ const STOP_WORDS = [
   ['БД / база данных', word('бд|баз\\p{L}* данных|database')],
   ['таблица в БД', word('таблиц\\p{L}* (?:в|из) (?:бд|баз\\p{L}*)')],
   ['технология', word('kafka|rabbitmq|redis|postgres\\p{L}*|postgresql|mysql|mongo\\p{L}*|elastic\\p{L}*|outbox|websocket\\p{L}*|grpc|graphql')],
-  ['формат данных', word('json|yaml|xml|sql')],
+  ['формат данных', word('json|yaml|xml|sql|utf-?8|bom|base64')],
+  ['хранилище или очередь', word('s3|minio|очеред\\p{L}*|брокер\\p{L}*|кэш\\p{L}*|cache')],
   ['HTTP', word('http|rest|get|post|put|patch|delete')],
   ['имя файла', /[\w-]+\.(?:ts|tsx|js|mjs|py|java|kt|go|cs|yaml|yml|json|sql)\b/],
 ];
