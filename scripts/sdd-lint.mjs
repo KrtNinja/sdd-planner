@@ -9,6 +9,16 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
+// ---------- как человек вызывает команды ----------
+// Подсказки печатаются готовыми командами со slug фичи, чтобы их можно было скопировать.
+// Ветки-адаптеры меняют здесь значения по умолчанию; переменные окружения переопределяют их.
+const SKILL_PREFIX = process.env.SDD_SKILL_PREFIX ?? '/';
+const LINT_CMD = process.env.SDD_LINT_CMD ?? 'node scripts/sdd-lint.mjs';
+const skill = (name, ...args) => [`${SKILL_PREFIX}${name}`, ...args].join(' ');
+const lintCmd = (...args) => [LINT_CMD, ...args].join(' ');
+// «/sdd-decide» в текстах правил → команда в форме этого агента.
+const cmds = (text) => text.replace(/(?<![\w/])\/(sdd-[a-z]+|humanizer)\b/g, (_, n) => skill(n));
+
 const HELP = `sdd-lint — проверки артефактов планирования SDD
 
   sdd-lint [check] docs/<feature> [--snapshot] [--json]
@@ -16,6 +26,10 @@ const HELP = `sdd-lint — проверки артефактов планиро�
       --snapshot — заодно снять снимок защищённых частей для guard
   sdd-lint gate <spec|slices|adr|decide|build> docs/<feature>
       ворота перед этапом. Код 3 — этап начинать нельзя
+  sdd-lint approve <spec|slices> docs/<feature>
+  sdd-lint approve adr docs/<feature> [NNNN]
+      поставить «одобрено <дата>» («принято» для ADR), если нет ошибок lint
+      и защищённые части не менялись после снимка. Запускает только человек
   sdd-lint diff docs/<feature> [--base <ref>]
       проверки по git (по умолчанию против HEAD): протокол только дописывается,
       ID не пропадают, одобренный файл не меняется без сброса статуса
@@ -32,7 +46,10 @@ const HELP = `sdd-lint — проверки артефактов планиро�
   sdd-lint next AC docs/<feature> <NNN> [B|F]
       следующий свободный номер
 
-Коды выхода: 0 — порядок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты.`;
+Коды выхода: 0 — порядок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты.
+
+Форма команд в подсказках: SDD_SKILL_PREFIX (по умолчанию «/») и SDD_LINT_CMD
+(по умолчанию «node scripts/sdd-lint.mjs»).`;
 
 // ---------- правила: уровень и как исправить ----------
 // err — блокер, warn — стоит поправить, info — к сведению.
@@ -128,11 +145,10 @@ for (let i = 0; i < argv.length; i++) {
   else if (a.startsWith('--base=')) flags.base = a.slice(7);
   else pos.push(a);
 }
-const COMMANDS = ['check', 'gate', 'diff', 'snapshot', 'guard', 'gen', 'next', 'help'];
+const COMMANDS = ['check', 'gate', 'approve', 'diff', 'snapshot', 'guard', 'gen', 'next', 'help'];
 const cmd = COMMANDS.includes(pos[0]) ? pos.shift() : 'check';
 const usage = (msg) => {
-  if (msg) console.error(msg);
-  console.error(HELP);
+  console.error(msg ? `${msg}\nСправка: ${lintCmd('help')}` : HELP);
   process.exit(2);
 };
 if (cmd === 'help' || argv.includes('--help') || argv.includes('-h')) {
@@ -922,19 +938,48 @@ function checkAdrs(m) {
 }
 
 // ---------- этап ----------
+// Где фича и что делать дальше — готовыми командами со slug.
+const pendingAdrs = (m) => m.featureAdrs.filter((a) => !/принят/i.test(a.status || ''));
+function handoff(m, what) {
+  const dir = rel(m.dir);
+  const target = what === 'spec' ? rel(m.specFile) : `${dir}/slices/`;
+  const human = what === 'spec' ? `${skill('humanizer', target)}` : `${skill('humanizer')} по каждому файлу в ${target}`;
+  const guard = lintCmd('guard', what === 'spec' ? target : dir);
+  return [
+    `по желанию убрать следы ИИ из прозы: ${human}, затем ${guard}`,
+    `ревью в новой сессии: ${skill('sdd-review', m.name, what)}`,
+    `одобрить: ${lintCmd('approve', what, dir)}`,
+  ];
+}
+function adrSteps(m) {
+  return pendingAdrs(m).flatMap((a) => [
+    `ADR ${a.num} «${a.status || '—'}» — ревью: ${skill('sdd-review', m.name, 'adr')}`,
+    `ADR ${a.num} — принять: ${lintCmd('approve', 'adr', rel(m.dir), a.num)}`,
+  ]);
+}
 function stageOf(m) {
+  const st = (now, next = []) => ({ now, next: [...next, ...adrSteps(m)] });
+  // Неодобренный spec важнее всего ниже: после /sdd-decide он возвращается «на ревью»,
+  // и одобрение slices относилось к другой его версии.
+  if (m.slices.size && m.spec && !approved(m.spec.status))
+    return st(`Dev Spec «${m.spec.status || '—'}», а slices уже есть — после одобрения spec проверьте и одобрите slices заново`, handoff(m, 'spec'));
   if (m.slices.size && approved(m.slicesStatus)) {
-    const pending = m.featureAdrs.filter((a) => !/принят/i.test(a.status || ''));
+    const pending = pendingAdrs(m);
     return pending.length
-      ? `Slices одобрены. Перед реализацией примите ADR: ${pending.map((a) => a.num).join(', ')}`
-      : 'Планирование завершено: slices одобрены, ADR приняты';
+      ? { now: `Slices одобрены. Перед реализацией примите ADR: ${pending.map((a) => a.num).join(', ')}`, next: adrSteps(m) }
+      : { now: 'Планирование завершено: slices одобрены, ADR приняты', next: [] };
   }
-  if (m.slices.size) return 'Slices не одобрены. Следующий шаг: /sdd-review slices, затем одобрите slices';
-  if (m.spec && approved(m.spec.status)) return 'Dev Spec одобрен. Следующий шаг: /sdd-slices';
-  if (m.spec) return 'Dev Spec не одобрен. Следующий шаг: /sdd-review spec, затем одобрите spec';
-  if (m.protocol && /готов/i.test(m.protocol.status || '')) return 'Протокол готов. Следующий шаг: /sdd-spec';
-  if (m.protocol) return 'Brainstorming идёт. Следующий шаг: продолжить /sdd-grill';
-  return 'Brainstorming не начат. Следующий шаг: /sdd-grill';
+  if (m.slices.size) return st('Slices на ревью', handoff(m, 'slices'));
+  if (m.spec && approved(m.spec.status)) return st('Dev Spec одобрен', [skill('sdd-slices', m.name)]);
+  if (m.spec) return st(`Dev Spec «${m.spec.status || '—'}»`, handoff(m, 'spec'));
+  if (m.protocol && /готов/i.test(m.protocol.status || '')) return st('Протокол готов', [skill('sdd-spec', m.name)]);
+  if (m.protocol) return st('Brainstorming идёт', [`продолжить: ${skill('sdd-grill', m.name)}`]);
+  return st('Brainstorming не начат', [skill('sdd-grill', m.name)]);
+}
+function stageText({ now, next }) {
+  if (!next.length) return now;
+  if (next.length === 1) return `${now}. Следующий шаг: ${next[0]}`;
+  return `${now}. Следующий шаг:\n${next.map((x, i) => `  ${i + 1}. ${x}`).join('\n')}`;
 }
 
 function runChecks(m) {
@@ -953,7 +998,7 @@ function report(extra = {}) {
   const counts = { err: 0, warn: 0, info: 0 };
   for (const x of findings) counts[x.level] += 1;
   if (flags.json) {
-    const hints = Object.fromEntries(uniq(findings.map((x) => x.rule)).map((r) => [r, RULES[r][1]]));
+    const hints = Object.fromEntries(uniq(findings.map((x) => x.rule)).map((r) => [r, cmds(RULES[r][1])]));
     console.log(JSON.stringify({ findings, hints, counts, ...extra }, null, 2));
     return counts;
   }
@@ -961,7 +1006,7 @@ function report(extra = {}) {
   const fired = uniq(findings.filter((x) => x.level !== 'info').map((x) => x.rule)).sort();
   if (fired.length) {
     console.log('\nКак исправить:');
-    for (const r of fired) console.log(`  ${r}  ${RULES[r][1]}`);
+    for (const r of fired) console.log(`  ${r}  ${cmds(RULES[r][1])}`);
   }
   return counts;
 }
@@ -1034,19 +1079,36 @@ function gitList(g, ref, d) {
 // ---------- команды ----------
 function needDir(d) {
   if (!d) usage('Укажи папку фичи: docs/<feature>');
-  if (!fs.existsSync(d) || !fs.statSync(d).isDirectory()) usage(`Нет папки ${d}`);
-  return d;
+  if (fs.existsSync(d) && fs.statSync(d).isDirectory()) return d;
+  const parent = path.dirname(path.resolve(d));
+  const slug = path.basename(path.resolve(d));
+  if (!fs.existsSync(parent)) {
+    console.error(`Нет папки ${rel(parent)}. Запускайте из корня репозитория с доками.`);
+    process.exit(2);
+  }
+  const known = fs
+    .readdirSync(parent)
+    .filter((x) => x !== 'adr' && fs.statSync(path.join(parent, x)).isDirectory())
+    .filter((x) => ['brainstorming.md', 'spec.md'].some((f) => fs.existsSync(path.join(parent, x, f))));
+  console.error(
+    [
+      `Нет папки ${d}.`,
+      known.length ? `Фичи в ${rel(parent)}/: ${known.join(', ')}.` : `В ${rel(parent)}/ пока нет фич.`,
+      `Новая фича начинается с ${skill('sdd-grill', slug)}.`,
+    ].join(' '),
+  );
+  process.exit(2);
 }
 
 function cmdCheck() {
   const m = loadFeature(needDir(pos[0]));
   runChecks(m);
   if (flags.snapshot) for (const f of featureFiles(m)) saveSnapshot(f);
-  const stage = stageOf(m);
-  const c = report({ stage });
+  const st = stageOf(m);
+  const c = report({ stage: st.now, next: st.next });
   if (!flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
-    console.log(`\n${stage}`);
+    console.log(`\n${stageText(st)}`);
     console.log(`Ошибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
   }
   process.exit(c.err ? 1 : 0);
@@ -1059,22 +1121,24 @@ function cmdGate() {
   const m = loadFeature(needDir(pos[1]));
   runChecks(m);
   const errorsIn = (files) => findings.filter((x) => x.level === 'err' && files.map(rel).includes(x.file));
+  const dir = rel(m.dir);
+  const check = lintCmd(dir);
   let closed = null;
   if (stage === 'spec') {
-    if (!m.protocol) closed = ['нет brainstorming.md', 'Сначала проведите brainstorming: /sdd-grill'];
-    else if (!/готов/i.test(m.protocol.status || '')) closed = [`статус протокола «${m.protocol.status || '—'}»`, 'Сначала закончите /sdd-grill'];
-    else if (errorsIn([m.protocolFile]).length) closed = ['ошибки в протоколе', 'В протоколе ошибки lint — поправьте его'];
+    if (!m.protocol) closed = ['нет brainstorming.md', `Сначала проведите brainstorming: ${skill('sdd-grill', m.name)}`];
+    else if (!/готов/i.test(m.protocol.status || '')) closed = [`статус протокола «${m.protocol.status || '—'}»`, `Сначала закончите brainstorming: ${skill('sdd-grill', m.name)}`];
+    else if (errorsIn([m.protocolFile]).length) closed = ['ошибки в протоколе', `В протоколе ошибки lint — поправьте его, список: ${check}`];
   } else if (stage === 'slices') {
-    if (!m.spec) closed = ['нет spec.md', 'Сначала соберите Dev Spec: /sdd-spec'];
-    else if (!approved(m.spec.status)) closed = [`статус spec «${m.spec.status || '—'}»`, 'Сначала одобрите spec.md'];
-    else if (errorsIn([m.protocolFile, m.specFile]).length) closed = ['ошибки в протоколе или spec', 'В spec ошибки lint — исправьте и одобрите заново'];
+    if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skill('sdd-spec', m.name)}`];
+    else if (!approved(m.spec.status)) closed = [`статус spec «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCmd('approve', 'spec', dir)}`];
+    else if (errorsIn([m.protocolFile, m.specFile]).length) closed = ['ошибки в протоколе или spec', `В spec ошибки lint — исправьте и одобрите заново, список: ${check}`];
   } else if (stage === 'adr' || stage === 'decide') {
-    if (!m.spec) closed = ['нет spec.md', 'Сначала соберите Dev Spec: /sdd-spec'];
+    if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skill('sdd-spec', m.name)}`];
   } else if (stage === 'build') {
-    const pending = m.featureAdrs.filter((a) => !/принят/i.test(a.status || ''));
-    if (!m.slices.size || !approved(m.slicesStatus)) closed = ['slices не одобрены', 'Сначала одобрите slices'];
-    else if (pending.length) closed = [`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`, 'Сначала примите ADR'];
-    else if (findings.some((x) => x.level === 'err')) closed = ['есть ошибки lint', 'Исправьте ошибки lint'];
+    const pending = pendingAdrs(m);
+    if (!m.slices.size || !approved(m.slicesStatus)) closed = ['slices не одобрены', `Сначала одобрите slices: ${lintCmd('approve', 'slices', dir)}`];
+    else if (pending.length) closed = [`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`, `Сначала примите ADR: ${pending.map((a) => lintCmd('approve', 'adr', dir, a.num)).join('; ')}`];
+    else if (findings.some((x) => x.level === 'err')) closed = ['есть ошибки lint', `Исправьте ошибки lint, список: ${check}`];
   }
   if (closed) {
     const relevant = stage === 'build' ? findings : errorsIn([m.protocolFile, m.specFile]);
@@ -1083,6 +1147,87 @@ function cmdGate() {
     process.exit(3);
   }
   console.log(`ВОРОТА ${stage}: открыты.`);
+  process.exit(0);
+}
+
+// Ставит «одобрено <дата>» / «принято <дата>», если артефакт чист: lint без ошибок
+// (с учётом нового статуса — например, SP-06 «одобрено с открытыми вопросами»)
+// и защищённые части совпадают со снимком, если он есть.
+function cmdApprove() {
+  const what = pos[0];
+  if (!['spec', 'slices', 'adr'].includes(what)) usage('approve spec | slices docs/<feature>, approve adr docs/<feature> [NNNN]');
+  const d = needDir(pos[1]);
+  const m = loadFeature(d);
+  const dir = rel(m.dir);
+  const refuse = (msg, code = 3) => {
+    console.log(`НЕ ОДОБРЕНО: ${msg}`);
+    process.exit(code);
+  };
+  let target;
+  let scope;
+  let word = 'одобрено';
+  if (what === 'spec') {
+    if (!m.spec) refuse(`нет spec.md. Сначала: ${skill('sdd-spec', m.name)}`);
+    target = m.specFile;
+    scope = [m.protocolFile, m.specFile];
+  } else if (what === 'slices') {
+    if (!m.slices.size || m.readme == null) refuse(`нет slices или slices/README.md. Сначала: ${skill('sdd-slices', m.name)}`);
+    if (!m.spec || !approved(m.spec.status)) refuse(`Dev Spec не одобрен — slices опираются на него. Сначала: ${lintCmd('approve', 'spec', dir)}`);
+    target = m.readmeFile;
+    scope = [m.protocolFile, m.specFile, m.readmeFile, ...[...m.slices.values()].map((x) => x.file)];
+  } else {
+    word = 'принято';
+    const pending = pendingAdrs(m);
+    const adr = pos[2] ? m.featureAdrs.find((a) => a.num === pos[2].padStart(4, '0')) : pending.length === 1 ? pending[0] : null;
+    if (!adr) {
+      const list = pending.map((a) => lintCmd('approve', 'adr', dir, a.num));
+      refuse(
+        pos[2]
+          ? `ADR ${pos[2]} не найден среди ADR фичи ${m.name}`
+          : pending.length
+            ? `у фичи ${pending.length} ADR без «принято» — укажите номер: ${list.join('; ')}`
+            : `у фичи ${m.name} нет ADR, ждущих «принято»`,
+        2,
+      );
+    }
+    target = adr.file;
+    scope = [adr.file];
+  }
+  const md = fs.readFileSync(target, 'utf8');
+  const cur = header(md, 'Статус');
+  if (cur === null) refuse(`в ${rel(target)} нет строки «Статус:» — добавьте её по шаблону`);
+  if (/одобрен|принят/i.test(cur)) {
+    console.log(`${rel(target)}: уже «${cur}».`);
+    process.exit(0);
+  }
+  const t = new Date();
+  const date = [t.getDate(), t.getMonth() + 1].map((x) => String(x).padStart(2, '0')).join('.') + `.${t.getFullYear()}`;
+  const next = md.replace(/^Статус:.*$/m, `Статус: ${word} ${date}`);
+
+  // lint по будущему состоянию: ошибки в файлах артефакта блокируют одобрение
+  const inScope = new Set(scope.map(rel));
+  const after = loadFeature(d, (f) => (path.resolve(f) === path.resolve(target) ? next : read(f)));
+  findings.length = 0;
+  runChecks(after);
+  const errs = findings.filter((x) => x.level === 'err' && inScope.has(x.file));
+  findings.length = 0;
+  findings.push(...errs);
+
+  // guard: защищённые части против снимка, если он снят
+  for (const f of scope.filter((x) => fs.existsSync(x) && fs.existsSync(snapPath(x)))) {
+    const before = JSON.parse(fs.readFileSync(snapPath(f), 'utf8')).parts;
+    for (const x of diffParts(before, protectedParts(fs.readFileSync(f, 'utf8')))) add('HG-01', f, null, `(против: снимок) ${x}`);
+  }
+  if (findings.length) {
+    report();
+    const hg = findings.some((x) => x.rule === 'HG-01');
+    console.log(`\nНЕ ОДОБРЕНО: ${rel(target)} остаётся «${cur}».`);
+    if (hg) console.log(`Если защищённые части поменяли вы сами — снимите новый снимок (${lintCmd('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`);
+    process.exit(1);
+  }
+  fs.writeFileSync(target, next);
+  console.log(`${rel(target)}: Статус: ${word} ${date}`);
+  console.log(stageText(stageOf(loadFeature(d))));
   process.exit(0);
 }
 
@@ -1149,12 +1294,13 @@ const targetFiles = (t) => {
 function cmdSnapshot() {
   const files = targetFiles(pos[0]);
   for (const f of files) saveSnapshot(f);
-  console.log(`Снимок защищённых частей: ${files.map(rel).join(', ')}. После humanizer: sdd-lint guard ${pos[0]}`);
+  console.log(`Снимок защищённых частей: ${files.map(rel).join(', ')}. После humanizer: ${lintCmd('guard', pos[0])}`);
 }
 
 function cmdGuard() {
   const files = targetFiles(pos[0]);
   let bad = 0;
+  const noBase = [];
   for (const f of files) {
     let before = null;
     let from = null;
@@ -1170,8 +1316,7 @@ function cmdGuard() {
       }
     }
     if (!before) {
-      console.log(`НЕТ БАЗЫ  ${rel(f)}: нет снимка и версии в git. Перед humanizer: sdd-lint snapshot ${rel(f)}`);
-      bad += 1;
+      noBase.push(f);
       continue;
     }
     const diffs = diffParts(before, protectedParts(fs.readFileSync(f, 'utf8')));
@@ -1182,9 +1327,20 @@ function cmdGuard() {
     bad += 1;
     for (const d of diffs) add('HG-01', f, null, `(против: ${from}) ${d}`);
   }
-  report();
-  if (!flags.json) console.log(bad ? `\nЗащищённые части изменены в ${bad} файл(ах).` : `\nЗащищённые части не тронуты: ${files.map(rel).join(', ')}`);
-  process.exit(bad ? 1 : 0);
+  report({ noBase: noBase.map(rel) });
+  if (!flags.json) {
+    const ok = files.length - bad - noBase.length;
+    const out = [];
+    if (bad) out.push(`Защищённые части изменены в ${bad} файл(ах) — верните их как были.`);
+    if (noBase.length)
+      out.push(
+        `Не с чем сверить ${noBase.length} файл(ов): нет снимка и версии в git — ${noBase.map(rel).join(', ')}.`,
+        `  Снимок снимают до humanizer: ${lintCmd('snapshot', '<файл>')}. Если humanizer уже прошёл, сверьте защищённые части глазами.`,
+      );
+    if (ok) out.push(`Защищённые части не тронуты в ${ok} файл(ах).`);
+    console.log(`\n${out.join('\n')}`);
+  }
+  process.exit(bad || noBase.length ? 1 : 0);
 }
 
 function replaceSection(md, titleRe, title, body) {
@@ -1312,4 +1468,4 @@ function cmdNext() {
   } else usage('next FR | NFR | AC | slice | adr');
 }
 
-({ check: cmdCheck, gate: cmdGate, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, next: cmdNext })[cmd]();
+({ check: cmdCheck, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, next: cmdNext })[cmd]();
