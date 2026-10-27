@@ -29,6 +29,10 @@
 
 В GigaCode CLI скилл вызывается `/skills sdd-grill <feature>`; если сборка показывает скиллы как команды — `/sdd-grill <feature>`.
 
+`sdd-lint` печатает следующий шаг готовыми командами со slug фичи: `/skills sdd-review comments slices`,
+`/skills sdd-lint approve slices docs/comments`. Если ваша сборка понимает `/sdd-review`, задайте
+`export SDD_SKILL_PREFIX=/ SDD_LINT_CMD=/sdd-lint` в профиле оболочки.
+
 ## sdd-lint: механика — скрипту, смысл — модели
 
 Всё, что можно проверить или вывести из файлов, делает скрипт. Скиллы вызывают его на каждом

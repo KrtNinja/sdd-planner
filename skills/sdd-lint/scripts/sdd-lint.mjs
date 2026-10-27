@@ -12,8 +12,8 @@ import { execFileSync } from 'node:child_process';
 // ---------- как человек вызывает команды ----------
 // Подсказки печатаются готовыми командами со slug фичи, чтобы их можно было скопировать.
 // Ветки-адаптеры меняют здесь значения по умолчанию; переменные окружения переопределяют их.
-const SKILL_PREFIX = process.env.SDD_SKILL_PREFIX ?? '/';
-const LINT_CMD = process.env.SDD_LINT_CMD ?? 'node scripts/sdd-lint.mjs';
+const SKILL_PREFIX = process.env.SDD_SKILL_PREFIX ?? '/skills ';
+const LINT_CMD = process.env.SDD_LINT_CMD ?? '/skills sdd-lint';
 const skill = (name, ...args) => [`${SKILL_PREFIX}${name}`, ...args].join(' ');
 const lintCmd = (...args) => [LINT_CMD, ...args].join(' ');
 // «/sdd-decide» в текстах правил → команда в форме этого агента.
@@ -48,8 +48,8 @@ const HELP = `sdd-lint — проверки артефактов планиро�
 
 Коды выхода: 0 — порядок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты.
 
-Форма команд в подсказках: SDD_SKILL_PREFIX (по умолчанию «/») и SDD_LINT_CMD
-(по умолчанию «node scripts/sdd-lint.mjs»).`;
+Форма команд в подсказках: SDD_SKILL_PREFIX (по умолчанию «/skills ») и SDD_LINT_CMD
+(по умолчанию «/skills sdd-lint»).`;
 
 // ---------- правила: уровень и как исправить ----------
 // err — блокер, warn — стоит поправить, info — к сведению.
