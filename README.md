@@ -61,7 +61,7 @@ skills/
   sdd-decide/   — решение сверху вниз: протокол → FR → AC
   grilling/     — копия из mattpocock/skills (MIT), нужна sdd-grill и sdd-adr
   humanizer/    — копия из blader/humanizer (MIT), запускается вручную перед checkpoint
-  */evals/      — тестовые кейсы в формате skill-creator (`claude plugin eval`)
+  */evals/      — тестовые кейсы: запрос, входные файлы, проверки
 ```
 
 ## Установка в GigaCode CLI
@@ -93,9 +93,9 @@ skills/
 
 ## Установка в другие агенты
 
-- Claude Code, Codex, opencode, Cursor: `npx skills@latest add KrtNinja/sdd-workflow`
+- Codex, opencode, Cursor и другие агенты со скиллами: `npx skills@latest add KrtNinja/sdd-workflow`
   (или скопировать `skills/*` в папку скиллов агента), затем вставить `rules/AGENTS.planning.md`
-  в `AGENTS.md` / `CLAUDE.md` репозитория с доками.
+  в `AGENTS.md` репозитория с доками.
 - Qwen Code: `qwen extensions link <путь к репозиторию>` — тот же манифест (`qwen-extension.json`).
 
 CI (GitLab), если нужен: скопируйте `skills/sdd-lint/scripts/sdd-lint.mjs` в `scripts/` репозитория с доками и
@@ -119,7 +119,7 @@ sdd-lint:
   в конце «Следующий шаг: …» и остановка. Быстрые модели склонны проскакивать ворота, а явная
   точка остановки и правило в AGENTS.md это держат.
 - **Скиллы вызывает человек** (`disable-model-invocation: true`): нет постоянной нагрузки на контекст
-  и нет случайных срабатываний. Поле поддерживает Claude Code; агенты, которые его не знают, просто
+  и нет случайных срабатываний. Поле понимают GigaCode и Qwen Code; агенты, которые его не знают, просто
   покажут скилл в списке.
 - **Механику проверяет и собирает скрипт, а не модель.** Ворота, трассировка, ссылки AC на FR,
   номера, README, неизменность протокола и одобренных файлов — `sdd-lint`. Чеклисты `sdd-review`
@@ -149,4 +149,3 @@ sdd-lint:
 
 - `grilling` и условия для ADR — [mattpocock/skills](https://github.com/mattpocock/skills) (MIT).
 - `humanizer` — [blader/humanizer](https://github.com/blader/humanizer) (MIT).
-- Структура скиллов и тесты — skill-creator от Anthropic.
