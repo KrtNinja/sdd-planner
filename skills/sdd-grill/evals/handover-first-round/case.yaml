@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: handover-first-round
+expected_outcome: |
+  Агент создаёт docs/task-handover/brainstorming.md со статусом «идёт» и без решений человека, задаёт первый раунд вопросов с номерами и рекомендациями на конкретных персонажах, не спрашивает факты из README сервисов (роли, один исполнитель, события task.updated, история в audit), не предлагает выбрать технологию и останавливается в ожидании ответов.
+context:
+  scaffold_script: place-files.sh

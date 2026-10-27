@@ -330,3 +330,51 @@ test('evals: place-files.sh кладёт текущие правила и lint',
     assert.ok(fs.existsSync(path.join(cwd, 'docs')), `${name}: нет docs/`);
   }
 });
+
+// ---------- файлы ревью ----------
+const REVIEW = `# Ревью slices — Комментарии
+
+Дата: 27.10.2026
+Итог: блокеров 1, замечаний 1
+
+| # | Важность | Где | Что не так | Пункт | Предложение | Решение |
+|---|---|---|---|---|---|---|
+| R1 | замечание | slices/002-comments.md, AC-002-B4 | нет успешного удаления руководителем | 4 | добавить AC |  |
+| R2 | блокер | slices/003-mention-notifications.md | не решено, что с уведомлением, если комментарий удалили до доставки | 3 | уведомление не приходит |  |
+`;
+function withReview(cwd, md = REVIEW, name = 'slices.md') {
+  fs.mkdirSync(file(cwd, 'comments/review'), { recursive: true });
+  fs.writeFileSync(file(cwd, `comments/review/${name}`), md);
+}
+test('ревью: открытый блокер — RV-01 и шаг «закрыть блокеры» с готовой командой', () => {
+  const cwd = workspace();
+  withReview(cwd);
+  const res = check(cwd);
+  assert.equal(res.code, 0);
+  assert.deepEqual(rules(res).filter((r) => r.startsWith('RV')), ['RV-01']);
+  const out = run(cwd, 'docs/comments').out;
+  assert.match(out, /закрыть блокеры ревью R2 \(docs\/comments\/review\/slices\.md\): решение — \/sdd-decide comments R2 "<решение>"/);
+  assert.match(out, /ревью уже было: docs\/comments\/review\/slices\.md/);
+});
+test('ревью: approve не проходит, пока у блокера пустое «Решение»', () => {
+  const cwd = workspace();
+  withReview(cwd);
+  const r = run(cwd, 'approve', 'slices', 'docs/comments');
+  assert.equal(r.code, 1);
+  assert.match(r.out, /RV-01.*R2: блокер без решения/);
+  assert.equal(status(cwd, 'comments/slices/README.md'), 'Статус: на ревью');
+  edit(cwd, 'comments/review/slices.md', '| уведомление не приходит |  |', '| уведомление не приходит | П2 |');
+  assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
+});
+test('ревью: файл не по шаблону — RV-02', () => {
+  const cwd = workspace();
+  withReview(cwd, '# Ревью\n\nВсё хорошо.\n', 'spec.md');
+  assert.ok(rules(check(cwd)).includes('RV-02'));
+});
+test('ревью ADR: блокер в review/adr-NNNN.md держит approve adr', () => {
+  const cwd = workspace();
+  edit(cwd, 'adr/0001-mention-notifications.md', 'Статус: принято 27.10.2026', 'Статус: предложено');
+  withReview(cwd, REVIEW.replace('# Ревью slices', '# Ревью ADR 0001'), 'adr-0001.md');
+  assert.match(run(cwd, 'docs/comments').out, /ADR 0001 «предложено» — ревью уже было/);
+  assert.equal(run(cwd, 'approve', 'adr', 'docs/comments').code, 1);
+});

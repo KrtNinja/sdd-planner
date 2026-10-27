@@ -125,6 +125,9 @@ const RULES = {
   'AD-09': ['err', 'номер ADR в имени файла и в заголовке совпадают и не повторяются: sdd-lint next adr docs/<feature>'],
   'AD-10': ['warn', 'slices одобрены — ADR, на которые они опираются, должны быть «принято» до старта реализации'],
 
+  'RV-01': ['warn', 'блокер ревью закрывается до одобрения: решение — /sdd-decide <feature> R<n> «<решение>», правка — исправь файл и впиши в «Решение» «исправлено»; несогласие — «отклонено: причина»'],
+  'RV-02': ['warn', 'файл ревью — по шаблону sdd-review: таблица с колонками #, Важность, Где, Что не так, Пункт, Предложение, Решение и ID R1, R2 …'],
+
   'DF-01': ['err', 'протокол только дописывается: верни строку как была, новое решение — строкой в «Решения после brainstorming» (/sdd-decide)'],
   'DF-02': ['err', 'ID постоянные: верни требование или AC с пометкой «(удалён: причина)»'],
   'DF-03': ['err', 'одобрение давалось прошлой версии: верни статус «на ревью»'],
@@ -469,6 +472,23 @@ function parseAdr(file, md) {
   };
 }
 
+// Находки /sdd-review: docs/<feature>/review/<spec|slices|adr-NNNN>.md, таблица с колонкой «Решение».
+function parseReview(file, md) {
+  const sc = scan(md);
+  const t = tables(sc.lines.filter((l) => !l.inCode)).find((x) => col(x, '#') >= 0 && col(x, /^Решени/i) >= 0);
+  if (!t) return { file, md, table: false, rows: [] };
+  const [ci, cv, cd] = ['#', /^Важност/i, /^Решени/i].map((m) => col(t, m));
+  const rows = t.rows.map((r) => ({
+    id: (r.cells[ci] || '').trim(),
+    blocker: /блокер/i.test(r.cells[cv] || ''),
+    decision: (r.cells[cd] || '').trim(),
+    n: r.n,
+  }));
+  return { file, md, table: true, rows };
+}
+const openBlockers = (rv) => (rv ? rv.rows.filter((r) => r.blocker && isEmptyCell(r.decision)) : []);
+const reviewKey = (what, adrNum) => (what === 'adr' ? `adr-${adrNum}` : what);
+
 function loadFeature(dir, readFn = read, listFn = null) {
   const featureDir = path.resolve(dir);
   const name = path.basename(featureDir);
@@ -491,7 +511,16 @@ function loadFeature(dir, readFn = read, listFn = null) {
     if (md != null) adrs.push(parseAdr(file, md));
   }
   const readme = readFn(readmeFile);
+  const reviewDir = path.join(featureDir, 'review');
+  const reviews = new Map();
+  for (const f of list(reviewDir).filter((x) => /\.md$/.test(x)).sort()) {
+    const file = path.join(reviewDir, f);
+    const md = readFn(file);
+    if (md != null) reviews.set(f.replace(/\.md$/, ''), parseReview(file, md));
+  }
   return {
+    reviewDir,
+    reviews,
     dir: featureDir,
     name,
     protocol: parseProtocol(protocolFile, readFn(protocolFile)),
@@ -945,24 +974,41 @@ function handoff(m, what) {
   const target = what === 'spec' ? rel(m.specFile) : `${dir}/slices/`;
   const human = what === 'spec' ? `${skill('humanizer', target)}` : `${skill('humanizer')} по каждому файлу в ${target}`;
   const guard = lintCmd('guard', what === 'spec' ? target : dir);
+  const rv = m.reviews.get(what);
+  const open = openBlockers(rv);
   return [
     `по желанию убрать следы ИИ из прозы: ${human}, затем ${guard}`,
-    `ревью в новой сессии: ${skill('sdd-review', m.name, what)}`,
+    rv ? `ревью уже было: ${rel(rv.file)}; повторить — ${skill('sdd-review', m.name, what)} в новой сессии` : `ревью в новой сессии: ${skill('sdd-review', m.name, what)}`,
+    ...(open.length ? [blockersStep(m, rv, open)] : []),
     `одобрить: ${lintCmd('approve', what, dir)}`,
   ];
 }
+function blockersStep(m, rv, open) {
+  const ids = open.map((r) => r.id);
+  return `закрыть блокеры ревью ${ids.join(', ')} (${rel(rv.file)}): решение — ${skill('sdd-decide', m.name, ids[0], '"<решение>"')}, правка — исправьте файл и впишите «исправлено» в колонку «Решение»`;
+}
 function adrSteps(m) {
-  return pendingAdrs(m).flatMap((a) => [
-    `ADR ${a.num} «${a.status || '—'}» — ревью: ${skill('sdd-review', m.name, 'adr')}`,
-    `ADR ${a.num} — принять: ${lintCmd('approve', 'adr', rel(m.dir), a.num)}`,
-  ]);
+  return pendingAdrs(m).flatMap((a) => {
+    const rv = m.reviews.get(reviewKey('adr', a.num));
+    const open = openBlockers(rv);
+    return [
+      rv ? `ADR ${a.num} «${a.status || '—'}» — ревью уже было: ${rel(rv.file)}` : `ADR ${a.num} «${a.status || '—'}» — ревью: ${skill('sdd-review', m.name, 'adr', a.num)}`,
+      ...(open.length ? [blockersStep(m, rv, open)] : []),
+      `ADR ${a.num} — принять: ${lintCmd('approve', 'adr', rel(m.dir), a.num)}`,
+    ];
+  });
 }
 function stageOf(m) {
   const st = (now, next = []) => ({ now, next: [...next, ...adrSteps(m)] });
   // Неодобренный spec важнее всего ниже: после /sdd-decide он возвращается «на ревью»,
   // и одобрение slices относилось к другой его версии.
   if (m.slices.size && m.spec && !approved(m.spec.status))
-    return st(`Dev Spec «${m.spec.status || '—'}», а slices уже есть — после одобрения spec проверьте и одобрите slices заново`, handoff(m, 'spec'));
+    return st(
+      approved(m.slicesStatus)
+        ? `Dev Spec «${m.spec.status || '—'}», а slices уже есть — после одобрения spec проверьте и одобрите slices заново`
+        : `Dev Spec «${m.spec.status || '—'}» — slices ждут его одобрения`,
+      handoff(m, 'spec'),
+    );
   if (m.slices.size && approved(m.slicesStatus)) {
     const pending = pendingAdrs(m);
     return pending.length
@@ -982,11 +1028,22 @@ function stageText({ now, next }) {
   return `${now}. Следующий шаг:\n${next.map((x, i) => `  ${i + 1}. ${x}`).join('\n')}`;
 }
 
+function checkReviews(m) {
+  for (const [key, rv] of m.reviews) {
+    if (!rv.table || !rv.rows.every((r) => /^R\d+$/.test(r.id))) {
+      add('RV-02', rv.file, null, rv.table ? 'ID находок — R1, R2 …' : 'нет таблицы находок с колонкой «Решение»');
+      continue;
+    }
+    for (const r of openBlockers(rv)) add('RV-01', rv.file, r.n, `${r.id}: блокер без решения (ревью ${key})`);
+  }
+}
+
 function runChecks(m) {
   checkProtocol(m);
   checkSpec(m);
   checkSlices(m);
   checkAdrs(m);
+  checkReviews(m);
 }
 
 // ---------- вывод ----------
@@ -1212,6 +1269,10 @@ function cmdApprove() {
   const errs = findings.filter((x) => x.level === 'err' && inScope.has(x.file));
   findings.length = 0;
   findings.push(...errs);
+
+  // блокеры последнего ревью этого артефакта
+  const rv = m.reviews.get(reviewKey(what, what === 'adr' ? path.basename(target).slice(0, 4) : null));
+  for (const r of openBlockers(rv)) findings.push({ rule: 'RV-01', level: 'err', file: rel(rv.file), line: r.n, msg: `${r.id}: блокер без решения` });
 
   // guard: защищённые части против снимка, если он снят
   for (const f of scope.filter((x) => fs.existsSync(x) && fs.existsSync(snapPath(x)))) {
