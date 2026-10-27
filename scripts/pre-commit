@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# git pre-commit: sdd-lint для фич, файлы которых попали в коммит.
+# Проверки не зависят от того, вспомнил ли агент запустить lint.
+#
+# Установка в репозитории с доками (из его корня):
+#   ln -s ../../scripts/pre-commit .git/hooks/pre-commit
+# Путь к lint можно задать явно: SDD_LINT=/путь/к/sdd-lint.mjs
+# Обойти один раз: git commit --no-verify
+set -u
+
+here="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+lint="${SDD_LINT:-}"
+for c in "$here/sdd-lint.mjs" "$(git rev-parse --show-toplevel)/scripts/sdd-lint.mjs"; do
+  [ -z "$lint" ] && [ -f "$c" ] && lint="$c"
+done
+if [ -z "$lint" ]; then
+  echo "pre-commit: не найден sdd-lint.mjs — задайте SDD_LINT" >&2
+  exit 1
+fi
+
+staged="$(git diff --cached --name-only --diff-filter=ACMRD)"
+features="$(printf '%s\n' "$staged" | sed -nE 's#^((.*/)?docs/[^/]+)/.*#\1#p' | grep -v '/adr$' | sort -u)"
+# ADR касается всех фич: проверяем каждую, у которой есть spec.md
+if printf '%s\n' "$staged" | grep -qE '(^|/)docs/adr/'; then
+  for d in $(printf '%s\n' "$staged" | sed -nE 's#^((.*/)?docs)/adr/.*#\1#p' | sort -u); do
+    for f in "$d"/*/; do [ -f "$f/spec.md" ] && features="$features
+${f%/}"; done
+  done
+fi
+features="$(printf '%s\n' "$features" | grep . | sort -u)"
+[ -z "$features" ] && exit 0
+
+fail=0
+has_head=0
+git rev-parse --verify -q HEAD >/dev/null && has_head=1
+for f in $features; do
+  [ -d "$f" ] || continue
+  echo "sdd-lint: $f"
+  node "$lint" check "$f" || fail=1
+  if [ $has_head = 1 ]; then node "$lint" diff "$f" --base HEAD || fail=1; fi
+done
+
+if [ $fail = 1 ]; then
+  echo "pre-commit: sdd-lint нашёл ошибки. Исправьте или закоммитьте с --no-verify." >&2
+  exit 1
+fi
