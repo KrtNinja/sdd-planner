@@ -19,8 +19,8 @@
 | Этап | Команда | Результат | Ворота (решает человек) |
 |---|---|---|---|
 | 1 Brainstorming | `/sdd-grill <feature>` | `docs/<feature>/brainstorming.md` | «понимание общее» |
-| 2 Dev Spec | `/sdd-spec <feature>` | `docs/<feature>/spec.md` | checkpoint 1: «одобрено» |
-| 3 Slices | `/sdd-slices <feature>` | `docs/<feature>/slices/` | согласие с таблицей нарезки, затем checkpoint 2 |
+| 2 Dev Spec | `/sdd-spec <feature>` | `docs/<feature>/spec.md` | человек ставит «одобрено» |
+| 3 Slices | `/sdd-slices <feature>` | `docs/<feature>/slices/` | согласие с таблицей нарезки, затем «одобрено» |
 | 4 ADR | `/sdd-adr <feature> "<тема>"` | `docs/adr/NNNN-*.md` | «принято» |
 | Ревью | `/sdd-review <feature> spec\|slices\|adr` | `docs/<feature>/review/<режим>.md`, находки R1, R2 … | блокеры закрыты до одобрения |
 | Позднее решение | `/sdd-decide <feature> "<вопрос>" "<решение>"` или `/sdd-decide <feature> R2 "<решение>"` | протокол → FR → AC | — |
@@ -67,7 +67,7 @@ skills/
   sdd-review/   — чеклисты spec / slices / adr; находки пишет в docs/<feature>/review/
   sdd-decide/   — решение сверху вниз: протокол → FR → AC
   grilling/     — копия из mattpocock/skills (MIT), нужна sdd-grill и sdd-adr
-  humanizer/    — копия из blader/humanizer (MIT), запускается вручную перед checkpoint
+  humanizer/    — копия из blader/humanizer (MIT), запускается вручную перед одобрением
   */evals/      — тестовые кейсы: запрос, входные файлы, проверки
 ```
 
@@ -134,11 +134,9 @@ sdd-lint:
 - **Генерация и ревью разделены.** `/sdd-review` запускается в новой сессии и ничего не правит.
 - **Lint ищется от папки скилла.** Агент получает «Base directory» скилла и вызывает
   `../sdd-lint/scripts/sdd-lint.mjs`, поэтому скрипт не нужно копировать в каждый проект.
-- **Humanizer — отдельно, перед checkpoint.** Его ~400 строк в контексте сбивали бы flash-модель
-  на последнем шаге, поэтому скиллы только подсказывают `/humanizer <файл>`. Что он не тронул FR/AC, ID, тексты
-  сообщений, числа и таблицы, проверяет `sdd-lint guard` по снимку, снятому скиллом.
-- **Путь к lint задаётся в скилле один раз** («Скрипт lint: …, дальше — `<скрипт>`»). Меньше
-  токенов и меньше шансов, что быстрая модель исказит длинный путь; ветки-адаптеры меняют одну строку.
+- **Humanizer — отдельно, перед одобрением.** Его ~400 строк в контексте сбивали бы flash-модель
+  на последнем шаге, поэтому скиллы только подсказывают `/humanizer <файл>`. Что он не тронул FR/AC, ID,
+  тексты сообщений, числа и таблицы, проверяет `/sdd-lint guard` по снимку, снятому скиллом.
 - **Шаблоны и справка — в отдельных файлах** (`assets/`, `references/`) и грузятся, когда нужны.
 
 ## Против перенарезки slices

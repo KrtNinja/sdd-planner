@@ -1,6 +1,6 @@
 ---
 name: sdd-review
-description: Ревью артефакта SDD — spec, slices или adr — по чеклисту и sdd-lint. Только находит проблемы: пишет таблицу находок в docs/<feature>/review/, артефакты не меняет. Запускай в новой сессии перед checkpoint, когда человек просит проверить Dev Spec, slices или ADR.
+description: Ревью артефакта SDD — spec, slices или adr — по чеклисту и sdd-lint. Только находит проблемы и выводит таблицу, файлы не меняет. Запускай в новой сессии перед одобрением, когда человек просит проверить Dev Spec, slices или ADR.
 disable-model-invocation: true
 ---
 

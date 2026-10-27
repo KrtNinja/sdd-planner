@@ -1,6 +1,6 @@
 ---
 name: sdd-slices
-description: Этап 3 SDD. Режет одобренный Dev Spec на минимально нужное число вертикальных slices с AC-ID (WHEN/THEN) и разбивкой по сервисам, сначала согласуя нарезку таблицей. Запускай после checkpoint 1, когда spec.md одобрен и нужны slices.
+description: Этап 3 SDD. Режет одобренный Dev Spec на минимально нужное число вертикальных slices с AC-ID (WHEN/THEN) и разбивкой по сервисам, сначала согласуя нарезку таблицей. Запускай, когда spec.md одобрен и нужны slices.
 disable-model-invocation: true
 ---
 
