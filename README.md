@@ -49,7 +49,6 @@
 ```
 gigacode-extension.json    — манифест расширения GigaCode CLI (qwen-extension.json — то же для Qwen Code)
 rules/AGENTS.planning.md   — правила этапов и артефактов; расширение подключает их как контекст
-scripts/update-vendor.sh   — обновить встроенные grilling и humanizer из их репозиториев
 tests/                     — тесты sdd-lint на эталонной фиче и её порче
 skills/
   sdd-lint/     — scripts/sdd-lint.mjs: проверки, ворота, генерация README и номеров, diff по git,
@@ -69,16 +68,11 @@ skills/
 
 Репозиторий — расширение GigaCode: скиллы, правила и lint ставятся одной командой, ничего не копируется.
 
-1. Подключить склонированный репозиторий:
+1. Подключить папку с репозиторием — ту, где лежат `gigacode-extension.json` и `skills/`:
    ```bash
    gigacode extensions link ~/tools/sdd-workflow
    ```
-   `link` ставит ссылку на папку, поэтому после `git pull` новые версии скиллов видны сразу
-   (после перезапуска GigaCode). Если сборка не знает `link`:
-   ```bash
-   gigacode extensions install ~/tools/sdd-workflow     # или https://github.com/KrtNinja/sdd-workflow
-   gigacode extensions update sdd-workflow              # после каждого git pull
-   ```
+   Если сборка не знает `link`: `gigacode extensions install ~/tools/sdd-workflow`.
 2. Перезапустить GigaCode и проверить: `gigacode extensions list`, внутри сессии — `/extensions`
    и `/skills` (в списке sdd-grill … sdd-lint, grilling, humanizer).
 3. Правила из `rules/AGENTS.planning.md` расширение добавляет в контекст само. Чтобы они не
