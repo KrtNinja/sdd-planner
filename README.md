@@ -72,7 +72,8 @@ skills/
   sdd-decide/   — решение сверху вниз: протокол → FR → AC
   grilling/     — копия из mattpocock/skills (MIT), нужна sdd-grill и sdd-adr
   humanizer/    — копия из blader/humanizer (MIT), запускается вручную перед одобрением
-  */evals/      — тестовые кейсы: запрос, входные файлы, проверки
+  */evals/      — тестовые кейсы: запрос, данные (docs/), проверки; правила
+                  place-files.sh берёт из репозитория
 ```
 
 ## Установка в GigaCode CLI
