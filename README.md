@@ -42,13 +42,18 @@ skills/
    ```bash
    npx skills@latest add mattpocock/skills      # выбрать grilling
    ```
-2. Этот пул:
+2. Humanizer — убирает следы ИИ из прозы spec, slices и ADR (`/sdd-spec`, `/sdd-slices`, `/sdd-adr`
+   вызывают его последним шагом; без него шаг пропускается):
+   ```bash
+   npx skills@latest add blader/humanizer
+   ```
+3. Этот пул:
    ```bash
    npx skills@latest add KrtNinja/sdd-workflow
    ```
    или скопировать `skills/*` в папку скиллов агента (`.claude/skills/`, `.opencode/skills/` и т. п.).
-3. Вставить `rules/AGENTS.planning.md` в `AGENTS.md` (или `CLAUDE.md`) репозитория с доками.
-4. Скопировать `scripts/sdd-lint.mjs` в `scripts/` репозитория с доками (нужен Node 18+).
+4. Вставить `rules/AGENTS.planning.md` в `AGENTS.md` (или `CLAUDE.md`) репозитория с доками.
+5. Скопировать `scripts/sdd-lint.mjs` в `scripts/` репозитория с доками (нужен Node 18+).
 
 Если grilling задаёт вопросы по одному удобнее, чем раундами, добавьте в AGENTS.md строку
 `When grilling, ask one question at a time.`
@@ -66,6 +71,10 @@ skills/
 - **Механику проверяет скрипт, а не модель.** Покрытие, ID, циклы, стоп-слова — `sdd-lint`.
   Модели остаются смысловые проверки по чеклисту.
 - **Генерация и ревью разделены.** `/sdd-review` запускается в новой сессии и ничего не правит.
+- **Humanizer правит только прозу.** В file mode он не трогает блоки кода, поэтому FR и AC,
+  ID, шапки и тексты сообщений в «ёлочках» остаются как написаны, а lint после него ловит поломки.
+  Цена — ещё ~400 строк в контексте на последнем шаге; если модель не справляется, шаг можно
+  убрать и запускать `/humanizer <файл>` вручную перед checkpoint.
 - **Шаблоны и справка — в отдельных файлах** (`assets/`, `references/`) и грузятся, когда нужны.
 
 ## Против перенарезки slices
@@ -83,4 +92,5 @@ skills/
 
 - Процесс — по докладу «Spec-Driven Backend с Claude» (HolyJS 2026), доработан под команду.
 - `grilling` и условия для ADR — [mattpocock/skills](https://github.com/mattpocock/skills) (MIT).
+- `humanizer` — [blader/humanizer](https://github.com/blader/humanizer) (MIT).
 - Структура скиллов и тесты — skill-creator от Anthropic.
