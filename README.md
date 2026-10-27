@@ -7,6 +7,13 @@
 Примеры процесса: [sdd-workflow-demo](https://github.com/KrtNinja/sdd-workflow-demo) (один сервис),
 [sdd-workflow-demo2](https://github.com/KrtNinja/sdd-workflow-demo2) (несколько сервисов).
 
+## Ветки
+
+Это ветка-адаптер `gigacode`: общая база из [`main`](https://github.com/KrtNinja/sdd-workflow/tree/main)
+плюс то, что нужно GigaCode CLI — манифест расширения, правила как контекст, lint внутри скилла,
+встроенные grilling и humanizer. Изменения процесса делаются в `main`, сюда переносятся
+перебазированием на неё.
+
 ## Поток
 
 | Этап | Команда | Результат | Ворота (решает человек) |
