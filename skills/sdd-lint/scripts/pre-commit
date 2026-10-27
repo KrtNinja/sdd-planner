@@ -2,8 +2,8 @@
 # git pre-commit: sdd-lint для фич, файлы которых попали в коммит.
 # Проверки не зависят от того, вспомнил ли агент запустить lint.
 #
-# Установка в репозитории с доками (из его корня):
-#   ln -s ../../scripts/pre-commit .git/hooks/pre-commit
+# Установка в репозитории с доками (из его корня), путь — к папке расширения sdd-workflow:
+#   ln -s ~/tools/sdd-workflow/skills/sdd-lint/scripts/pre-commit .git/hooks/pre-commit
 # Путь к lint можно задать явно: SDD_LINT=/путь/к/sdd-lint.mjs
 # Обойти один раз: git commit --no-verify
 set -u

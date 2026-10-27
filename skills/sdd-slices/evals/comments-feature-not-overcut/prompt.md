@@ -7,4 +7,4 @@ allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]
 
 Spec по комментариям одобрен. Нарежь docs/comments/spec.md на slices.
 
-Input files: AGENTS.md, scripts/sdd-lint.mjs, docs/
+Input files: AGENTS.md, docs/

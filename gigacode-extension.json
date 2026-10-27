@@ -1,0 +1,6 @@
+{
+  "name": "sdd-workflow",
+  "version": "0.2.0",
+  "description": "SDD, этап «Планирование»: brainstorming → Dev Spec → slices → ADR, ревью и lint",
+  "contextFileName": "rules/AGENTS.planning.md"
+}

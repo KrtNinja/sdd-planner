@@ -7,4 +7,4 @@ allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]
 
 Протокол по экспорту в CSV готов, собери Dev Spec для docs/csv-export.
 
-Input files: AGENTS.md, scripts/sdd-lint.mjs, docs/
+Input files: AGENTS.md, docs/
