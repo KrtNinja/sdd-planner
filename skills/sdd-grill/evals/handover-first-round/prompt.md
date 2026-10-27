@@ -7,4 +7,4 @@ allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]
 
 Хочу, чтобы исполнитель мог передать задачу коллеге. Начни brainstorming, папка фичи — task-handover.
 
-Input files: AGENTS.md, scripts/sdd-lint.mjs, docs/, services/
+Input files: AGENTS.md, docs/, services/

@@ -7,4 +7,4 @@ allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]
 
 По находке R2 из ревью slices фичи comments решаю: если комментарий удалили до того, как уведомление доставлено, уведомление не приходит. Проведи решение.
 
-Input files: AGENTS.md, scripts/sdd-lint.mjs, docs/
+Input files: AGENTS.md, docs/
