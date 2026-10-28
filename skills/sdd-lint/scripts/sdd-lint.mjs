@@ -106,6 +106,7 @@ const RULES = {
   'SP-19': ['err', 'в одном блоке кода одно требование'],
   'SP-20': ['warn', 'число в NFR берётся из решения человека в протоколе; нет решения — «Открытые вопросы»'],
   'SP-21': ['err', 'номера в «Из протокола:» — ссылки на строку протокола, их ставит и обновляет скрипт: sdd-lint gen links docs/<feature>'],
+  'SP-22': ['err', 'пометок правок не пишем: решение живёт в самом требовании, история — в git. Убери «изменено / добавлено после ревью», дату правки и ссылку на находку'],
 
   'SL-01': ['err', 'шапка slice: Тип, Основание, Зависимости, Половины, Результат, Почему отдельно — см. шаблон'],
   'SL-02': ['err', '«Почему отдельно: Р1 | Р2 | Р3 — пояснение»; без причины slice склеивается с соседом'],
@@ -135,6 +136,7 @@ const RULES = {
   'SL-26': ['info', 'у каждого slice сверх ориентира 3–6 должна быть причина Р1–Р3'],
   'SL-27': ['warn', 'ссылка на AC, которого нет'],
   'SL-28': ['err', 'ссылки на spec.md ставит и обновляет скрипт: «Основание» — FR текстом и одна ссылка на spec.md, «Проверяет:» и «Покрытие» в README — ссылки на строки FR: sdd-lint gen links docs/<feature>'],
+  'SL-29': ['err', 'пометок правок не пишем: решение живёт в самом AC, история — в git. Убери «изменено / добавлено после ревью», дату правки и ссылку на находку'],
 
   'RM-01': ['warn', 'создай README: sdd-lint gen readme docs/<feature>'],
   'RM-02': ['warn', 'README расходится со slices — не правь руками: sdd-lint gen readme docs/<feature>'],
@@ -152,7 +154,7 @@ const RULES = {
   'AD-09': ['err', 'номер ADR в имени файла и в заголовке совпадают и не повторяются: sdd-lint next adr docs/<feature>'],
   'AD-10': ['warn', 'slices одобрены — ADR, на которые они опираются, должны быть «принято» до старта реализации'],
 
-  'RV-01': ['warn', 'блокер ревью закрывается до одобрения: решение — /sdd-decide <feature> R<n> «<решение>», правка — исправь файл и впиши в «Решение» «исправлено»; несогласие — «отклонено: причина»'],
+  'RV-01': ['warn', 'блокер ревью закрывается до одобрения: решение — /sdd-decide <feature> R<n> «<решение>», правка — исправь файл и впиши в «Решение» «исправлено»; несогласие — человек сам пишет «отклонено: причина»'],
   'RV-02': ['warn', 'файл ревью — по шаблону sdd-review: таблица с колонками #, Важность, Где, Что не так, Пункт, Предложение, Решение и ID R1, R2 …'],
 
   'DF-01': ['err', 'протокол только дописывается: верни строку как была, новое решение — строкой в «Решения после brainstorming» (/sdd-decide)'],
@@ -1235,8 +1237,9 @@ function stageText({ now, next }) {
 // ---------- вопрос человеку ----------
 // Что спросить в конце этапа и что сделать по ответу — данные скрипта, а не текст для модели.
 // Агент задаёт вопросы из ask инструментом выбора и передаёт id варианта в choose.
-// Действие: lint — выполняет choose; subagent — задача сабагенту; here — скилл в этом окне;
-// show — команда, которую человек запускает сам; none — ничего.
+// Действие: lint — выполняет choose; subagent — задача сабагенту (fallback — команда человеку,
+// если сабагентов нет; snapshot — снимок, который choose снимает сам до задачи);
+// here — скилл в этом окне; show — команда, которую человек запускает сам; none — ничего.
 const lintArgs = (args) => JSON.stringify(args);
 const fetchTask = (args, tail) => `Вызови инструмент sdd_lint с args ${lintArgs(args)} и выполни то, что он вернёт.${tail ? ` ${tail}` : ''}`;
 function artifactQuestion(m, what, num) {
@@ -1254,7 +1257,7 @@ function artifactQuestion(m, what, num) {
     id: `review-here:${key}`,
     label: rv ? 'Повторить ревью здесь' : 'Ревью здесь, в сабагенте',
     description: `свежий контекст, находки — в ${dir}/review/${key}.md`,
-    action: { subagent: fetchTask(['prompt', 'sdd-review', m.name, ...rest]) },
+    action: { subagent: fetchTask(['prompt', 'sdd-review', m.name, ...rest]), fallback: skill('sdd-review', m.name, ...rest) },
   };
   const reviewWindow = {
     id: `review-window:${key}`,
@@ -1267,11 +1270,13 @@ function artifactQuestion(m, what, num) {
     label: 'Убрать следы ИИ из прозы',
     description: 'humanizer в сабагенте, затем guard',
     action: {
+      snapshot: target,
       subagent:
-        `Вызови инструмент sdd_lint с args ${lintArgs(['snapshot', target])}. Затем загрузи скилл humanizer и примени его к ${files}: ` +
+        `Загрузи скилл humanizer и примени его к ${files}: ` +
         'меняй только прозу вне блоков кода; ID, строки шапки, заголовки, таблицы, тексты в «ёлочках», числа и сроки не трогай. ' +
         `Затем вызови sdd_lint с args ${lintArgs(['guard', target])}; при ошибках верни защищённые части как были и повтори guard. ` +
         'Последним сообщением — итог guard.',
+      fallback: `${what === 'slices' ? `${skill('humanizer')} по каждому файлу в ${dir}/slices/` : skill('humanizer', target)}, затем ${lintCmd('guard', target)}`,
     },
   };
   const finish = open.length
@@ -1335,12 +1340,44 @@ function checkReviews(m) {
   }
 }
 
+// ---------- пометки правок ----------
+// «Изменено 28.10.2026», «добавлен после ревью R2»: решение живёт в самом FR и AC, история — в git.
+// «(удалён: причина)» — не пометка правки, а постоянный ID удалённого требования.
+const MARK_VERB = '(?:изменен|изменён|добавлен|обновлен|обновлён|уточнен|уточнён|исправлен|переписан|дополнен)\\p{L}*';
+const EDIT_MARK_RES = [
+  // «добавлен после ревью», «уточнено по находке R2», «изменён по решению П3»
+  new RegExp(`(?<![\\p{L}])${MARK_VERB}\\s+(?:после|по|на|в\\s+ходе)\\s+(?:итогам\\s+)?(?:ревью|review|brainstorming|брейншторм\\p{L}*|находк\\p{L}*|решени\\p{L}*\\s+[ПR]\\d+|[ПR]\\d+)`, 'iu'),
+  // «(изменено 28.10.2026)», «Добавлено 28.10.2026: …» — дата правки в скобках или в начале строки;
+  // «Анна изменила комментарий 28.10.2026» в примере — не пометка
+  new RegExp(`(?:^|[(\\[_*—–])\\s*${MARK_VERB}:?\\s+\\d{1,2}\\.\\d{1,2}\\.\\d{2,4}`, 'iu'),
+  // «по ревью R2», «находка R3»
+  /(?<![\p{L}])(?:ревью|находк\p{L}*)\s+R\d+/iu,
+];
+function editMarks(file, sc, rule) {
+  for (const l of sc.lines) {
+    if (/^\s*Статус:/.test(l.text)) continue;
+    for (const re of EDIT_MARK_RES) {
+      const mm = l.text.match(re);
+      if (mm) {
+        add(rule, file, l.n, `«${mm[0]}» — пометка правки`);
+        break;
+      }
+    }
+  }
+}
+function checkEditMarks(m) {
+  if (m.spec) editMarks(m.spec.file, m.spec.sc, 'SP-22');
+  for (const sl of m.slices.values()) editMarks(sl.file, sl.sc, 'SL-29');
+  if (m.readmeSc) editMarks(m.readmeFile, m.readmeSc, 'SL-29');
+}
+
 function runChecks(m) {
   checkProtocol(m);
   checkSpec(m);
   checkSlices(m);
   checkAdrs(m);
   checkReviews(m);
+  checkEditMarks(m);
 }
 
 // ---------- вывод ----------
@@ -2206,6 +2243,8 @@ function complete(words) {
 const SELF = fs.realpathSync(process.argv[1]);
 const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
 const promptSkills = () => (isDir(SKILLS_DIR) ? fs.readdirSync(SKILLS_DIR).filter((x) => /^sdd-[a-z]+$/.test(x) && x !== 'sdd-lint' && fs.existsSync(path.join(SKILLS_DIR, x, 'SKILL.md'))) : []);
+// Аргументы с пробелами — в кавычках: у /sdd-decide вопрос и решение не должны слиться в одну строку.
+const shownArgs = (args) => args.map((a) => (/\s/.test(a) || a === '' ? `"${a.replace(/"/g, '\\"')}"` : a)).join(' ');
 function skillPrompt(name, args) {
   const dir = path.join(SKILLS_DIR, name);
   const body = read(path.join(dir, 'SKILL.md')).replace(/^---\n[\s\S]*?\n---\n/, '').trim();
@@ -2215,17 +2254,17 @@ function skillPrompt(name, args) {
   const head =
     name === 'sdd-review'
       ? [
-          `# Ревью SDD: ${args.join(' ')}`,
+          `# Ревью SDD: ${shownArgs(args)}`,
           '',
           'Ты ревьюер в чистом контексте: как писали артефакт, тебе не передано. Суди только по файлам',
           `в ${DOCS}/${args[0]}/ и ${DOCS}/adr/; корень репозитория — текущая папка.`,
           'Последним сообщением выведи таблицу находок и итог из шага 5 — его прочитает человек;',
           'свои шаги не пересказывай.',
         ]
-      : [`# Скилл ${name}: ${args.join(' ')}`, '', 'Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.'];
+      : [`# Скилл ${name}: ${shownArgs(args)}`, '', 'Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.'];
   return [
     ...head,
-    `Аргументы скилла: \`${args.join(' ')}\`. Lint — инструмент MCP \`sdd_lint\`; его нет — \`node ${SELF}\`.`,
+    `Аргументы скилла: \`${shownArgs(args)}\`. Lint — инструмент MCP \`sdd_lint\`; его нет — \`node ${SELF}\`.`,
     links.length ? 'Файлы, на которые ссылается скилл, приложены в конце — их не открывай.' : null,
     '',
     '---',
@@ -2271,11 +2310,27 @@ function cmdPrompt() {
   process.exit(0);
 }
 // Вопросы этапа. Действия в вывод не идут: их выполняет choose по id.
+// Как задать вопрос, вывод говорит сам (instruction): правило приходит в момент действия,
+// а не из контекста агента. text — тот же вопрос списком для агента без инструмента выбора.
+function askView(m) {
+  const { stage, questions } = askOf(m);
+  let n = 0;
+  const qs = questions.map((q) => ({
+    ...q,
+    options: q.options.map(({ action, ...o }) => ({ n: ++n, ...o, label: o.recommended ? `${o.label} (рекомендую)` : o.label })),
+  }));
+  const text = qs.map((q) => [q.question, ...q.options.map((o) => `${o.n}. ${o.label}${o.description ? ` — ${o.description}` : ''}`)].join('\n')).join('\n\n');
+  const dir = rel(m.dir);
+  const instruction =
+    'Задай questions инструментом выбора как есть: текст, порядок, варианты и «(рекомендую)» не меняй, своих вариантов не добавляй. ' +
+    'Инструмента выбора нет — выведи text дословно и жди ответа. ' +
+    `Выбран вариант — sdd_lint с args ${lintArgs(['choose', dir, '<id>'])}; ответ номером — id варианта с этим n; выбрано несколько — по одному, по порядку. ` +
+    'Человек ответил словами: однозначно назвал один вариант — его id, иначе отвечай как в обычном диалоге. Вариант за человека не выбирай.';
+  return { instruction, stage, choose: ['choose', dir, '<id>'], questions: qs, text };
+}
 function cmdAsk() {
   const m = loadFeature(needDir(pos[0]));
-  const { stage, questions } = askOf(m);
-  const strip = (q) => ({ ...q, options: q.options.map(({ action, ...o }) => o) });
-  console.log(JSON.stringify({ stage, choose: ['choose', rel(m.dir), '<id>'], questions: questions.map(strip) }, null, 2));
+  console.log(JSON.stringify(askView(m), null, 2));
   process.exit(0);
 }
 function cmdChoose() {
@@ -2301,8 +2356,11 @@ function cmdChoose() {
     console.log(`${out.trimEnd()}\n\nПередай вывод человеку как есть. ${code ? 'Остановись.' : again}`);
     process.exit(code);
   }
-  if (a.subagent) console.log(`Запусти сабагента. Его задача целиком, ничего не добавляй и не пересказывай:\n\n${a.subagent}\n\nОтвет сабагента передай человеку как есть. ${again}`);
-  else if (a.here) console.log(skillPrompt(a.here[1], a.here.slice(2)));
+  if (a.subagent) {
+    if (a.snapshot) for (const f of targetFiles(a.snapshot)) saveSnapshot(f);
+    const none = a.fallback ? `\n\nСабагентов у тебя нет — задание сам не выполняй: передай человеку дословно «${a.fallback}» и остановись.` : '';
+    console.log(`Запусти сабагента. Его задача целиком, ничего не добавляй и не пересказывай:\n\n${a.subagent}\n\nОтвет сабагента передай человеку как есть. ${again}${none}`);
+  } else if (a.here) console.log(skillPrompt(a.here[1], a.here.slice(2)));
   else if (a.show) console.log(`Передай человеку дословно и остановись:\n\n${a.show}`);
   else console.log('Ничего не делай, остановись.');
   process.exit(0);
