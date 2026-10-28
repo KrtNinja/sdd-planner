@@ -43,8 +43,12 @@ const HELP = `sdd-lint — проверки артефактов планиро�
   sdd-lint gen guessed docs/<feature>
       таблица «Где агент угадал бы не так» в протоколе
   sdd-lint gen links docs/<feature>
-      номера в «Из протокола:» → ссылки на строку протокола (#L), устаревшие — обновить;
-      старый раздел «Трассировка» переносится в «Из протокола:»
+      ссылки на строку (#L): «Из протокола:» в spec → протокол; «Основание:», «Проверяет:»
+      в slices и таблицы README → FR в spec.md. Устаревшие обновляет, старые форматы
+      («Трассировка», «[FR-n]» в строке AC) переносит
+  sdd-lint close docs/<feature>
+      перед merge: spec и slices одобрены, ошибок нет → удаляет brainstorming.md
+      и всё, что в spec на него ссылается, обновляет ссылки на FR
   sdd-lint trace docs/<feature>
       каждая строка протокола: решение → куда ушла (FR/NFR, вне scope, открытый вопрос)
   sdd-lint next <FR|NFR|slice|adr> docs/<feature>
@@ -100,9 +104,9 @@ const RULES = {
   'SL-11': ['err', 'зависимости — номера существующих slices, без циклов'],
   'SL-12': ['err', '«Основание» ссылается на требование, которого нет в spec.md'],
   'SL-13': ['err', 'каждый FR/NFR должен стоять в «Основание» хотя бы одного slice'],
-  'SL-14': ['err', 'AC: строка «ID имя [FR-n]», затем WHEN, потом AND / THEN — каждое на своей строке'],
+  'SL-14': ['err', 'AC: строка «ID имя», затем WHEN, потом AND / THEN — каждое на своей строке'],
   'SL-15': ['warn', 'каждая строка AC начинается с WHEN, AND или THEN (продолжение — с бóльшим отступом)'],
-  'SL-16': ['err', 'в строку AC допиши требование, из которого он выведен: «AC-003-B2 Имя [FR-1]»'],
+  'SL-16': ['err', 'сразу под блоком AC — строка «Проверяет: FR-n, …»: требования, из которых AC выведен; старый «[FR-n]» в строке AC перенесёт sdd-lint gen links docs/<feature>'],
   'SL-17': ['err', 'AC выводится только из FR своего slice: добавь FR в «Основание» или проведи решение через /sdd-decide'],
   'SL-18': ['warn', 'AC проверяет FR зависимости: проверь, не место ли ему в том slice'],
   'SL-19': ['err', 'FR из «Основание» не проверяется ни одним AC: добавь AC или убери FR из «Основание»'],
@@ -114,6 +118,7 @@ const RULES = {
   'SL-25': ['warn', '«Границы» ссылаются на существующие slices'],
   'SL-26': ['info', 'у каждого slice сверх ориентира 3–6 должна быть причина Р1–Р3'],
   'SL-27': ['warn', 'ссылка на AC, которого нет'],
+  'SL-28': ['err', 'FR в «Основание», «Проверяет:» и README — ссылки на строку spec.md, их ставит и обновляет скрипт: sdd-lint gen links docs/<feature>'],
 
   'RM-01': ['warn', 'создай README: sdd-lint gen readme docs/<feature>'],
   'RM-02': ['warn', 'README расходится со slices — не правь руками: sdd-lint gen readme docs/<feature>'],
@@ -137,7 +142,6 @@ const RULES = {
   'DF-01': ['err', 'протокол только дописывается: верни строку как была, новое решение — строкой в «Решения после brainstorming» (/sdd-decide)'],
   'DF-02': ['err', 'ID постоянные: верни требование или AC с пометкой «(удалён: причина)»'],
   'DF-03': ['err', 'одобрение давалось прошлой версии: верни статус «на ревью»'],
-  'DF-04': ['warn', 'новый AC после одобрения: «(добавлен после: <источник>)» в строке AC и «Изменён после: …» в шапке slice'],
 
   'HG-01': ['err', 'humanizer меняет только прозу: верни защищённую часть как была (снимок или git), затем sdd-lint guard ещё раз'],
 };
@@ -154,7 +158,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a.startsWith('--base=')) flags.base = a.slice(7);
   else pos.push(a);
 }
-const COMMANDS = ['check', 'gate', 'approve', 'diff', 'snapshot', 'guard', 'gen', 'trace', 'next', 'help'];
+const COMMANDS = ['check', 'gate', 'approve', 'diff', 'snapshot', 'guard', 'gen', 'trace', 'close', 'next', 'help'];
 const cmd = COMMANDS.includes(pos[0]) ? pos.shift() : 'check';
 const usage = (msg) => {
   console.error(msg ? `${msg}\nСправка: ${lintCmd('help')}` : HELP);
@@ -375,7 +379,47 @@ const SRC_SECTIONS = [
 ];
 const srcTail = (text) => text.slice(text.search(SRC_RE)).replace(SRC_RE, '');
 const srcRefs = (text) => [...srcTail(text).matchAll(SRC_REF_RE)].map((m) => ({ id: m[1] || m[3], href: m[1] ? m[2] : null }));
+// Всё, что в spec ведёт в протокол: после close протокола нет, а документ остаётся чистым.
+const PROTO_TAIL_RE = /\s*\(из протокола:(?:[^()]|\([^()]*\))*\)/giu;
+const hasProtocolTraces = (md) => /^Протокол:|из протокола:|^##\s+Не про поведение/imu.test(md || '');
+function stripProtocol(md) {
+  let out = (md || '')
+    .split('\n')
+    .filter((t) => !/^Протокол:/.test(t) && !/^\s*Из протокола:/iu.test(t))
+    .map((t) => t.replace(PROTO_TAIL_RE, ''))
+    .join('\n')
+    .replace(/<!--[\s\S]*?-->\n?/g, (c) => (/протокол/i.test(c) ? '' : c));
+  if (/^##\s+Не про поведение/m.test(out)) out = setSection(out, /^Не про поведение/, null, '');
+  return out.replace(/\n{3,}/g, '\n\n');
+}
 const protoHref = (spec, proto, row) => `${path.relative(path.dirname(spec), proto).split(path.sep).join('/')}#L${row.n}`;
+
+// Строка прозы сразу под блоком кода (пустые строки между ними допустимы): блок → строка.
+function underBlocks(sc, re) {
+  const out = new Map();
+  let after = null;
+  for (const l of sc.lines) {
+    if (l.inCode) {
+      after = l.block;
+      continue;
+    }
+    if (!l.text.trim()) continue;
+    if (after !== null && re.test(l.text)) out.set(after, { n: l.n, text: l.text });
+    after = null;
+  }
+  return out;
+}
+
+// ---------- ссылки на FR/NFR: «Основание:», «Проверяет:», README ----------
+const REQ_REF_RE = /\[(N?FR-\d+)\]\(([^)\s]*)\)|(?<![\p{L}\d[-])(N?FR-\d+)(?![\d\]])/gu;
+const CHECKS_RE = /^\s*Проверяет:/u;
+const reqRefs = (text) => [...(text || '').matchAll(REQ_REF_RE)].map((m) => ({ id: m[1] || m[3], href: m[1] ? m[2] : null }));
+const specHref = (from, spec, req) => `${path.relative(path.dirname(from), spec).split(path.sep).join('/')}#L${req.n}`;
+const linkReqs = (text, from, spec) =>
+  text.replace(REQ_REF_RE, (all, a, _h, b) => {
+    const r = spec.reqs.get(a || b);
+    return r ? `[${r.id}](${specHref(from, spec.file, r)})` : all;
+  });
 
 function parseSources(sc, reqs) {
   const byBlock = new Map();
@@ -450,6 +494,7 @@ function parseSlice(file, md) {
   const acs = [];
   const outside = [];
   const multi = [];
+  const checks = underBlocks(sc, CHECKS_RE);
   for (const b of sc.blocks) {
     const idLines = b.lines.filter((l) => AC_LINE.test(l.text));
     if (idLines.length > 1) multi.push({ n: b.start, count: idLines.length });
@@ -463,15 +508,21 @@ function parseSlice(file, md) {
         n: l.n,
         h2: b.h2,
         deleted: /\(удал[её]н/i.test(rest),
-        added: /\(добавлен после/i.test(rest),
-        refs: reqIds((rest.match(/\[([^\]]*)\]/) || [])[1]),
+        oldRefs: reqIds((rest.match(/\[([^\]]*)\]/) || [])[1]),
+        refs: uniq([...reqIds((rest.match(/\[([^\]]*)\]/) || [])[1]), ...reqIds(checks.get(b.idx)?.text)]),
+        checks: checks.get(b.idx) || null,
+        block: b.idx,
         body: b.lines.slice(b.lines.indexOf(l) + 1),
         text: b.lines.map((x) => x.text).join('\n'),
       });
     }
   }
   for (const l of sc.lines) if (!l.inCode && AC_LINE.test(l.text)) outside.push({ id: l.text.match(AC_LINE)[1], n: l.n });
+  const used = new Set([...checks.values()].map((x) => x.n));
+  const strayChecks = sc.lines.filter((l) => !l.inCode && CHECKS_RE.test(l.text) && !used.has(l.n)).map((l) => l.n);
   return {
+    strayChecks,
+    basisLine: headerLine(md, 'Основание'),
     file,
     md,
     sc,
@@ -676,7 +727,10 @@ function checkSpec(m) {
   }
 
   // откуда пришло: каждая строка протокола куда-то ушла, у каждого требования есть источник
-  if (!p) return;
+  if (!p) {
+    if (hasProtocolTraces(s.md)) add('SP-21', s.file, s.sources[0]?.n || headerLine(s.md, 'Протокол'), 'протокола нет, а spec на него ссылается');
+    return;
+  }
   if (s.oldTraceLine) {
     add('SP-13', s.file, s.oldTraceLine, 'раздел «Трассировка» — старый формат');
     return;
@@ -718,6 +772,20 @@ const sideOfHeading = (h) => {
   return null;
 };
 
+// FR без ссылки или со ссылкой не на ту строку spec.md → SL-28.
+function staleReqLinks(file, n, text, spec) {
+  const plain = [];
+  const stale = [];
+  for (const r of reqRefs(text)) {
+    const req = spec.reqs.get(r.id);
+    if (!req) continue; // несуществующий FR ловят SL-12 / SL-17
+    if (!r.href) plain.push(r.id);
+    else if (r.href !== specHref(file, spec.file, req)) stale.push(r.id);
+  }
+  if (plain.length) add('SL-28', file, n, `не ссылки: ${plain.join(', ')}`);
+  if (stale.length) add('SL-28', file, n, `ссылки ведут не на ту строку spec.md: ${stale.join(', ')}`);
+}
+
 function checkSlices(m) {
   const s = m.spec;
   const slices = m.slices;
@@ -738,6 +806,11 @@ function checkSlices(m) {
 
     for (const o of sl.outside) add('SL-03', f, o.n, `${o.id} вне блока кода`);
     for (const mb of sl.multi) add('SL-06', f, mb.n, `в блоке кода ${mb.count} AC`);
+    for (const n of sl.strayChecks) add('SL-16', f, n, '«Проверяет:» не стоит сразу под блоком AC');
+    if (s) {
+      const lines = [[sl.basisLine, header(sl.md, 'Основание')], ...sl.acs.filter((x) => x.checks).map((x) => [x.checks.n, x.checks.text])];
+      for (const [n, text] of lines) staleReqLinks(f, n, text, s);
+    }
 
     // FR зависимостей (транзитивно)
     const depBasis = new Set();
@@ -780,7 +853,8 @@ function checkSlices(m) {
       }
 
       // AC выводится из FR
-      if (!ac.refs.length) add('SL-16', f, ac.n, `${ac.id} без ссылки на FR`);
+      if (ac.oldRefs.length) add('SL-16', f, ac.n, `${ac.id}: [${ac.oldRefs.join(', ')}] в строке AC — старый формат`);
+      else if (!ac.refs.length) add('SL-16', f, ac.n, `${ac.id}: под блоком нет «Проверяет:»`);
       for (const id of ac.refs) {
         checked.add(id);
         if (s && !s.reqs.has(id)) add('SL-17', f, ac.n, `${ac.id} ссылается на ${id}, его нет в spec.md`);
@@ -929,6 +1003,7 @@ function checkReadme(m) {
         continue;
       }
       if (cb >= 0 && !sameSet(reqIds(r.cells[cb]), sl.basis)) add('RM-02', f, r.n, `${num}: «Основание» в README не совпадает со slice`);
+      else if (cb >= 0 && m.spec) staleReqLinks(f, r.n, r.cells[cb], m.spec);
       const deps = uniq((r.cells[cd] || '').match(/\b\d{3}\b/g) || []);
       if (cd >= 0 && !sameSet(deps, sl.deps)) add('RM-02', f, r.n, `${num}: «Зависит от» в README не совпадает со slice`);
     }
@@ -943,6 +1018,7 @@ function checkReadme(m) {
     for (const r of cov.rows) {
       const id = reqIds(r.cells[0])[0];
       if (id) inReadme.set(id, { set: r.cells.slice(1).join(' ').match(/\b\d{3}\b/g) || [], n: r.n });
+      if (id && m.spec) staleReqLinks(f, r.n, r.cells[0], m.spec);
     }
     for (const [id, nums] of covered) {
       const x = inReadme.get(id);
@@ -1061,7 +1137,9 @@ function stageOf(m) {
     const pending = pendingAdrs(m);
     return pending.length
       ? { now: `Slices одобрены. Перед реализацией примите ADR: ${pending.map((a) => a.num).join(', ')}`, next: adrSteps(m) }
-      : { now: 'Планирование завершено: slices одобрены, ADR приняты', next: [] };
+      : m.protocol
+        ? { now: 'Slices одобрены, ADR приняты', next: [`перед merge убрать протокол: ${lintCmd('close', rel(m.dir))}`] }
+        : { now: 'Планирование завершено: slices одобрены, ADR приняты, протокол убран', next: [] };
   }
   if (m.slices.size) return st('Slices на ревью', handoff(m, 'slices'));
   if (m.spec && approved(m.spec.status)) return st('Dev Spec одобрен', [skill('sdd-slices', m.name)]);
@@ -1353,8 +1431,12 @@ function cmdDiff() {
     (d) => gitList(g, ref, d),
   );
   const norm = (s) => s.replace(/\s+/g, ' ').trim();
-  // Номер строки в ссылке на протокол — механика gen links, одобрения он не отменяет.
-  const body = (md) => (md || '').replace(/^Статус:.*$/m, '').replace(/(\]\([^)\s]*)#L\d+\)/g, '$1)').trim();
+  // Номер строки в ссылке и следы протокола (их убирает close) одобрения не отменяют.
+  const body = (md) =>
+    stripProtocol(md || '')
+      .replace(/^Статус:.*$/m, '')
+      .replace(/(\]\([^)\s]*)#L\d+\)/g, '$1)')
+      .trim();
 
   // протокол только дописывается
   if (base.protocol && cur.protocol) {
@@ -1363,7 +1445,8 @@ function cmdDiff() {
       if (!now.has(norm(r.raw))) add('DF-01', cur.protocolFile, null, `строка #${r.id} изменена или удалена: «${r.raw.slice(0, 60)}»`);
     const scope = new Set(cur.protocol.outScope.map((x) => norm(x.text)));
     for (const x of base.protocol.outScope) if (!scope.has(norm(x.text))) add('DF-01', cur.protocolFile, null, `«Вне scope»: пункт изменён или удалён: «${x.text.slice(0, 60)}»`);
-  } else if (base.protocol && !cur.protocol) add('DF-01', cur.protocolFile, null, 'протокол удалён');
+  } else if (base.protocol && !cur.protocol && !(cur.spec && approved(cur.spec.status) && !hasProtocolTraces(cur.spec.md)))
+    add('DF-01', cur.protocolFile, null, `протокол удалён до закрытия фичи: удаляет его ${lintCmd('close', rel(cur.dir))}`);
 
   // ID не пропадают
   if (base.spec) for (const id of base.spec.reqs.keys()) if (!cur.spec?.reqs.has(id)) add('DF-02', cur.specFile, null, `${id} пропал`);
@@ -1374,7 +1457,7 @@ function cmdDiff() {
   if (base.spec && cur.spec && approved(base.spec.status) && approved(cur.spec.status) && body(base.spec.md) !== body(cur.spec.md))
     add('DF-03', cur.specFile, headerLine(cur.spec.md, 'Статус'), 'spec.md изменён, а статус остался «одобрено»');
   if (approved(base.slicesStatus) && approved(cur.slicesStatus)) {
-    const changed = [...cur.slices.values()].filter((s) => base.slices.get(s.num)?.md !== s.md).map((s) => s.num);
+    const changed = [...cur.slices.values()].filter((s) => !base.slices.has(s.num) || body(base.slices.get(s.num).md) !== body(s.md)).map((s) => s.num);
     const gone = [...base.slices.keys()].filter((n) => !cur.slices.has(n));
     if (changed.length || gone.length || body(base.readme) !== body(cur.readme))
       add('DF-03', cur.readmeFile, headerLine(cur.readme, 'Статус'), `slices изменены (${[...changed, ...gone].join(', ') || 'README'}), а статус остался «одобрено»`);
@@ -1383,14 +1466,6 @@ function cmdDiff() {
     const b = base.adrs.find((x) => x.num === a.num);
     if (b && /принят/i.test(b.status || '') && /принят/i.test(a.status || '') && body(b.md) !== body(a.md))
       add('DF-03', a.file, headerLine(a.md, 'Статус'), 'ADR изменён, а статус остался «принято»');
-  }
-  if (approved(base.slicesStatus)) {
-    const baseAcs = new Set([...base.slices.values()].flatMap((s) => s.acs.map((a) => a.id)));
-    for (const s of cur.slices.values()) {
-      const fresh = s.acs.filter((a) => !baseAcs.has(a.id));
-      for (const a of fresh) if (!a.added) add('DF-04', s.file, a.n, `${a.id} без «(добавлен после: …)»`);
-      if (fresh.length && header(s.md, 'Изменён после') === null) add('DF-04', s.file, null, 'нет строки «Изменён после:» в шапке');
-    }
   }
   const c = report({ base: ref });
   if (!flags.json) console.log(`\nСверка с ${ref}. Ошибок: ${c.err}, предупреждений: ${c.warn}`);
@@ -1464,14 +1539,15 @@ function replaceSection(md, titleRe, title, body) {
   return [...ls.slice(0, h.n), body, ...(next ? [''] : []), ...ls.slice(end)].join('\n').replace(/\n{3,}/g, '\n\n');
 }
 
-function genReadme(m) {
+function genReadme(m, quiet = false) {
   if (!m.slices.size) usage('В slices/ нет файлов NNN-*.md');
+  const link = (text) => (m.spec ? linkReqs(text, m.readmeFile, m.spec) : text);
   const row = (sl) =>
-    `| [${sl.num} ${sl.title || sl.name}](${sl.name}) | ${sl.type || '—'} | ${sl.halves || '—'} | ${sl.basisRaw || '—'} | ${sl.deps.join(', ') || '—'} | ${sl.why || '—'} |`;
+    `| [${sl.num} ${sl.title || sl.name}](${sl.name}) | ${sl.type || '—'} | ${sl.halves || '—'} | ${link(sl.basisRaw) || '—'} | ${sl.deps.join(', ') || '—'} | ${sl.why || '—'} |`;
   const table = ['| Slice | Тип | Стороны | Основание | Зависит от | Почему отдельно |', '|---|---|---|---|---|---|', ...[...m.slices.values()].map(row)].join('\n');
   const covered = coverage(m);
   const ids = m.spec ? [...m.spec.reqs.values()].filter((r) => !r.deleted).map((r) => r.id) : [...covered.keys()];
-  const covTable = ['| Требование | Slice |', '|---|---|', ...ids.map((id) => `| ${id} | ${[...(covered.get(id) || [])].sort().join(', ') || '—'} |`)].join('\n');
+  const covTable = ['| Требование | Slice |', '|---|---|', ...ids.map((id) => `| ${link(id)} | ${[...(covered.get(id) || [])].sort().join(', ') || '—'} |`)].join('\n');
   const order = layers(m).map((l) => l.join(', ')).join(' → ');
   const orderText = `${order}\n\nЧерез запятую — slices, которые можно делать параллельно.`;
 
@@ -1518,7 +1594,7 @@ function genReadme(m) {
     md = replaceSection(md, /^Порядок/, 'Порядок работ', orderText);
   }
   fs.writeFileSync(m.readmeFile, md.endsWith('\n') ? md : `${md}\n`);
-  console.log(`${rel(m.readmeFile)}: таблица slices, «Покрытие Dev Spec», «Порядок работ» собраны из файлов slices. Порядок: ${order}`);
+  if (!quiet) console.log(`${rel(m.readmeFile)}: таблица slices, «Покрытие Dev Spec», «Порядок работ» собраны из файлов slices. Порядок: ${order}`);
 }
 
 function genGuessed(m) {
@@ -1604,11 +1680,15 @@ function setSection(md, titleRe, title, body) {
   return `${[...ls.slice(0, h.n - 1), ...mid, ...ls.slice(end)].join('\n').replace(/\n{3,}/g, '\n\n').replace(/\s*$/, '')}\n`;
 }
 
-function genLinks(m) {
-  if (!m.spec) usage('Нет spec.md');
+// spec: «Из протокола:» → ссылки на строку протокола (или убрать, если протокола нет).
+function linkSpec(m) {
   const p = m.protocol;
-  if (!p) usage('Нет brainstorming.md');
   let md = m.spec.md;
+  if (!p) {
+    if (!hasProtocolTraces(md)) return null;
+    fs.writeFileSync(m.spec.file, stripProtocol(md));
+    return `${rel(m.spec.file)}: протокола нет — «Из протокола:», «Протокол:» и «Не про поведение» убраны.`;
+  }
   const migrated = !!m.spec.oldTraceLine;
   if (migrated) md = migrateTrace(m.spec);
   const s = parseSpec(m.spec.file, md);
@@ -1635,11 +1715,83 @@ function genLinks(m) {
       );
   }
   fs.writeFileSync(s.file, ls.join('\n'));
-  console.log(
+  return (
     `${rel(s.file)}: ${migrated ? 'раздел «Трассировка» перенесён в «Из протокола:» под требованиями и в разделах. ' : ''}` +
-      `Ссылок на строки протокола: ${links}.` +
-      (unknown.length ? ` Нет в протоколе: ${uniq(unknown).join(', ')} — исправь номер руками.` : ''),
+    `Ссылок на строки протокола: ${links}.` +
+    (unknown.length ? ` Нет в протоколе: ${uniq(unknown).join(', ')} — исправь номер руками.` : '')
   );
+}
+
+// slice: «[FR-n]» из строки AC → «Проверяет:» под блоком; FR в «Основание» и «Проверяет:» → ссылки на spec.
+function linkSlice(sl, spec) {
+  const ls = sl.md.split('\n');
+  const moved = [];
+  for (const ac of sl.acs) {
+    if (!ac.oldRefs.length) continue;
+    const i = ac.n - 1;
+    ls[i] = ls[i].replace(/\s*\[[^\]]*\]/, '');
+    if (ac.checks) continue;
+    let end = i + 1;
+    while (end < ls.length && !/^\s*```/.test(ls[end])) end += 1; // закрывающий ```
+    moved.push([end + 1, `Проверяет: ${ac.oldRefs.join(', ')}`]);
+  }
+  for (const [at, text] of moved.sort((a, b) => b[0] - a[0])) ls.splice(at, 0, text);
+  const out = ls.map((t) => (/^Основание:/.test(t) || CHECKS_RE.test(t) ? linkReqs(t, sl.file, spec) : t)).join('\n');
+  if (out !== sl.md) fs.writeFileSync(sl.file, out);
+  return moved.length;
+}
+
+function genLinks(m) {
+  if (!m.spec) usage('Нет spec.md');
+  const out = [];
+  const specMsg = linkSpec(m);
+  if (specMsg) out.push(specMsg);
+  let f = loadFeature(m.dir);
+  if (f.slices.size) {
+    let moved = 0;
+    for (const sl of f.slices.values()) moved += linkSlice(sl, f.spec);
+    out.push(`slices: FR в «Основание» и «Проверяет:» — ссылки на строки spec.md.${moved ? ` Перенесено из строк AC в «Проверяет:»: ${moved}.` : ''}`);
+    f = loadFeature(m.dir);
+    if (f.readme != null) {
+      genReadme(f, true);
+      out.push(`${rel(f.readmeFile)}: таблицы собраны заново со ссылками.`);
+    }
+  }
+  console.log(out.join('\n'));
+}
+
+// Перед merge: протокол — леса, после PR остаются spec, slices и ADR без ссылок на него.
+function cmdClose() {
+  const m = loadFeature(needDir(pos[0]));
+  const dir = rel(m.dir);
+  runChecks(m);
+  const why = !m.spec
+    ? 'нет spec.md'
+    : !approved(m.spec.status)
+      ? `spec «${m.spec.status || '—'}» — сначала ${lintCmd('approve', 'spec', dir)}`
+      : !m.slices.size || !approved(m.slicesStatus)
+        ? `slices не одобрены — сначала ${lintCmd('approve', 'slices', dir)}`
+        : findings.some((x) => x.level === 'err')
+          ? `есть ошибки lint — список: ${lintCmd(dir)}`
+          : null;
+  if (why) {
+    for (const x of findings.filter((y) => y.level === 'err')) console.log(line(x));
+    console.log(`НЕ ЗАКРЫТО: ${why}.`);
+    process.exit(1);
+  }
+  const had = !!m.protocol;
+  if (had) fs.rmSync(m.protocolFile);
+  findings.length = 0;
+  const f = loadFeature(m.dir);
+  genLinks(f);
+  findings.length = 0;
+  runChecks(loadFeature(m.dir));
+  const c = report();
+  console.log(
+    `\n${had ? `${rel(m.protocolFile)} удалён. ` : ''}Фича закрыта: в spec нет ссылок на протокол, ссылки на FR в slices обновлены.` +
+      ` Закоммитьте вместе с остальными документами. Решения дальше — ${skill('sdd-decide', m.name)}: правит FR и AC напрямую.`,
+  );
+  process.exit(c.err ? 1 : 0);
 }
 
 // Протокол → куда ушла каждая строка: для ревью смысла трассировки.
@@ -1702,4 +1854,4 @@ function cmdNext() {
   } else usage('next FR | NFR | AC | slice | adr');
 }
 
-({ check: cmdCheck, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, next: cmdNext })[cmd]();
+({ check: cmdCheck, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, next: cmdNext })[cmd]();
