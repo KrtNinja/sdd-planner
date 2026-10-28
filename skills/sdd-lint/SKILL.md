@@ -14,6 +14,9 @@ disable-model-invocation: true
    - после humanizer — `<скрипт> guard <файл или docs/<feature>>`;
    - снимок перед humanizer, если скилл его не снял, — `<скрипт> snapshot <файл>`;
    - изменения против git — `<скрипт> diff docs/<feature>`;
+   - ссылки «Из протокола:» в spec — поставить или обновить, старую «Трассировка» перенести —
+     `<скрипт> gen links docs/<feature>`;
+   - откуда какое требование — `<скрипт> trace docs/<feature>`: решение протокола → FR/NFR;
    - одобрить spec, slices или ADR — `<скрипт> approve spec|slices docs/<feature>`,
      `<скрипт> approve adr docs/<feature> [NNNN]`. Только по прямой просьбе человека; отказ скрипта
      передай как есть — статус руками не ставь.
