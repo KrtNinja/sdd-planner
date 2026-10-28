@@ -9,8 +9,8 @@ ADR: [0001](../../adr/0001-mention-notifications.md)
 | Slice | Тип | Стороны | Основание | Зависит от | Почему отдельно |
 |---|---|---|---|---|---|
 | [001 Контракты](001-contracts.md) | подготовка | tasks-core + notify-service + frontend, ревьюят все стороны вместе | все FR и NFR (форма данных, ошибки, события) | — | — |
-| [002 Комментарии в задаче](002-comments.md) | поведение | tasks-core + frontend, принимаются вместе | [FR-1](../spec.md#L29), [FR-2](../spec.md#L36), [FR-3](../spec.md#L43), [FR-4](../spec.md#L49), [FR-5](../spec.md#L57), [FR-6](../spec.md#L66), [FR-7](../spec.md#L74), [NFR-1](../spec.md#L105), [NFR-2](../spec.md#L110) | 001 | — |
-| [003 Уведомления об упоминаниях](003-mention-notifications.md) | поведение | tasks-core + notify-service + frontend, принимаются вместе | [FR-8](../spec.md#L81), [FR-9](../spec.md#L88), [FR-10](../spec.md#L95), [NFR-3](../spec.md#L115) | 001, 002 | Р1 — ждёт ADR-0001 и подключения notify-service к доставке событий |
+| [002 Комментарии в задаче](002-comments.md) | поведение | tasks-core + frontend, принимаются вместе | FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, NFR-1, NFR-2 | 001 | — |
+| [003 Уведомления об упоминаниях](003-mention-notifications.md) | поведение | tasks-core + notify-service + frontend, принимаются вместе | FR-8, FR-9, FR-10, NFR-3 | 001, 002 | Р1 — ждёт ADR-0001 и подключения notify-service к доставке событий |
 
 ## Покрытие Dev Spec
 | Требование | Slice |

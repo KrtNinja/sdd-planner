@@ -2,7 +2,7 @@
 
 Тип: поведение
 
-Основание: [FR-1](../spec.md#L29), [FR-2](../spec.md#L36), [FR-3](../spec.md#L43), [FR-4](../spec.md#L49), [FR-5](../spec.md#L57), [FR-6](../spec.md#L66), [FR-7](../spec.md#L74), [NFR-1](../spec.md#L105), [NFR-2](../spec.md#L110)
+Основание: FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, NFR-1, NFR-2 ([Dev Spec](../spec.md))
 
 Зависимости: 001
 

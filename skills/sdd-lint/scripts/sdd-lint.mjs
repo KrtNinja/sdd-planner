@@ -43,8 +43,8 @@ const HELP = `sdd-lint — проверки артефактов планиро�
   sdd-lint gen guessed docs/<feature>
       таблица «Где агент угадал бы не так» в протоколе
   sdd-lint gen links docs/<feature>
-      ссылки на строку (#L): «Из протокола:» в spec → протокол; «Основание:», «Проверяет:»
-      в slices и таблицы README → FR в spec.md. Устаревшие обновляет, старые форматы
+      ссылки: «Из протокола:» в spec → строка протокола; «Проверяет:» в slices и «Покрытие»
+      в README → строка FR в spec.md; «Основание:» → spec.md одной ссылкой. Устаревшие обновляет, старые форматы
       («Трассировка», «[FR-n]» в строке AC) переносит
   sdd-lint close docs/<feature>
       перед merge: spec и slices одобрены, ошибок нет → удаляет brainstorming.md
@@ -118,7 +118,7 @@ const RULES = {
   'SL-25': ['warn', '«Границы» ссылаются на существующие slices'],
   'SL-26': ['info', 'у каждого slice сверх ориентира 3–6 должна быть причина Р1–Р3'],
   'SL-27': ['warn', 'ссылка на AC, которого нет'],
-  'SL-28': ['err', 'FR в «Основание», «Проверяет:» и README — ссылки на строку spec.md, их ставит и обновляет скрипт: sdd-lint gen links docs/<feature>'],
+  'SL-28': ['err', 'ссылки на spec.md ставит и обновляет скрипт: «Основание» — FR текстом и одна ссылка на spec.md, «Проверяет:» и «Покрытие» в README — ссылки на строки FR: sdd-lint gen links docs/<feature>'],
 
   'RM-01': ['warn', 'создай README: sdd-lint gen readme docs/<feature>'],
   'RM-02': ['warn', 'README расходится со slices — не правь руками: sdd-lint gen readme docs/<feature>'],
@@ -420,6 +420,13 @@ const linkReqs = (text, from, spec) =>
     const r = spec.reqs.get(a || b);
     return r ? `[${r.id}](${specHref(from, spec.file, r)})` : all;
   });
+
+// «Основание:» — FR простым текстом и одна ссылка на spec.md в конце: десять ссылок подряд не читаются.
+const BASIS_LINK_RE = /\s*\(\[Dev Spec\]\(([^)\s]*)\)\)\s*$/u;
+const specFileHref = (from, spec) => path.relative(path.dirname(from), spec).split(path.sep).join('/');
+const basisPlain = (text) => (text || '').replace(BASIS_LINK_RE, '').replace(REQ_REF_RE, (all, a, _h, b) => a || b).trim();
+const linkBasis = (line, from, specFile) =>
+  line.replace(/^(Основание:\s*)(.*)$/u, (_, kw, rest) => `${kw}${basisPlain(rest)} ([Dev Spec](${specFileHref(from, specFile)}))`);
 
 function parseSources(sc, reqs) {
   const byBlock = new Map();
@@ -808,8 +815,12 @@ function checkSlices(m) {
     for (const mb of sl.multi) add('SL-06', f, mb.n, `в блоке кода ${mb.count} AC`);
     for (const n of sl.strayChecks) add('SL-16', f, n, '«Проверяет:» не стоит сразу под блоком AC');
     if (s) {
-      const lines = [[sl.basisLine, header(sl.md, 'Основание')], ...sl.acs.filter((x) => x.checks).map((x) => [x.checks.n, x.checks.text])];
-      for (const [n, text] of lines) staleReqLinks(f, n, text, s);
+      const basis = header(sl.md, 'Основание') || '';
+      const want = specFileHref(f, s.file);
+      const got = (basis.match(BASIS_LINK_RE) || [])[1];
+      if (got !== want || reqRefs(basis).some((r) => r.href))
+        add('SL-28', f, sl.basisLine, got === undefined ? '«Основание» без ссылки на spec.md' : '«Основание»: ссылка на spec.md не та или ссылки на отдельные FR');
+      for (const ac of sl.acs.filter((x) => x.checks)) staleReqLinks(f, ac.checks.n, ac.checks.text, s);
     }
 
     // FR зависимостей (транзитивно)
@@ -1003,7 +1014,6 @@ function checkReadme(m) {
         continue;
       }
       if (cb >= 0 && !sameSet(reqIds(r.cells[cb]), sl.basis)) add('RM-02', f, r.n, `${num}: «Основание» в README не совпадает со slice`);
-      else if (cb >= 0 && m.spec) staleReqLinks(f, r.n, r.cells[cb], m.spec);
       const deps = uniq((r.cells[cd] || '').match(/\b\d{3}\b/g) || []);
       if (cd >= 0 && !sameSet(deps, sl.deps)) add('RM-02', f, r.n, `${num}: «Зависит от» в README не совпадает со slice`);
     }
@@ -1543,7 +1553,7 @@ function genReadme(m, quiet = false) {
   if (!m.slices.size) usage('В slices/ нет файлов NNN-*.md');
   const link = (text) => (m.spec ? linkReqs(text, m.readmeFile, m.spec) : text);
   const row = (sl) =>
-    `| [${sl.num} ${sl.title || sl.name}](${sl.name}) | ${sl.type || '—'} | ${sl.halves || '—'} | ${link(sl.basisRaw) || '—'} | ${sl.deps.join(', ') || '—'} | ${sl.why || '—'} |`;
+    `| [${sl.num} ${sl.title || sl.name}](${sl.name}) | ${sl.type || '—'} | ${sl.halves || '—'} | ${basisPlain(sl.basisRaw) || '—'} | ${sl.deps.join(', ') || '—'} | ${sl.why || '—'} |`;
   const table = ['| Slice | Тип | Стороны | Основание | Зависит от | Почему отдельно |', '|---|---|---|---|---|---|', ...[...m.slices.values()].map(row)].join('\n');
   const covered = coverage(m);
   const ids = m.spec ? [...m.spec.reqs.values()].filter((r) => !r.deleted).map((r) => r.id) : [...covered.keys()];
@@ -1736,7 +1746,7 @@ function linkSlice(sl, spec) {
     moved.push([end + 1, `Проверяет: ${ac.oldRefs.join(', ')}`]);
   }
   for (const [at, text] of moved.sort((a, b) => b[0] - a[0])) ls.splice(at, 0, text);
-  const out = ls.map((t) => (/^Основание:/.test(t) || CHECKS_RE.test(t) ? linkReqs(t, sl.file, spec) : t)).join('\n');
+  const out = ls.map((t) => (/^Основание:/.test(t) ? linkBasis(t, sl.file, spec.file) : CHECKS_RE.test(t) ? linkReqs(t, sl.file, spec) : t)).join('\n');
   if (out !== sl.md) fs.writeFileSync(sl.file, out);
   return moved.length;
 }
@@ -1750,7 +1760,7 @@ function genLinks(m) {
   if (f.slices.size) {
     let moved = 0;
     for (const sl of f.slices.values()) moved += linkSlice(sl, f.spec);
-    out.push(`slices: FR в «Основание» и «Проверяет:» — ссылки на строки spec.md.${moved ? ` Перенесено из строк AC в «Проверяет:»: ${moved}.` : ''}`);
+    out.push(`slices: «Основание» — ссылка на spec.md, FR в «Проверяет:» — ссылки на их строки.${moved ? ` Перенесено из строк AC в «Проверяет:»: ${moved}.` : ''}`);
     f = loadFeature(m.dir);
     if (f.readme != null) {
       genReadme(f, true);

@@ -87,7 +87,8 @@ caught('SL-17', 'comments/slices/002-comments.md', 'Проверяет: [FR-1](.
 caught('SL-18', 'comments/slices/003-mention-notifications.md', 'Проверяет: [FR-10](../spec.md#L95)', 'Проверяет: [FR-10](../spec.md#L95), [FR-1](../spec.md#L29)');
 caught('SL-19', 'comments/slices/002-comments.md', 'Проверяет: [FR-2](../spec.md#L36)', 'Проверяет: [FR-1](../spec.md#L29)');
 caught('SL-28', 'comments/slices/002-comments.md', 'Проверяет: [FR-2](../spec.md#L36)', 'Проверяет: FR-2');
-caught('SL-28', 'comments/slices/002-comments.md', 'Основание: [FR-1](../spec.md#L29)', 'Основание: [FR-1](../spec.md#L30)');
+caught('SL-28', 'comments/slices/002-comments.md', ' ([Dev Spec](../spec.md))', '');
+caught('SL-28', 'comments/slices/002-comments.md', 'Основание: FR-1,', 'Основание: [FR-1](../spec.md#L29),');
 caught('SL-28', 'comments/slices/README.md', '| [FR-8](../spec.md#L81) | 003 |', '| FR-8 | 003 |');
 caught('SL-20', 'comments/slices/002-comments.md', 'AC-002-F2 Удалённый', 'AC-002-B9 Удалённый');
 caught('SL-22', 'comments/slices/002-comments.md', 'THEN отказ «Нет доступа к задаче», комментарий не сохранён', 'THEN мок tasks-core вернул отказ');
