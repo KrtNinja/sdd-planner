@@ -4,9 +4,6 @@
 одобренных slices: brainstorming → Dev Spec → slices → ADR. Реализация (slice 001, OpenSpec Change)
 — следующий этап, сюда не входит.
 
-Примеры процесса: [sdd-workflow-demo](https://github.com/KrtNinja/sdd-workflow-demo) (один сервис),
-[sdd-workflow-demo2](https://github.com/KrtNinja/sdd-workflow-demo2) (несколько сервисов).
-
 ## Ветки
 
 Это ветка-адаптер `gigacode`: общая база из [`main`](https://github.com/KrtNinja/sdd-workflow/tree/main)
