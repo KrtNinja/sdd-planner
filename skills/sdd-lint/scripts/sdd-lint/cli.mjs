@@ -1,0 +1,75 @@
+// Справка и ошибки вызова.
+import { cmd } from './args.mjs';
+import { lintCmd } from './config.mjs';
+
+export const HELP = `sdd-lint — проверки артефактов планирования SDD
+
+  sdd-lint
+      без аргументов — фичи в docs/ с текущим этапом и готовые команды
+  sdd-lint [check] docs/<feature> [--snapshot] [--json]
+      все проверки и текущий этап. Код 1 — есть ошибки.
+      --snapshot — заодно снять снимок защищённых частей для guard
+  sdd-lint fix docs/<feature> [--snapshot] [--json]
+      после правки — механику делает скрипт: номера вместо FR-? / NFR-? / AC-NNN-? (B? F?),
+      ссылки (gen links), slices/README.md (gen readme), «угадал бы» (gen guessed);
+      затем все проверки и сверка с git (diff). Код 1 — есть ошибки
+  sdd-lint gate <spec|slices|adr|decide|build> docs/<feature>
+      ворота перед этапом. Код 3 — этап начинать нельзя
+  sdd-lint approve <spec|slices> docs/<feature>
+  sdd-lint approve adr docs/<feature> [NNNN]
+      поставить «одобрено <дата>» («принято» для ADR), если нет ошибок lint
+      и защищённые части не менялись после снимка. Запускает только человек
+  sdd-lint diff docs/<feature> [--base <ref>]
+      проверки по git (по умолчанию против HEAD): протокол только дописывается,
+      ID не пропадают, одобренный файл не меняется без сброса статуса
+  sdd-lint snapshot <файл | docs/<feature>>
+      снимок защищённых частей перед humanizer
+  sdd-lint guard <файл | docs/<feature>> [--base <ref>]
+      что humanizer менять не должен: блоки кода, шапки, заголовки, таблицы,
+      «тексты», числа, ID, ссылки «Из протокола:». Сверка со снимком, без снимка — с git
+  sdd-lint gen readme docs/<feature>
+      таблица slices, «Покрытие Dev Spec» и «Порядок работ» в slices/README.md
+  sdd-lint gen guessed docs/<feature>
+      таблица «Где агент угадал бы не так» в протоколе
+  sdd-lint gen links docs/<feature>
+      ссылки: «Из протокола:» в spec → строка протокола; «Проверяет:» в slices и «Покрытие»
+      в README → строка FR в spec.md; «Основание:» → spec.md одной ссылкой. Устаревшие обновляет, старые форматы
+      («Трассировка», «[FR-n]» в строке AC) переносит
+  sdd-lint close docs/<feature>
+      перед merge: spec и slices одобрены, ошибок нет → удаляет brainstorming.md
+      и всё, что в spec на него ссылается, обновляет ссылки на FR
+  sdd-lint trace docs/<feature>
+      каждая строка протокола: решение → куда ушла (FR/NFR, вне scope, открытый вопрос)
+  sdd-lint next <FR|NFR|slice|adr> docs/<feature>
+  sdd-lint next AC docs/<feature> <NNN> [B|F]
+      следующий свободный номер
+  sdd-lint ask docs/<feature>
+      вопросы этапа с вариантами (JSON): агент задаёт их инструментом выбора
+  sdd-lint choose docs/<feature> <id>
+      выполнить выбранный вариант: команду lint — сам, остальное — готовым
+      заданием агенту (сабагент, скилл в этом окне, команда человеку)
+  sdd-lint prompt <скилл> <аргументы скилла>
+      скилл sdd-* и его файлы одним текстом — так агент и сабагент получают скилл,
+      который вызывает человек (disable-model-invocation), по выбору человека
+  sdd-lint help [<команда>]
+      справка: вся или по одной команде
+  sdd-lint completion <bash|zsh>
+      скрипт Tab-дополнения для терминала: source <(sdd-lint completion bash)
+
+Фича — docs/<feature>, просто <feature> или любой путь внутри неё (@docs/<feature>/spec.md).
+
+Коды выхода: 0 — порядок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты.
+
+Форма команд в подсказках: SDD_SKILL_PREFIX (по умолчанию «/skills ») и SDD_LINT_CMD
+(по умолчанию «/skills sdd-lint»).`;
+
+export const usage = (msg) => {
+  console.error(msg ? `${msg}\nСправка: ${lintCmd('help', cmd === 'check' ? '' : cmd).trim()}` : HELP);
+  process.exit(2);
+};
+// Справка по одной команде — её блок из HELP.
+export function helpFor(name) {
+  const blocks = HELP.split('\n\n')[1].split(/\n(?=  sdd-lint)/);
+  const own = blocks.filter((b) => b.match(/^\s*sdd-lint\s+\[?(\S+?)\]?(\s|$)/)?.[1] === name);
+  return own.length ? own.join('\n') : null;
+}

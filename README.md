@@ -72,13 +72,13 @@
 Что проверяется, по группам: `PR-*` протокол, `SP-*` Dev Spec (трассировка, примеры, персонажи,
 числа из протокола, пары границ, стоп-слова, пометки правок, объём), `SL-*` slices (AC → FR, WHEN / THEN,
 разделы половин, тексты и персонажи из Dev Spec, Р1–Р3, пометки правок, объём), `RM-*` README, `AD-*` ADR, `AP-*` одобрение (отметка approve, правка после одобрения), `DF-*` изменения по git,
-`HG-*` humanizer. Полный список с подсказками — в начале `skills/sdd-lint/scripts/sdd-lint.mjs`, `--json` даёт
+`HG-*` humanizer. Полный список с подсказками — в `skills/sdd-lint/scripts/sdd-lint/rules.mjs`, `--json` даёт
 машинный вывод. Тесты скрипта: `node --test tests/*.test.mjs`.
 
 Объём (`SP-23`, `SL-30`, `RM-05`): spec.md, каждый slice и slices/README.md человек читает целиком,
 поэтому каждый файл — до 10 000 символов. Считается видимый текст: без пробелов, адресов ссылок,
 HTML-комментариев и разметки. Леса не считаются: brainstorming.md и строки «Из протокола:»,
-которые убирает `close`. Порог — `READ_LIMIT` в скрипте.
+которые убирает `close`. Порог — `READ_LIMIT` в `skills/sdd-lint/scripts/sdd-lint/read-size.mjs`.
 
 ## Что внутри
 
@@ -88,7 +88,8 @@ rules/AGENTS.planning.md   — правила этапов и артефакто
 tests/                     — тесты sdd-lint на эталонной фиче и её порче
 skills/
   sdd-lint/     — scripts/sdd-lint.mjs: проверки, ворота, генерация README и номеров, diff по git,
-                  guard после humanizer; scripts/pre-commit — git hook
+                  guard после humanizer; это точка входа, код — в scripts/sdd-lint/ по модулю на тему
+                  (карта: grep -m1 . scripts/sdd-lint/*.mjs); scripts/pre-commit — git hook
   sdd-grill/    — brainstorming поверх grilling; стартовые темы, шаблон протокола
   sdd-spec/     — Dev Spec из протокола; у каждого FR — «Из протокола:» со ссылками на строки
   sdd-slices/   — нарезка с правилами против перенарезки и калибровкой на demo2 (9 → 5)

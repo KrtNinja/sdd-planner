@@ -425,6 +425,7 @@ test('pre-commit: пропускает чистый коммит и остана
   const cwd = workspace();
   fs.mkdirSync(path.join(cwd, 'scripts'));
   fs.copyFileSync(LINT, path.join(cwd, 'scripts/sdd-lint.mjs'));
+  fs.cpSync(path.join(path.dirname(LINT), 'sdd-lint'), path.join(cwd, 'scripts/sdd-lint'), { recursive: true });
   fs.copyFileSync(path.join(path.dirname(LINT), 'pre-commit'), path.join(cwd, 'scripts/pre-commit'));
   fs.chmodSync(path.join(cwd, 'scripts/pre-commit'), 0o755);
   const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
@@ -763,4 +764,24 @@ test('prompt: аргументы с пробелами — в кавычках, 
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /^# Скилл sdd-decide: comments "Что видит автор\?" Ничего\n/);
   assert.match(r.out, /Аргументы скилла: `comments "Что видит автор\?" Ничего`/);
+});
+
+// ---------- устройство скрипта ----------
+// Модули читают по одному, поэтому у каждого есть строка-назначение (grep -m1 . sdd-lint/*.mjs — карта)
+// и потолок размера: разрастание видно сразу, а не когда файл уже не помещается в контекст.
+test('модули sdd-lint: строка-назначение и не больше 300 строк', () => {
+  const dir = path.join(path.dirname(LINT), 'sdd-lint');
+  for (const f of fs.readdirSync(dir).filter((f) => f.endsWith('.mjs'))) {
+    const lines = fs.readFileSync(path.join(dir, f), 'utf8').split('\n');
+    assert.match(lines[0], /^\/\/ \S/, `${f}: первая строка — комментарий о назначении модуля`);
+    assert.ok(lines.length <= 300, `${f}: ${lines.length} строк — раздели модуль`);
+  }
+});
+test('sdd-lint работает через симлинк без расширения (~/.local/bin/sdd-lint)', () => {
+  const cwd = workspace();
+  const bin = path.join(cwd, '.tmp', 'sdd-lint');
+  fs.mkdirSync(path.dirname(bin), { recursive: true });
+  fs.symlinkSync(LINT, bin);
+  const r = spawnSync('node', [bin, 'docs/comments'], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, TMPDIR: path.join(cwd, '.tmp') } });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
 });
