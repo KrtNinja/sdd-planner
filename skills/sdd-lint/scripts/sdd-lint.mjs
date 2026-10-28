@@ -26,6 +26,10 @@ const HELP = `sdd-lint — проверки артефактов планиро�
   sdd-lint [check] docs/<feature> [--snapshot] [--json]
       все проверки и текущий этап. Код 1 — есть ошибки.
       --snapshot — заодно снять снимок защищённых частей для guard
+  sdd-lint fix docs/<feature> [--snapshot] [--json]
+      после правки — механику делает скрипт: номера вместо FR-? / NFR-? / AC-NNN-? (B? F?),
+      ссылки (gen links), slices/README.md (gen readme), «угадал бы» (gen guessed);
+      затем все проверки и сверка с git (diff). Код 1 — есть ошибки
   sdd-lint gate <spec|slices|adr|decide|build> docs/<feature>
       ворота перед этапом. Код 3 — этап начинать нельзя
   sdd-lint approve <spec|slices> docs/<feature>
@@ -83,11 +87,11 @@ const RULES = {
   'PR-02': ['err', 'номер строки в «Решения» — предыдущий + 1; строки только дописываются, не перенумеровываются'],
   'PR-03': ['err', 'у строки нет решения человека: задай вопрос ещё раз или запиши «вне scope»'],
   'PR-04': ['warn', 'заполни «Чем плоха догадка» словами: что сломалось бы, если бы агент решил сам'],
-  'PR-05': ['warn', 'таблицу «Где агент угадал бы не так» не пиши руками: sdd-lint gen guessed docs/<feature>'],
+  'PR-05': ['warn', 'таблицу «Где агент угадал бы не так» не пиши руками: sdd-lint fix docs/<feature>'],
 
   'SP-01': ['warn', 'добавь строку «Статус: черновик | на ревью | одобрено <дата>» под заголовком'],
   'SP-02': ['err', 'каждый FR/NFR — в своём блоке кода ``` … ```'],
-  'SP-03': ['err', 'у каждого требования свой номер: новое — sdd-lint next FR docs/<feature>'],
+  'SP-03': ['err', 'у каждого требования свой номер: новое пиши как FR-? — номер поставит sdd-lint fix docs/<feature>'],
   'SP-04': ['err', 'в Dev Spec нет требований: FR-1 … в блоках кода'],
   'SP-05': ['warn', 'опиши, что видит пользователь; технология — в ADR и контрактах'],
   'SP-06': ['err', 'одобрять spec с открытыми вопросами нельзя: закрой их через /sdd-decide или верни статус «на ревью»'],
@@ -97,7 +101,7 @@ const RULES = {
   'SP-10': ['err', 'NFR — с числом и условием объёма: «p95 ≤ 300 мс при 500 участниках»'],
   'SP-11': ['warn', 'граница задаётся парой «проходит / не проходит»: N и N+1 (или N−1)'],
   'SP-12': ['warn', 'число взято из рекомендации агента, а человек его не выбирал: убери или вынеси в «Открытые вопросы»'],
-  'SP-13': ['err', 'раздел «Трассировка» заменён строками «Из протокола:»: sdd-lint gen links docs/<feature> перенесёт его сам'],
+  'SP-13': ['err', 'раздел «Трассировка» заменён строками «Из протокола:»: sdd-lint fix docs/<feature> перенесёт его сам'],
   'SP-14': ['err', 'строка протокола потеряна: укажи её номер в «Из протокола:» под FR/NFR или в «Вне scope», «Открытые вопросы», «Не про поведение»'],
   'SP-15': ['err', '«Из протокола:» указывает на строку, которой нет в протоколе: проверь номер (П<n> — «Решения после brainstorming»)'],
   'SP-16': ['err', 'требование без опоры на протокол: под блоком кода добавь «Из протокола: <номера строк>» или перенеси правило в «Открытые вопросы»'],
@@ -105,14 +109,14 @@ const RULES = {
   'SP-18': ['warn', 'используй персонажей из «Данные для примеров» или добавь туда нового'],
   'SP-19': ['err', 'в одном блоке кода одно требование'],
   'SP-20': ['warn', 'число в NFR берётся из решения человека в протоколе; нет решения — «Открытые вопросы»'],
-  'SP-21': ['err', 'номера в «Из протокола:» — ссылки на строку протокола, их ставит и обновляет скрипт: sdd-lint gen links docs/<feature>'],
+  'SP-21': ['err', 'номера в «Из протокола:» — ссылки на строку протокола, их ставит и обновляет скрипт: sdd-lint fix docs/<feature>'],
   'SP-22': ['err', 'пометок правок не пишем: решение живёт в самом требовании, история — в git. Убери «изменено / добавлено после ревью», дату правки и ссылку на находку'],
 
   'SL-01': ['err', 'шапка slice: Тип, Основание, Зависимости, Половины, Результат, Почему отдельно — см. шаблон'],
   'SL-02': ['err', '«Почему отдельно: Р1 | Р2 | Р3 — пояснение»; без причины slice склеивается с соседом'],
   'SL-03': ['err', 'каждый AC — в своём блоке кода'],
   'SL-04': ['err', 'номер в AC-NNN-… совпадает с номером файла slice'],
-  'SL-05': ['err', 'у каждого AC свой номер: sdd-lint next AC docs/<feature> <NNN> [B|F]'],
+  'SL-05': ['err', 'у каждого AC свой номер: новый пиши как AC-NNN-? (AC-NNN-B?, AC-NNN-F?) — номер поставит sdd-lint fix docs/<feature>'],
   'SL-06': ['err', 'в одном блоке кода один AC'],
   'SL-07': ['err', 'у slice типа «поведение» должны быть AC'],
   'SL-08': ['warn', 'больше 10 AC в половине: проверь Р2 — резать по наблюдаемому результату, не по слою'],
@@ -123,7 +127,7 @@ const RULES = {
   'SL-13': ['err', 'каждый FR/NFR должен стоять в «Основание» хотя бы одного slice'],
   'SL-14': ['err', 'AC: строка «ID имя», затем WHEN, потом AND / THEN — каждое на своей строке'],
   'SL-15': ['warn', 'каждая строка AC начинается с WHEN, AND или THEN (продолжение — с бóльшим отступом)'],
-  'SL-16': ['err', 'сразу под блоком AC — строка «Проверяет: FR-n, …»: требования, из которых AC выведен; старый «[FR-n]» в строке AC перенесёт sdd-lint gen links docs/<feature>'],
+  'SL-16': ['err', 'сразу под блоком AC — строка «Проверяет: FR-n, …»: требования, из которых AC выведен; старый «[FR-n]» в строке AC перенесёт sdd-lint fix docs/<feature>'],
   'SL-17': ['err', 'AC выводится только из FR своего slice: добавь FR в «Основание» или проведи решение через /sdd-decide'],
   'SL-18': ['warn', 'AC проверяет FR зависимости: проверь, не место ли ему в том slice'],
   'SL-19': ['err', 'FR из «Основание» не проверяется ни одним AC: добавь AC или убери FR из «Основание»'],
@@ -135,11 +139,11 @@ const RULES = {
   'SL-25': ['warn', '«Границы» ссылаются на существующие slices'],
   'SL-26': ['info', 'у каждого slice сверх ориентира 3–6 должна быть причина Р1–Р3'],
   'SL-27': ['warn', 'ссылка на AC, которого нет'],
-  'SL-28': ['err', 'ссылки на spec.md ставит и обновляет скрипт: «Основание» — FR текстом и одна ссылка на spec.md, «Проверяет:» и «Покрытие» в README — ссылки на строки FR: sdd-lint gen links docs/<feature>'],
+  'SL-28': ['err', 'ссылки на spec.md ставит и обновляет скрипт: «Основание» — FR текстом и одна ссылка на spec.md, «Проверяет:» и «Покрытие» в README — ссылки на строки FR: sdd-lint fix docs/<feature>'],
   'SL-29': ['err', 'пометок правок не пишем: решение живёт в самом AC, история — в git. Убери «изменено / добавлено после ревью», дату правки и ссылку на находку'],
 
-  'RM-01': ['warn', 'создай README: sdd-lint gen readme docs/<feature>'],
-  'RM-02': ['warn', 'README расходится со slices — не правь руками: sdd-lint gen readme docs/<feature>'],
+  'RM-01': ['warn', 'создай README: sdd-lint fix docs/<feature>'],
+  'RM-02': ['warn', 'README расходится со slices — не правь руками: sdd-lint fix docs/<feature>'],
   'RM-03': ['warn', 'FR делят несколько slices: опиши в «Пересечения», где граница; если это один экран или обработчик — кандидат на склейку (С4)'],
   'RM-04': ['warn', 'сквозная «Проверка фичи» проходит через каждый FR: добавь шаг'],
 
@@ -180,6 +184,7 @@ for (let i = 0; i < argv.length; i++) {
 // Команды и их аргументы — одно описание для меню, подсказок и Tab-дополнения.
 const CMD_INFO = {
   check: 'все проверки и текущий этап',
+  fix: 'после правки: номера, ссылки, README — скриптом, затем проверки',
   gate: 'ворота перед этапом',
   approve: 'одобрить spec, slices или принять ADR',
   gen: 'собрать README, «угадал бы», ссылки',
@@ -205,6 +210,7 @@ const CHOICES = {
 // Что идёт после команды: варианты из CHOICES, фича, файл или папка, номер.
 const SLOTS = {
   check: ['feature'],
+  fix: ['feature'],
   gate: ['choice', 'feature'],
   approve: ['choice', 'feature', 'adr'],
   gen: ['choice', 'feature'],
@@ -220,7 +226,7 @@ const SLOTS = {
   help: ['command'],
   completion: ['choice'],
 };
-const FLAGS = { check: ['--json', '--snapshot'], diff: ['--json', '--base'], guard: ['--json', '--base'] };
+const FLAGS = { check: ['--json', '--snapshot'], fix: ['--json', '--snapshot'], diff: ['--json', '--base'], guard: ['--json', '--base'] };
 const COMMANDS = Object.keys(CMD_INFO);
 const cmd = argv[0] === '__complete' ? '__complete' : COMMANDS.includes(pos[0]) ? pos.shift() : 'check';
 const usage = (msg) => {
@@ -1553,6 +1559,104 @@ function cmdCheck() {
   process.exit(c.err ? 1 : 0);
 }
 
+// ---------- fix: механика после правки одной командой ----------
+// Модель пишет «FR-?» и «AC-003-B?», номера строк не считает, README и ссылки не трогает:
+// всё это скрипт делает здесь, затем проверяет фичу и сверяет её с git.
+const PH_REQ = /^(\s*)(N?FR)-\?(?=\s|$)/;
+const PH_AC = /^(\s*)AC-(?:\d{3}-)?([BF]?)\?(?=\s|$)/;
+const firstLine = (b) => b.lines.find((l) => l.text.trim());
+const maxNum = (arr) => arr.reduce((a, b) => Math.max(a, b), 0);
+function numberPlaceholders(m) {
+  const done = [];
+  if (m.spec) {
+    const ids = [...m.spec.reqs.keys()];
+    const last = { FR: maxNum(ids.filter((x) => x.startsWith('FR-')).map((x) => Number(x.slice(3)))), NFR: maxNum(ids.filter((x) => x.startsWith('NFR-')).map((x) => Number(x.slice(4)))) };
+    const ls = m.spec.md.split('\n');
+    for (const b of m.spec.sc.blocks) {
+      const l = firstLine(b);
+      const mm = l && l.text.match(PH_REQ);
+      if (!mm) continue;
+      const id = `${mm[2]}-${(last[mm[2]] += 1)}`;
+      ls[l.n - 1] = l.text.replace(PH_REQ, `$1${id}`);
+      done.push(`${rel(m.spec.file)}:${l.n}  ${mm[2]}-? → ${id}`);
+    }
+    if (done.length) fs.writeFileSync(m.spec.file, ls.join('\n'));
+  }
+  const all = [...m.slices.values()].flatMap((s) => s.acs);
+  for (const sl of m.slices.values()) {
+    const ls = sl.md.split('\n');
+    let changed = false;
+    for (const b of sl.sc.blocks) {
+      const l = firstLine(b);
+      const mm = l && l.text.match(PH_AC);
+      if (!mm) continue;
+      const side = mm[2].toUpperCase();
+      const k = maxNum(all.filter((a) => a.acNum === sl.num && a.side === side).map((a) => a.k)) + 1;
+      const id = `AC-${sl.num}-${side}${k}`;
+      all.push({ acNum: sl.num, side, k });
+      ls[l.n - 1] = l.text.replace(PH_AC, `$1${id}`);
+      done.push(`${rel(sl.file)}:${l.n}  ${l.text.trim().split(/\s/)[0]} → ${id}`);
+      changed = true;
+    }
+    if (changed) fs.writeFileSync(sl.file, ls.join('\n'));
+  }
+  return done;
+}
+function cmdFix() {
+  const dir = needDir(pos[0]);
+  const files = (m) => uniq([...featureFiles(m), m.readmeFile].map((f) => path.resolve(f)));
+  let m = loadFeature(dir);
+  const before = new Map(files(m).map((f) => [f, read(f)]));
+  const notes = [];
+  const numbered = numberPlaceholders(m);
+  m = loadFeature(dir);
+  // Порядок — сверху вниз: протокол меняет строки, на которые ссылается spec, spec — строки для slices.
+  if (m.protocol && /готов/i.test(m.protocol.status || '')) {
+    const msg = genGuessed(m, true);
+    if (/Заполни/.test(msg)) notes.push(msg.replace(/^.*?Заполни/, `${rel(m.protocolFile)}: заполни`));
+  }
+  m = loadFeature(dir);
+  // Ссылки на протокол: без протокола их убирает только close — fix их не трогает.
+  if (m.spec && m.protocol) linkSpec(m);
+  else if (m.spec && hasProtocolTraces(m.spec.md))
+    notes.push(`${rel(m.protocolFile)} нет, а spec ссылается на протокол: ссылки не тронуты. Если фича закрывается — ${lintCmd('close', rel(m.dir))}`);
+  m = loadFeature(dir);
+  if (m.spec) for (const sl of m.slices.values()) linkSlice(sl, m.spec);
+  m = loadFeature(dir);
+  if (m.slices.size) genReadme(m, true);
+
+  m = loadFeature(dir);
+  findings.length = 0;
+  runChecks(m);
+  const g = gitInfo(m.dir);
+  if (g) diffChecks(dir, g, 'HEAD');
+  else notes.push('не git-репозиторий: сверка с git (DF-*) пропущена');
+  if (flags.snapshot) for (const f of featureFiles(m)) saveSnapshot(f);
+
+  const detail = new Map();
+  for (const x of numbered) {
+    const f = path.resolve(x.split(':')[0]);
+    detail.set(f, [...(detail.get(f) || []), x.split(/:\d+\s+/)[1]]);
+  }
+  const changed = files(m)
+    .filter((f) => before.get(f) !== read(f))
+    .map((f) => `${rel(f)}${before.get(f) == null ? ' — создан' : ''}${detail.has(f) ? `: ${detail.get(f).join(', ')}` : ''}`);
+
+  const st = stageOf(m);
+  if (!flags.json) {
+    console.log(changed.length ? `Скрипт поправил:\n${changed.map((x) => `  ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');
+    for (const n of notes) console.log(n);
+    if (findings.length) console.log('');
+  }
+  const c = report({ stage: st.now, next: st.next, fixed: changed, notes });
+  if (!flags.json) {
+    const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
+    console.log(`\n${stageText(st)}`);
+    console.log(`Ошибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
+  }
+  process.exit(c.err ? 1 : 0);
+}
+
 function cmdGate() {
   const stage = pos[0];
   const gates = ['spec', 'slices', 'adr', 'decide', 'build'];
@@ -1679,6 +1783,13 @@ function cmdDiff() {
   const g = gitInfo(dir);
   if (!g) usage('diff работает только в git-репозитории');
   const ref = flags.base || 'HEAD';
+  diffChecks(dir, g, ref);
+  const c = report({ base: ref });
+  if (!flags.json) console.log(`\nСверка с ${ref}. Ошибок: ${c.err}, предупреждений: ${c.warn}`);
+  process.exit(c.err ? 1 : 0);
+}
+// Проверки DF-*: рабочая копия против ref. Находки — в findings.
+function diffChecks(dir, g, ref) {
   const cur = loadFeature(dir);
   const base = loadFeature(
     dir,
@@ -1722,9 +1833,6 @@ function cmdDiff() {
     if (b && /принят/i.test(b.status || '') && /принят/i.test(a.status || '') && body(b.md) !== body(a.md))
       add('DF-03', a.file, headerLine(a.md, 'Статус'), 'ADR изменён, а статус остался «принято»');
   }
-  const c = report({ base: ref });
-  if (!flags.json) console.log(`\nСверка с ${ref}. Ошибок: ${c.err}, предупреждений: ${c.warn}`);
-  process.exit(c.err ? 1 : 0);
 }
 
 const targetFiles = (t) => {
@@ -1857,7 +1965,7 @@ function genReadme(m, quiet = false) {
   if (!quiet) console.log(`${rel(m.readmeFile)}: таблица slices, «Покрытие Dev Spec», «Порядок работ» собраны из файлов slices. Порядок: ${order}`);
 }
 
-function genGuessed(m) {
+function genGuessed(m, quiet = false) {
   const p = m.protocol;
   if (!p) usage('Нет brainstorming.md');
   const old = new Map();
@@ -1880,10 +1988,11 @@ function genGuessed(m) {
   }
   fs.writeFileSync(p.file, md);
   const empty = guessedRows(p).filter((r) => isEmptyCell(old.get(r.id))).map((r) => r.id);
-  console.log(
+  const msg =
     `${rel(p.file)}: в «Где агент угадал бы не так» ${rows.length} строк (решение человека ≠ рекомендации).` +
-      (empty.length ? ` Заполни «Чем плоха догадка» в строках: ${empty.join(', ')}.` : ''),
-  );
+    (empty.length ? ` Заполни «Чем плоха догадка» в строках: ${empty.join(', ')}.` : '');
+  if (!quiet) console.log(msg);
+  return msg;
 }
 
 // Старый раздел «Трассировка» → «Из протокола:» под требованиями и в разделах. Возвращает новый md.
@@ -2061,7 +2170,7 @@ function cmdTrace() {
   const p = m.protocol;
   if (!s || !p) usage('Нужны brainstorming.md и spec.md');
   if (s.oldTraceLine) {
-    console.log(`В ${rel(s.file)} старый раздел «Трассировка»: ${lintCmd('gen links', pos[0])}`);
+    console.log(`В ${rel(s.file)} старый раздел «Трассировка»: ${lintCmd('fix', pos[0])}`);
     process.exit(1);
   }
   const where = new Map();
@@ -2135,6 +2244,7 @@ function cmdMenu() {
   const ex = known[0] || '<feature>';
   const rows = [
     [lintCmd(ex), CMD_INFO.check],
+    [lintCmd('fix', ex), CMD_INFO.fix],
     [lintCmd('approve', 'spec|slices|adr', ex), CMD_INFO.approve],
     [lintCmd('gate', 'spec|slices|adr|decide|build', ex), CMD_INFO.gate],
     [lintCmd('gen', 'readme|guessed|links', ex), CMD_INFO.gen],
@@ -2409,4 +2519,4 @@ if (cmd === '__complete') {
 if (cmd === 'check' && !argv.length) cmdMenu();
 if (cmd === 'check') checkTypo();
 
-({ completion: cmdCompletion, check: cmdCheck, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, next: cmdNext, ask: cmdAsk, choose: cmdChoose, prompt: cmdPrompt })[cmd]();
+({ completion: cmdCompletion, check: cmdCheck, fix: cmdFix, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, next: cmdNext, ask: cmdAsk, choose: cmdChoose, prompt: cmdPrompt })[cmd]();
