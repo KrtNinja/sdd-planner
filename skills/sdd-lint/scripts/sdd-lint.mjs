@@ -163,7 +163,9 @@ const RULES = {
 
   'DF-01': ['err', 'протокол только дописывается: верни строку как была, новое решение — строкой в «Решения после brainstorming» (/sdd-decide)'],
   'DF-02': ['err', 'ID постоянные: верни требование или AC с пометкой «(удалён: причина)»'],
-  'DF-03': ['err', 'одобрение давалось прошлой версии: верни статус «на ревью»'],
+
+  'AP-01': ['err', 'одобряет только approve — его отметка «· xxxxxx» в конце строки «Статус:». Статус ставил не approve — верни «на ревью»; одобряет человек: вариант «Одобрить» в вопросе этапа или sdd-lint approve'],
+  'AP-02': ['err', 'файл менялся после одобрения, а одобрение давалось прошлой версии: sdd-lint fix docs/<feature> вернёт «на ревью», затем — одобрение заново'],
 
   'HG-01': ['err', 'humanizer меняет только прозу: верни защищённую часть как была (снимок или git), затем sdd-lint guard ещё раз'],
 };
@@ -697,7 +699,7 @@ function loadFeature(dir, readFn = read, listFn = null) {
     const md = readFn(file);
     if (md != null) reviews.set(f.replace(/\.md$/, ''), parseReview(file, md));
   }
-  return {
+  const m = {
     reviewDir,
     reviews,
     dir: featureDir,
@@ -716,7 +718,55 @@ function loadFeature(dir, readFn = read, listFn = null) {
     protocolFile,
     specFile,
   };
+  verifyApprovals(m);
+  return m;
 }
+
+// ---------- отпечаток одобрения ----------
+// approve дописывает к статусу «· xxxxxx» — хэш содержимого. Одобрение действительно, только если
+// отметка есть и совпадает: «одобрено» руками или правка после одобрения одобрением не считаются,
+// и ворота, вопрос этапа и close видят такой файл как «на ревью». Ожидаемый хэш нигде не печатается.
+// В хэш не входят строка статуса, номера строк в ссылках и следы протокола: их меняют fix и close.
+const FP_RE = /\s*·\s*([0-9a-f]{6})\s*$/;
+function approvalBody(md) {
+  return stripProtocol((md || '').replace(/\r\n/g, '\n'))
+    .replace(/^Статус:.*$/m, '')
+    .replace(/(\]\([^)\s]*)#L\d+\)/g, '$1)')
+    .split('\n')
+    .map((l) => l.trimEnd())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+const fingerprint = (mds) => crypto.createHash('sha256').update(mds.map(approvalBody).join('\n\0\n')).digest('hex').slice(0, 6);
+const sliceMds = (m) => [...m.slices.values()].sort((a, b) => a.num.localeCompare(b.num)).map((s) => s.md);
+const approvalMds = (m, kind, file) =>
+  kind === 'spec' ? [m.spec.md] : kind === 'slices' ? [m.readme, ...sliceMds(m)] : [m.adrs.find((a) => a.file === file).md];
+const NO_MARK = 'на ревью (статус ставил не approve)';
+const CHANGED = 'на ревью (файл менялся после approve)';
+function verifyApprovals(m) {
+  m.approvals = [];
+  const one = (kind, file, status) => {
+    if (!approved(status)) return status;
+    const fp = (status.match(FP_RE) || [])[1];
+    const state = !fp ? 'manual' : fp === fingerprint(approvalMds(m, kind, file)) ? 'ok' : 'changed';
+    m.approvals.push({ kind, file, raw: status.replace(FP_RE, ''), state });
+    return state === 'ok' ? status.replace(FP_RE, '') : state === 'manual' ? NO_MARK : CHANGED;
+  };
+  if (m.spec) m.spec.status = one('spec', m.spec.file, m.spec.status);
+  if (m.readme != null) m.slicesStatus = one('slices', m.readmeFile, m.slicesStatus);
+  for (const a of m.adrs) a.status = one('adr', a.file, a.status);
+}
+const ownApprovals = (m) => m.approvals.filter((x) => x.kind !== 'adr' || m.featureAdrs.some((a) => a.file === x.file));
+function checkApprovals(m) {
+  for (const x of ownApprovals(m)) {
+    const md = read(x.file) ?? '';
+    if (x.state === 'manual') add('AP-01', x.file, headerLine(md, 'Статус'), `«${x.raw}» без отметки approve — одобрением не считается`);
+    if (x.state === 'changed') add('AP-02', x.file, headerLine(md, 'Статус'), `«${x.raw}»: файл менялся после approve`);
+  }
+}
+const approveCmd = (m, x) =>
+  x.kind === 'adr' ? lintCmd('approve', 'adr', rel(m.dir), path.basename(x.file).slice(0, 4)) : lintCmd('approve', x.kind, rel(m.dir));
 
 const featureFiles = (m) =>
   [m.protocolFile, m.specFile, m.readmeFile, ...[...m.slices.values()].map((s) => s.file), ...m.featureAdrs.map((a) => a.file)].filter((f) =>
@@ -1384,6 +1434,7 @@ function runChecks(m) {
   checkAdrs(m);
   checkReviews(m);
   checkEditMarks(m);
+  checkApprovals(m);
 }
 
 // ---------- вывод ----------
@@ -1624,6 +1675,12 @@ function cmdFix() {
   if (m.spec) for (const sl of m.slices.values()) linkSlice(sl, m.spec);
   m = loadFeature(dir);
   if (m.slices.size) genReadme(m, true);
+  // Одобрение давалось прошлой версии — статус «на ревью», одобрять заново человеку.
+  m = loadFeature(dir);
+  for (const x of ownApprovals(m).filter((a) => a.state === 'changed')) {
+    fs.writeFileSync(x.file, fs.readFileSync(x.file, 'utf8').replace(/^Статус:.*$/m, 'Статус: на ревью'));
+    notes.push(`${rel(x.file)}: менялся после одобрения («${x.raw}») — статус «на ревью». Одобрить заново: ${approveCmd(m, x)}`);
+  }
 
   m = loadFeature(dir);
   findings.length = 0;
@@ -1737,15 +1794,18 @@ function cmdApprove() {
     scope = [adr.file];
   }
   const md = fs.readFileSync(target, 'utf8');
-  const cur = header(md, 'Статус');
-  if (cur === null) refuse(`в ${rel(target)} нет строки «Статус:» — добавьте её по шаблону`);
-  if (/одобрен|принят/i.test(cur)) {
+  const raw = header(md, 'Статус');
+  if (raw === null) refuse(`в ${rel(target)} нет строки «Статус:» — добавьте её по шаблону`);
+  // Статус после проверки отпечатка: «одобрено» руками или после правки — не одобрено, approve ставит заново.
+  const cur = what === 'spec' ? m.spec.status : what === 'slices' ? m.slicesStatus : m.adrs.find((a) => a.file === target).status;
+  if (approved(cur)) {
     console.log(`${rel(target)}: уже «${cur}».`);
     process.exit(0);
   }
   const t = new Date();
   const date = [t.getDate(), t.getMonth() + 1].map((x) => String(x).padStart(2, '0')).join('.') + `.${t.getFullYear()}`;
-  const next = md.replace(/^Статус:.*$/m, `Статус: ${word} ${date}`);
+  const fp = fingerprint(approvalMds(m, what, target));
+  const next = md.replace(/^Статус:.*$/m, `Статус: ${word} ${date} · ${fp}`);
 
   // lint по будущему состоянию: ошибки в файлах артефакта блокируют одобрение
   const inScope = new Set(scope.map(rel));
@@ -1773,7 +1833,7 @@ function cmdApprove() {
     process.exit(1);
   }
   fs.writeFileSync(target, next);
-  console.log(`${rel(target)}: Статус: ${word} ${date}`);
+  console.log(`${rel(target)}: Статус: ${word} ${date} · ${fp}`);
   console.log(stageText(stageOf(loadFeature(d))));
   process.exit(0);
 }
@@ -1797,12 +1857,6 @@ function diffChecks(dir, g, ref) {
     (d) => gitList(g, ref, d),
   );
   const norm = (s) => s.replace(/\s+/g, ' ').trim();
-  // Номер строки в ссылке и следы протокола (их убирает close) одобрения не отменяют.
-  const body = (md) =>
-    stripProtocol(md || '')
-      .replace(/^Статус:.*$/m, '')
-      .replace(/(\]\([^)\s]*)#L\d+\)/g, '$1)')
-      .trim();
 
   // протокол только дописывается
   if (base.protocol && cur.protocol) {
@@ -1818,21 +1872,7 @@ function diffChecks(dir, g, ref) {
   if (base.spec) for (const id of base.spec.reqs.keys()) if (!cur.spec?.reqs.has(id)) add('DF-02', cur.specFile, null, `${id} пропал`);
   const curAcs = new Set([...cur.slices.values()].flatMap((s) => s.acs.map((a) => a.id)));
   for (const s of base.slices.values()) for (const a of s.acs) if (!curAcs.has(a.id)) add('DF-02', s.file, null, `${a.id} пропал`);
-
-  // одобренное не меняется молча
-  if (base.spec && cur.spec && approved(base.spec.status) && approved(cur.spec.status) && body(base.spec.md) !== body(cur.spec.md))
-    add('DF-03', cur.specFile, headerLine(cur.spec.md, 'Статус'), 'spec.md изменён, а статус остался «одобрено»');
-  if (approved(base.slicesStatus) && approved(cur.slicesStatus)) {
-    const changed = [...cur.slices.values()].filter((s) => !base.slices.has(s.num) || body(base.slices.get(s.num).md) !== body(s.md)).map((s) => s.num);
-    const gone = [...base.slices.keys()].filter((n) => !cur.slices.has(n));
-    if (changed.length || gone.length || body(base.readme) !== body(cur.readme))
-      add('DF-03', cur.readmeFile, headerLine(cur.readme, 'Статус'), `slices изменены (${[...changed, ...gone].join(', ') || 'README'}), а статус остался «одобрено»`);
-  }
-  for (const a of cur.featureAdrs) {
-    const b = base.adrs.find((x) => x.num === a.num);
-    if (b && /принят/i.test(b.status || '') && /принят/i.test(a.status || '') && body(b.md) !== body(a.md))
-      add('DF-03', a.file, headerLine(a.md, 'Статус'), 'ADR изменён, а статус остался «принято»');
-  }
+  // одобренное не меняется молча — AP-02: отпечаток approve, без git
 }
 
 const targetFiles = (t) => {
