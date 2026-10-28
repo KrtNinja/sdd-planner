@@ -283,6 +283,65 @@ test('DF-03: одобренный spec не меняется без сброса
   assert.ok(!diffRules(cwd).includes('DF-03'));
 });
 
+// ---------- fix ----------
+const fix = (cwd, ...flags) => {
+  const r = run(cwd, 'fix', 'docs/comments', '--json', ...flags);
+  return { code: r.code, ...JSON.parse(r.out) };
+};
+const read = (cwd, rel) => fs.readFileSync(file(cwd, rel), 'utf8');
+test('fix: на чистой фиче ничего не меняет', () => {
+  const cwd = workspace();
+  const r = run(cwd, 'fix', 'docs/comments');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /^Скрипту поправлять нечего\./);
+  assert.match(r.out, /сверка с git \(DF-\*\) пропущена/);
+  for (const f of ['comments/brainstorming.md', 'comments/spec.md', 'comments/slices/README.md', 'comments/slices/002-comments.md'])
+    assert.equal(read(cwd, f), fs.readFileSync(path.join(GOOD, 'docs', f), 'utf8'), f);
+});
+test('fix: номера вместо FR-? и AC-NNN-?, ссылки на сдвинутые строки обновлены', () => {
+  const cwd = workspace();
+  edit(cwd, 'comments/spec.md', '```\nNFR-1', '```\nFR-?  Автор видит число комментариев.\n      Пример: Анна видит «2 комментария».\n```\nИз протокола: [2](brainstorming.md#L16)\n\n```\nNFR-1');
+  edit(cwd, 'comments/slices/002-comments.md', '```\nAC-002-B2 Длина текста', '```\nAC-B? Первый новый\nWHEN Анна открыла задачу\nTHEN видит ленту\n```\nПроверяет: FR-2\n\n```\nAC-002-B? Второй новый\nWHEN Анна открыла задачу\nTHEN видит ленту\n```\nПроверяет: FR-2\n\n```\nAC-002-B2 Длина текста');
+  const res = fix(cwd);
+  assert.match(read(cwd, 'comments/spec.md'), /^FR-11  Автор видит число комментариев\./m);
+  assert.match(read(cwd, 'comments/slices/002-comments.md'), /^AC-002-B7 Первый новый\n[\s\S]*^AC-002-B8 Второй новый$/m);
+  assert.ok(res.fixed.some((x) => /spec\.md: FR-\? → FR-11/.test(x)), res.fixed.join('\n'));
+  assert.ok(res.fixed.some((x) => /002-comments\.md: AC-B\? → AC-002-B7, AC-002-B\? → AC-002-B8/.test(x)), res.fixed.join('\n'));
+  for (const r of ['SP-03', 'SP-21', 'SL-05', 'SL-28', 'RM-02']) assert.ok(!rules(res).includes(r), `${r}: ${rules(res).join(', ')}`);
+  assert.ok(rules(res).includes('SL-13'), 'новый FR ещё не в «Основание» — это решает агент');
+});
+test('fix: README создаётся, «угадал бы» собирается до ссылок на протокол', () => {
+  const cwd = workspace();
+  fs.rmSync(file(cwd, 'comments/slices/README.md'));
+  edit(cwd, 'comments/brainstorming.md', '| 9 | Уведомить снова | Только новых упомянутых | Каждая правка — повторный спам |\n', '');
+  const res = fix(cwd);
+  assert.ok(res.fixed.includes('docs/comments/slices/README.md — создан'), res.fixed.join('\n'));
+  assert.match(read(cwd, 'comments/brainstorming.md'), /\| 9 \| Уведомить снова \| Только новых упомянутых \|/);
+  for (const r of ['RM-01', 'PR-05', 'SP-21']) assert.ok(!rules(res).includes(r), `${r}: ${rules(res).join(', ')}`);
+});
+test('fix: сверяет с git — протокол только дописывается, одобренное не меняется молча', () => {
+  const cwd = gitWorkspace();
+  edit(cwd, 'comments/brainstorming.md', '| Старые сверху |', '| Новые сверху |');
+  edit(cwd, 'comments/spec.md', 'не длиннее 5000 символов', 'не длиннее 6000 символов');
+  const res = fix(cwd);
+  assert.equal(res.code, 1);
+  assert.ok(rules(res).includes('DF-01') && rules(res).includes('DF-03'), rules(res).join(', '));
+  assert.ok(!res.notes.some((n) => /git/.test(n)));
+});
+test('fix: без протокола ссылки на него не трогает — это делает close', () => {
+  const cwd = workspace();
+  fs.rmSync(file(cwd, 'comments/brainstorming.md'));
+  const res = fix(cwd);
+  assert.match(read(cwd, 'comments/spec.md'), /^Из протокола:/m);
+  assert.ok(res.notes.some((n) => /ссылки не тронуты.*close docs\/comments/.test(n)), res.notes.join('\n'));
+});
+test('fix --snapshot: снимок после правок скрипта', () => {
+  const cwd = workspace();
+  fix(cwd, '--snapshot');
+  assert.ok(fs.readdirSync(path.join(cwd, '.tmp/sdd-lint-snapshots')).length >= 6);
+  assert.equal(run(cwd, 'guard', 'docs/comments').code, 0);
+});
+
 test('guard: humanizer может менять прозу, но не защищённые части', () => {
   const cwd = workspace();
   const spec = 'docs/comments/spec.md';
