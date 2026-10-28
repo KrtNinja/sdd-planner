@@ -326,7 +326,7 @@ function runEnv(cwd, env, ...args) {
 test('следующий шаг: готовые команды со slug фичи', () => {
   const cwd = workspace();
   const r = run(cwd, 'docs/comments');
-  assert.match(r.out, /ревью в новой сессии: \/sdd-review comments slices/);
+  assert.match(r.out, /ревью slices без контекста этой сессии —\n\s+а\) здесь, в сабагенте: ответьте «ревью slices»\n\s+б\) в новом окне: \/sdd-review comments slices/);
   assert.match(r.out, /одобрить: node scripts\/sdd-lint\.mjs approve slices docs\/comments/);
 });
 test('следующий шаг: форма команд задаётся окружением', () => {
@@ -481,7 +481,7 @@ test('без аргументов: меню с фичами, этапом и г�
   const r = run(workspace());
   assert.equal(r.code, 0);
   assert.match(r.out, /comments\s+Slices на ревью/);
-  assert.match(r.out, /→ ревью в новой сессии: \/sdd-review comments slices/);
+  assert.match(r.out, /→ ревью slices без контекста этой сессии —\n\s+а\) здесь, в сабагенте/);
   assert.match(r.out, /node scripts\/sdd-lint\.mjs approve spec\|slices\|adr comments/);
 });
 test('без аргументов вне репозитория с доками: подсказка, откуда запускать', () => {
@@ -542,4 +542,28 @@ test('у каждого sdd-скилла есть argument-hint', () => {
     const md = fs.readFileSync(path.join(root, 'skills', d, 'SKILL.md'), 'utf8');
     assert.match(md.split('---')[1], /\nargument-hint: '.+'/, d);
   }
+});
+
+test('review-prompt: скилл, чеклист режима и шаблон одним текстом', () => {
+  const cwd = workspace();
+  const r = run(cwd, 'review-prompt', 'slices', 'docs/comments');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /^# Ревью SDD: comments slices/);
+  assert.match(r.out, /# sdd-review — ревью перед одобрением/);
+  assert.match(r.out, /Файл скилла references\/slices\.md:\n\n# Чеклист: slices/);
+  assert.match(r.out, /Файл скилла assets\/review\.md:/);
+  assert.doesNotMatch(r.out, /# Чеклист: spec/);
+  assert.doesNotMatch(r.out, /^name: sdd-review/m);
+});
+test('review-prompt: adr без номера при одном ADR, чужой номер и пустой вызов — подсказка', () => {
+  const cwd = workspace();
+  const one = run(cwd, 'review-prompt', 'adr', 'docs/comments');
+  assert.equal(one.code, 0);
+  assert.match(one.out, /^# Ревью SDD: comments adr 0001/);
+  const bad = run(cwd, 'review-prompt', 'adr', 'docs/comments', '9999');
+  assert.equal(bad.code, 2);
+  assert.match(bad.out, /ADR 9999 у фичи нет:\n\s+node scripts\/sdd-lint\.mjs review-prompt adr docs\/comments 0001/);
+  const none = run(cwd, 'review-prompt');
+  assert.equal(none.code, 2);
+  assert.match(none.out, /review-prompt slices comments\s+— ревью slices/);
 });

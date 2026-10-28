@@ -56,6 +56,10 @@ const HELP = `sdd-lint — проверки артефактов планиро�
   sdd-lint next <FR|NFR|slice|adr> docs/<feature>
   sdd-lint next AC docs/<feature> <NNN> [B|F]
       следующий свободный номер
+  sdd-lint review-prompt <spec|slices> docs/<feature>
+  sdd-lint review-prompt adr docs/<feature> <NNNN>
+      задание сабагенту на ревью: скилл sdd-review с чеклистом режима и шаблоном
+      одним текстом. Его вызывает сабагент, человеку оно не нужно
   sdd-lint help [<команда>]
       справка: вся или по одной команде
   sdd-lint completion <bash|zsh>
@@ -179,6 +183,7 @@ const CMD_INFO = {
   diff: 'изменения против git',
   close: 'убрать протокол перед merge',
   next: 'следующий свободный номер',
+  'review-prompt': 'задание сабагенту на ревью',
   help: 'справка по команде',
   completion: 'Tab-дополнение для bash / zsh',
 };
@@ -187,6 +192,7 @@ const CHOICES = {
   approve: { spec: 'одобрить Dev Spec', slices: 'одобрить slices', adr: 'принять ADR' },
   gen: { readme: 'slices/README.md: таблица, покрытие, порядок', guessed: '«Где агент угадал бы не так»', links: 'ссылки на строки протокола и spec' },
   next: { FR: 'номер нового FR', NFR: 'номер нового NFR', AC: 'номер нового AC в slice', slice: 'номер нового slice', adr: 'номер нового ADR' },
+  'review-prompt': { spec: 'ревью Dev Spec', slices: 'ревью slices', adr: 'ревью ADR' },
   completion: { bash: 'source <(sdd-lint completion bash)', zsh: 'source <(sdd-lint completion zsh)' },
 };
 // Что идёт после команды: варианты из CHOICES, фича, файл или папка, номер.
@@ -196,6 +202,7 @@ const SLOTS = {
   approve: ['choice', 'feature', 'adr'],
   gen: ['choice', 'feature'],
   next: ['choice', 'feature', 'slice', 'side'],
+  'review-prompt': ['choice', 'feature', 'adr'],
   diff: ['feature'],
   close: ['feature'],
   trace: ['feature'],
@@ -1166,10 +1173,21 @@ function handoff(m, what) {
   const open = openBlockers(rv);
   return [
     `по желанию убрать следы ИИ из прозы: ${human}, затем ${guard}`,
-    rv ? `ревью уже было: ${rel(rv.file)}; повторить — ${skill('sdd-review', m.name, what)} в новой сессии` : `ревью в новой сессии: ${skill('sdd-review', m.name, what)}`,
+    rv ? `ревью уже было: ${rel(rv.file)}; повторить —${reviewChoice(m, what)}` : `ревью ${what} без контекста этой сессии —${reviewChoice(m, what)}`,
     ...(open.length ? [blockersStep(m, rv, open)] : []),
     `одобрить: ${lintCmd('approve', what, dir)}`,
   ];
+}
+// Ревью идёт в чистом контексте. Где — решает человек: сабагент в этом окне или новое окно.
+// Ответ «ревью <режим> [NNNN]» агент переводит в сабагента с заданием из review-prompt.
+function reviewChoice(m, what, num) {
+  const label = [what, num].filter(Boolean).join(' ');
+  return [
+    `здесь, в сабагенте: ответьте «ревью ${label}»`,
+    `в новом окне: ${skill('sdd-review', m.name, ...[what, num].filter(Boolean))}`,
+  ]
+    .map((x, i) => `\n     ${'аб'[i]}) ${x}`)
+    .join('');
 }
 function blockersStep(m, rv, open) {
   const ids = open.map((r) => r.id);
@@ -1180,7 +1198,7 @@ function adrSteps(m) {
     const rv = m.reviews.get(reviewKey('adr', a.num));
     const open = openBlockers(rv);
     return [
-      rv ? `ADR ${a.num} «${a.status || '—'}» — ревью уже было: ${rel(rv.file)}` : `ADR ${a.num} «${a.status || '—'}» — ревью: ${skill('sdd-review', m.name, 'adr', a.num)}`,
+      rv ? `ADR ${a.num} «${a.status || '—'}» — ревью уже было: ${rel(rv.file)}` : `ADR ${a.num} «${a.status || '—'}» — ревью —${reviewChoice(m, 'adr', a.num)}`,
       ...(open.length ? [blockersStep(m, rv, open)] : []),
       `ADR ${a.num} — принять: ${lintCmd('approve', 'adr', rel(m.dir), a.num)}`,
     ];
@@ -1985,7 +2003,7 @@ function cmdMenu() {
       const st = stageOf(loadFeature(path.join(DOCS, f)));
       out.push(`  ${f.padEnd(w)}  ${st.now}`);
       const step = st.next.find((x) => !x.startsWith('по желанию')) || st.next[0];
-      if (step) out.push(`  ${' '.repeat(w)}  → ${step}`);
+      if (step) out.push(`  ${' '.repeat(w)}  → ${step.replace(/\n/g, `\n  ${' '.repeat(w)}  `)}`);
     }
   }
   const ex = known[0] || '<feature>';
@@ -2091,6 +2109,52 @@ function complete(words) {
   return out;
 }
 
+// Задание сабагенту на ревью: скилл sdd-review и его файлы одним текстом.
+// Сабагент получает его через MCP и не читает файлы расширения вне проекта; родитель не пересказывает
+// скилл своими словами и не передаёт свой контекст — ревьюер видит только файлы фичи.
+function cmdReviewPrompt() {
+  const what = pos[0];
+  if (!CHOICES['review-prompt'][what]) pickChoice('review-prompt');
+  const m = loadFeature(needDir(pos[1], 1));
+  let num = null;
+  if (what === 'adr') {
+    const nums = m.featureAdrs.map((a) => a.num);
+    num = pos[2] ? pos[2].padStart(4, '0') : nums.length === 1 ? nums[0] : null;
+    if (!num || !nums.includes(num)) {
+      const list = nums.length ? nums.map((n) => `  ${lintCmd('review-prompt', 'adr', rel(m.dir), n)}`).join('\n') : '  у фичи нет ADR';
+      console.error(`${pos[2] ? `ADR ${pos[2]} у фичи нет` : 'Укажи номер ADR'}:\n${list}`);
+      process.exit(2);
+    }
+  }
+  const self = fs.realpathSync(process.argv[1]);
+  const dir = path.resolve(path.dirname(self), '..', '..', 'sdd-review');
+  const own = read(path.join(dir, 'SKILL.md'));
+  if (own == null) {
+    console.error(`Нет скилла sdd-review рядом со скриптом: ${dir}`);
+    process.exit(2);
+  }
+  const attach = [`references/${what}.md`, 'assets/review.md'].map((f) => [f, read(path.join(dir, f))]);
+  const args = [m.name, what, num].filter(Boolean).join(' ');
+  console.log(
+    [
+      `# Ревью SDD: ${args}`,
+      '',
+      `Ты ревьюер в чистом контексте: как писали артефакт, тебе не передано. Суди только по файлам`,
+      `в ${rel(m.dir)}/ и docs/adr/; корень репозитория — текущая папка. Выполни скилл sdd-review ниже`,
+      `с аргументами \`${args}\`. Lint — инструмент MCP \`sdd_lint\`; его нет — \`node ${self}\`.`,
+      'Чеклист режима и шаблон файла ревью приложены в конце — их не открывай.',
+      'Последним сообщением выведи таблицу находок и итог из шага 5 — его прочитает человек;',
+      'свои шаги не пересказывай.',
+      '',
+      '---',
+      '',
+      own.replace(/^---\n[\s\S]*?\n---\n/, '').trim(),
+      ...attach.filter(([, t]) => t != null).flatMap(([f, t]) => ['', '---', '', `Файл скилла ${f}:`, '', t.trim()]),
+    ].join('\n'),
+  );
+  process.exit(0);
+}
+
 // Скрипт для bash / zsh с путём к этому файлу: работает и через alias, и через ссылку в PATH.
 function cmdCompletion() {
   const shell = pos[0];
@@ -2134,4 +2198,4 @@ if (cmd === '__complete') {
 if (cmd === 'check' && !argv.length) cmdMenu();
 if (cmd === 'check') checkTypo();
 
-({ completion: cmdCompletion, check: cmdCheck, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, next: cmdNext })[cmd]();
+({ completion: cmdCompletion, check: cmdCheck, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, next: cmdNext, 'review-prompt': cmdReviewPrompt })[cmd]();
