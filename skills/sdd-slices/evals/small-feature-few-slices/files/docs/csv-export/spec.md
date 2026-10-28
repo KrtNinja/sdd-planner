@@ -1,6 +1,6 @@
 # Экспорт задач в CSV — Dev Spec
 
-Статус: одобрено 27.10.2026
+Статус: одобрено 27.10.2026 · ab656f
 
 Протокол: [brainstorming.md](brainstorming.md)
 

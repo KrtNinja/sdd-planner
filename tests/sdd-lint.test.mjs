@@ -13,6 +13,10 @@ const LINT =
   process.env.SDD_LINT ||
   ['scripts/sdd-lint.mjs', 'skills/sdd-lint/scripts/sdd-lint.mjs'].map((p) => path.join(root, p)).find((p) => fs.existsSync(p));
 const GOOD = path.join(root, 'tests/fixtures/good');
+// Статусы эталона: «одобрено» и «принято» с отметкой approve (отпечаток содержимого).
+const SPEC_OK = 'Статус: одобрено 27.10.2026 · 67e1fb';
+const ADR_OK = 'Статус: принято 27.10.2026 · 1e0e1f';
+const FP = '[0-9a-f]{6}';
 
 function workspace() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-lint-test-'));
@@ -179,10 +183,11 @@ test('trace: каждая строка протокола и куда ушла, 
   assert.match(lost.out, /#П1[^\n]*\n +→ НИКУДА/);
 });
 
-test('DF-03: номера строк в ссылках на протокол не отменяют одобрение', () => {
-  const cwd = gitWorkspace();
+test('AP-02: номера строк в ссылках и пробелы в конце строк одобрение не отменяют', () => {
+  const cwd = workspace();
   edit(cwd, 'comments/spec.md', '[9](brainstorming.md#L23)', '[9](brainstorming.md#L24)');
-  assert.ok(!diffRules(cwd).includes('DF-03'));
+  edit(cwd, 'comments/spec.md', '## Вне scope', '## Вне scope  ');
+  assert.ok(!rules(check(cwd)).includes('AP-02'));
 });
 
 test('close: не закрывает, пока slices не одобрены', () => {
@@ -225,7 +230,7 @@ test('gate: ворота открываются и закрываются по �
   assert.equal(run(cwd, 'gate', 'spec', 'docs/comments').code, 0);
   assert.equal(run(cwd, 'gate', 'slices', 'docs/comments').code, 0);
   assert.equal(run(cwd, 'gate', 'build', 'docs/comments').code, 3);
-  edit(cwd, 'comments/spec.md', 'Статус: одобрено 27.10.2026', 'Статус: на ревью');
+  edit(cwd, 'comments/spec.md', SPEC_OK, 'Статус: на ревью');
   const r = run(cwd, 'gate', 'slices', 'docs/comments');
   assert.equal(r.code, 3);
   assert.match(r.out, /Сначала одобрите spec.md/);
@@ -275,12 +280,43 @@ test('DF-02: ID не пропадают', () => {
   edit(cwd, 'comments/slices/002-comments.md', 'AC-002-F2 Удалённый комментарий', 'AC-002-F4 Удалённый комментарий');
   assert.ok(diffRules(cwd).includes('DF-02'));
 });
-test('DF-03: одобренный spec не меняется без сброса статуса', () => {
-  const cwd = gitWorkspace();
+test('AP-02: правка после одобрения — одобрение недействительно, без git', () => {
+  const cwd = workspace();
   edit(cwd, 'comments/spec.md', 'не длиннее 5000 символов', 'не длиннее 6000 символов');
-  assert.ok(diffRules(cwd).includes('DF-03'));
-  edit(cwd, 'comments/spec.md', 'Статус: одобрено 27.10.2026', 'Статус: на ревью');
-  assert.ok(!diffRules(cwd).includes('DF-03'));
+  const res = check(cwd);
+  assert.ok(rules(res).includes('AP-02'), rules(res).join(', '));
+  assert.equal(res.stage.startsWith('Dev Spec «на ревью (файл менялся после approve)»'), true, res.stage);
+  assert.doesNotMatch(run(cwd, 'docs/comments').out, /67e1fb/);
+  const g = run(cwd, 'gate', 'slices', 'docs/comments');
+  assert.equal(g.code, 3, g.out);
+});
+test('AP-01: «одобрено» без отметки approve — не одобрение; approve переодобряет', () => {
+  const cwd = workspace();
+  edit(cwd, 'comments/spec.md', SPEC_OK, 'Статус: одобрено 27.10.2026');
+  const res = check(cwd);
+  assert.ok(rules(res).includes('AP-01'), rules(res).join(', '));
+  assert.ok(!res.findings.some((f) => /67e1fb/.test(f.msg)), 'ожидаемый отпечаток не печатается');
+  assert.equal(run(cwd, 'gate', 'slices', 'docs/comments').code, 3);
+  assert.deepEqual(ids(ask(cwd)).slice(-1), ['approve:spec']);
+  const r = run(cwd, 'approve', 'spec', 'docs/comments');
+  assert.equal(r.code, 0, r.out);
+  assert.equal(status(cwd, 'comments/spec.md'), `Статус: одобрено ${today()} · 67e1fb`);
+  assert.ok(!rules(check(cwd)).includes('AP-01'));
+});
+test('AP-02: slices — правка AC после одобрения снимает одобрение с README, fix возвращает «на ревью»', () => {
+  const cwd = workspace();
+  assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
+  assert.ok(!rules(check(cwd)).includes('AP-02'));
+  edit(cwd, 'comments/slices/002-comments.md', 'AC-002-B2 Длина текста', 'AC-002-B2 Длина');
+  assert.ok(check(cwd).findings.some((f) => f.rule === 'AP-02' && f.file === 'docs/comments/slices/README.md'));
+  const res = fix(cwd);
+  assert.equal(status(cwd, 'comments/slices/README.md'), 'Статус: на ревью');
+  assert.ok(res.notes.some((n) => /approve slices docs\/comments/.test(n)), res.notes.join('\n'));
+});
+test('AP-01: отметка не к тому статусу — «принято» со строкой от другого файла', () => {
+  const cwd = workspace();
+  edit(cwd, 'adr/0001-mention-notifications.md', ADR_OK, 'Статус: принято 27.10.2026 · 67e1fb');
+  assert.ok(rules(check(cwd)).includes('AP-02'));
 });
 
 // ---------- fix ----------
@@ -325,7 +361,10 @@ test('fix: сверяет с git — протокол только дописы�
   edit(cwd, 'comments/spec.md', 'не длиннее 5000 символов', 'не длиннее 6000 символов');
   const res = fix(cwd);
   assert.equal(res.code, 1);
-  assert.ok(rules(res).includes('DF-01') && rules(res).includes('DF-03'), rules(res).join(', '));
+  assert.ok(rules(res).includes('DF-01'), rules(res).join(', '));
+  assert.ok(!rules(res).includes('AP-02'), 'fix сам вернул «на ревью»');
+  assert.equal(status(cwd, 'comments/spec.md'), 'Статус: на ревью');
+  assert.ok(res.notes.some((n) => /spec\.md: менялся после одобрения \(«одобрено 27\.10\.2026»\) — статус «на ревью»\. Одобрить заново: node scripts\/sdd-lint\.mjs approve spec docs\/comments/.test(n)), res.notes.join('\n'));
   assert.ok(!res.notes.some((n) => /git/.test(n)));
 });
 test('fix: без протокола ссылки на него не трогает — это делает close', () => {
@@ -405,8 +444,8 @@ test('следующий шаг: форма команд задаётся окр
 });
 test('следующий шаг: spec вернули «на ревью» — сначала spec, даже если slices одобрены', () => {
   const cwd = workspace();
-  edit(cwd, 'comments/slices/README.md', 'Статус: на ревью', 'Статус: одобрено 27.10.2026');
-  edit(cwd, 'comments/spec.md', 'Статус: одобрено 27.10.2026', 'Статус: на ревью');
+  assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
+  edit(cwd, 'comments/spec.md', SPEC_OK, 'Статус: на ревью');
   const r = run(cwd, 'docs/comments');
   assert.match(r.out, /Dev Spec «на ревью», а slices уже есть/);
   assert.match(r.out, /approve spec docs\/comments/);
@@ -430,13 +469,13 @@ test('approve slices: ставит «одобрено <дата>» и показ
   const cwd = workspace();
   const r = run(cwd, 'approve', 'slices', 'docs/comments');
   assert.equal(r.code, 0, r.out);
-  assert.equal(status(cwd, 'comments/slices/README.md'), `Статус: одобрено ${today()}`);
+  assert.match(status(cwd, 'comments/slices/README.md'), new RegExp(`^Статус: одобрено ${today()} · ${FP}$`));
   assert.match(r.out, /перед merge убрать протокол: node scripts\/sdd-lint\.mjs close docs\/comments/);
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
 });
 test('approve slices: нельзя, пока spec не одобрен', () => {
   const cwd = workspace();
-  edit(cwd, 'comments/spec.md', 'Статус: одобрено 27.10.2026', 'Статус: на ревью');
+  edit(cwd, 'comments/spec.md', SPEC_OK, 'Статус: на ревью');
   const r = run(cwd, 'approve', 'slices', 'docs/comments');
   assert.equal(r.code, 3);
   assert.match(r.out, /approve spec docs\/comments/);
@@ -444,7 +483,7 @@ test('approve slices: нельзя, пока spec не одобрен', () => {
 });
 test('approve spec: открытые вопросы блокируют (SP-06), статус не меняется', () => {
   const cwd = workspace();
-  edit(cwd, 'comments/spec.md', 'Статус: одобрено 27.10.2026', 'Статус: на ревью');
+  edit(cwd, 'comments/spec.md', SPEC_OK, 'Статус: на ревью');
   edit(cwd, 'comments/spec.md', '## Открытые вопросы\nНет.', '## Открытые вопросы\n- Сколько хранить удалённые комментарии?');
   const r = run(cwd, 'approve', 'spec', 'docs/comments');
   assert.equal(r.code, 1);
@@ -453,7 +492,7 @@ test('approve spec: открытые вопросы блокируют (SP-06), 
 });
 test('approve spec: защищённые части изменились после снимка — не одобряет', () => {
   const cwd = workspace();
-  edit(cwd, 'comments/spec.md', 'Статус: одобрено 27.10.2026', 'Статус: на ревью');
+  edit(cwd, 'comments/spec.md', SPEC_OK, 'Статус: на ревью');
   assert.equal(run(cwd, 'snapshot', 'docs/comments/spec.md').code, 0);
   edit(cwd, 'comments/spec.md', '«Починить вход по SMS»', '«Исправить вход по SMS»');
   const r = run(cwd, 'approve', 'spec', 'docs/comments');
@@ -464,11 +503,11 @@ test('approve spec: защищённые части изменились пос�
 });
 test('approve adr: единственный ждущий ADR принимается без номера', () => {
   const cwd = workspace();
-  edit(cwd, 'adr/0001-mention-notifications.md', 'Статус: принято 27.10.2026', 'Статус: предложено');
+  edit(cwd, 'adr/0001-mention-notifications.md', ADR_OK, 'Статус: предложено');
   assert.match(run(cwd, 'docs/comments').out, /approve adr docs\/comments 0001/);
   const r = run(cwd, 'approve', 'adr', 'docs/comments');
   assert.equal(r.code, 0, r.out);
-  assert.equal(status(cwd, 'adr/0001-mention-notifications.md'), `Статус: принято ${today()}`);
+  assert.match(status(cwd, 'adr/0001-mention-notifications.md'), new RegExp(`^Статус: принято ${today()} · 1e0e1f$`));
 });
 
 // ---------- evals ----------
@@ -537,7 +576,7 @@ test('ревью: файл не по шаблону — RV-02', () => {
 });
 test('ревью ADR: блокер в review/adr-NNNN.md держит approve adr', () => {
   const cwd = workspace();
-  edit(cwd, 'adr/0001-mention-notifications.md', 'Статус: принято 27.10.2026', 'Статус: предложено');
+  edit(cwd, 'adr/0001-mention-notifications.md', ADR_OK, 'Статус: предложено');
   withReview(cwd, REVIEW.replace('# Ревью slices', '# Ревью ADR 0001'), 'adr-0001.md');
   assert.match(run(cwd, 'docs/comments').out, /ADR 0001 «предложено» — ревью уже было/);
   assert.equal(run(cwd, 'approve', 'adr', 'docs/comments').code, 1);
