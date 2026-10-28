@@ -326,7 +326,7 @@ function runEnv(cwd, env, ...args) {
 test('следующий шаг: готовые команды со slug фичи', () => {
   const cwd = workspace();
   const r = run(cwd, 'docs/comments');
-  assert.match(r.out, /ревью slices без контекста этой сессии —\n\s+а\) здесь, в сабагенте: ответьте «ревью slices»\n\s+б\) в новом окне: \/sdd-review comments slices/);
+  assert.match(r.out, /ревью в чистом контексте: \/sdd-review comments slices/);
   assert.match(r.out, /одобрить: node scripts\/sdd-lint\.mjs approve slices docs\/comments/);
 });
 test('следующий шаг: форма команд задаётся окружением', () => {
@@ -481,7 +481,7 @@ test('без аргументов: меню с фичами, этапом и г�
   const r = run(workspace());
   assert.equal(r.code, 0);
   assert.match(r.out, /comments\s+Slices на ревью/);
-  assert.match(r.out, /→ ревью slices без контекста этой сессии —\n\s+а\) здесь, в сабагенте/);
+  assert.match(r.out, /→ ревью в чистом контексте: \/sdd-review comments slices/);
   assert.match(r.out, /node scripts\/sdd-lint\.mjs approve spec\|slices\|adr comments/);
 });
 test('без аргументов вне репозитория с доками: подсказка, откуда запускать', () => {
@@ -544,26 +544,63 @@ test('у каждого sdd-скилла есть argument-hint', () => {
   }
 });
 
-test('review-prompt: скилл, чеклист режима и шаблон одним текстом', () => {
+const ask = (cwd) => JSON.parse(run(cwd, 'ask', 'docs/comments').out);
+const ids = (a) => a.questions.flatMap((q) => q.options.map((o) => o.id));
+test('ask: вопрос этапа с вариантами без действий, рекомендация — ревью', () => {
+  const a = ask(workspace());
+  assert.equal(a.stage, 'Slices на ревью');
+  assert.deepEqual(a.choose, ['choose', 'docs/comments', '<id>']);
+  assert.deepEqual(ids(a), ['review-here:slices', 'review-window:slices', 'humanize:slices', 'approve:slices']);
+  assert.equal(a.questions[0].options.find((o) => o.recommended).id, 'review-here:slices');
+  assert.ok(a.questions.every((q) => q.options.every((o) => !('action' in o))));
+});
+test('ask: после ревью без блокеров рекомендуется одобрить, с блокером — закрыть его', () => {
   const cwd = workspace();
-  const r = run(cwd, 'review-prompt', 'slices', 'docs/comments');
+  const rv = path.join(cwd, 'docs/comments/review');
+  fs.mkdirSync(rv, { recursive: true });
+  const table = (decision) => `# Ревью slices — comments\n\nИтог: блокеров 1, замечаний 0\n\n| # | Важность | Где | Что не так | Пункт | Предложение | Решение |\n|---|---|---|---|---|---|---|\n| R1 | блокер | slices/002-comments.md | … | 3 | … | ${decision} |\n`;
+  fs.writeFileSync(path.join(rv, 'slices.md'), table('исправлено'));
+  let a = ask(cwd);
+  assert.equal(a.questions[0].options.find((o) => o.recommended).id, 'approve:slices');
+  assert.equal(a.questions[0].options[0].label, 'Повторить ревью здесь');
+  fs.writeFileSync(path.join(rv, 'slices.md'), table(''));
+  a = ask(cwd);
+  assert.ok(ids(a).includes('blockers:slices') && !ids(a).includes('approve:slices'));
+  const r = run(cwd, 'choose', 'docs/comments', 'blockers:slices');
+  assert.match(r.out, /Передай человеку дословно и остановись:\n\nзакрыть блокеры ревью R1/);
+});
+test('choose: ревью — задача сабагенту без пересказа скилла', () => {
+  const r = run(workspace(), 'choose', 'docs/comments', 'review-here:slices');
   assert.equal(r.code, 0);
+  assert.match(r.out, /Вызови инструмент sdd_lint с args \["prompt","sdd-review","comments","slices"\] и выполни то, что он вернёт\./);
+  assert.match(r.out, /Следующий вопрос: sdd_lint с args \["ask","docs\/comments"\]/);
+});
+test('choose: одобрить — выполняет approve сам, устаревший id — подсказка', () => {
+  const cwd = workspace();
+  const r = run(cwd, 'choose', 'docs/comments', 'approve:slices');
+  assert.equal(r.code, 0, r.out);
+  assert.match(status(cwd, 'comments/slices/README.md'), /одобрено/);
+  const again = run(cwd, 'choose', 'docs/comments', 'approve:slices');
+  assert.equal(again.code, 2);
+  assert.match(again.out, /Варианта «approve:slices» сейчас нет — этап изменился/);
+  assert.deepEqual(ids(ask(cwd)), ['close', 'later']);
+});
+test('prompt: скилл, свой чеклист и шаблон одним текстом; без шапки скилла', () => {
+  const cwd = workspace();
+  const r = run(cwd, 'prompt', 'sdd-review', 'docs/comments', 'slices');
+  assert.equal(r.code, 0, r.out);
   assert.match(r.out, /^# Ревью SDD: comments slices/);
-  assert.match(r.out, /# sdd-review — ревью перед одобрением/);
   assert.match(r.out, /Файл скилла references\/slices\.md:\n\n# Чеклист: slices/);
   assert.match(r.out, /Файл скилла assets\/review\.md:/);
   assert.doesNotMatch(r.out, /# Чеклист: spec/);
-  assert.doesNotMatch(r.out, /^name: sdd-review/m);
-});
-test('review-prompt: adr без номера при одном ADR, чужой номер и пустой вызов — подсказка', () => {
-  const cwd = workspace();
-  const one = run(cwd, 'review-prompt', 'adr', 'docs/comments');
-  assert.equal(one.code, 0);
-  assert.match(one.out, /^# Ревью SDD: comments adr 0001/);
-  const bad = run(cwd, 'review-prompt', 'adr', 'docs/comments', '9999');
+  assert.doesNotMatch(r.out, /^disable-model-invocation/m);
+  const adr = run(cwd, 'prompt', 'sdd-review', 'comments', 'adr');
+  assert.match(adr.out, /^# Ревью SDD: comments adr 0001/);
+  const bad = run(cwd, 'prompt', 'sdd-review', 'comments', 'adr', '9999');
   assert.equal(bad.code, 2);
-  assert.match(bad.out, /ADR 9999 у фичи нет:\n\s+node scripts\/sdd-lint\.mjs review-prompt adr docs\/comments 0001/);
-  const none = run(cwd, 'review-prompt');
-  assert.equal(none.code, 2);
-  assert.match(none.out, /review-prompt slices comments\s+— ревью slices/);
+  assert.match(bad.out, /ADR 9999 у фичи нет/);
+  const sl = run(cwd, 'prompt', 'sdd-slices', 'comments');
+  assert.match(sl.out, /^# Скилл sdd-slices: comments\n\nЧеловек выбрал этот шаг/);
+  assert.match(sl.out, /Файл скилла references\/calibration\.md:/);
+  assert.equal(run(cwd, 'prompt', 'sdd-lint').code, 2);
 });
