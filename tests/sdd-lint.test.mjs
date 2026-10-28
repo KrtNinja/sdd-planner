@@ -74,6 +74,13 @@ caught('SP-21', 'comments/spec.md', '[9](brainstorming.md#L23)', '[9](brainstorm
 caught('SP-18', 'comments/spec.md', 'Пример: Борис открыл TASK-42', 'Пример: Олег Ким открыл TASK-42');
 caught('SP-20', 'comments/spec.md', 'p95 ≤ 2 с с момента', 'p95 ≤ 5 с с момента');
 caught('SP-19', 'comments/spec.md', '```\nИз протокола: [2](brainstorming.md#L16)\n\n```\nFR-3', '\nFR-3');
+caught('SP-22', 'comments/spec.md', 'FR-2  Текст комментария', 'FR-2  (изменено 28.10.2026 после ревью R2) Текст комментария');
+caught('SP-22', 'comments/spec.md', 'FR-2  Текст комментария', 'FR-2  Текст комментария (добавлено после ревью)');
+test('SP-22: дата в примере, «(удалён: причина)» и «после обсуждения» — не пометка правки', () => {
+  const cwd = workspace();
+  edit(cwd, 'comments/spec.md', '## Данные для примеров', 'Комментарий обновлён после обсуждения; Анна изменила комментарий 28.10.2026.\n\n## Данные для примеров');
+  assert.ok(!rules(check(cwd)).includes('SP-22'));
+});
 
 // slices
 caught('SL-02', 'comments/slices/003-mention-notifications.md', 'Почему отдельно: Р1 — ждёт', 'Почему отдельно: ждёт');
@@ -91,6 +98,8 @@ caught('SL-28', 'comments/slices/002-comments.md', ' ([Dev Spec](../spec.md))', 
 caught('SL-28', 'comments/slices/002-comments.md', 'Основание: FR-1,', 'Основание: [FR-1](../spec.md#L29),');
 caught('SL-28', 'comments/slices/README.md', '| [FR-8](../spec.md#L81) | 003 |', '| FR-8 | 003 |');
 caught('SL-20', 'comments/slices/002-comments.md', 'AC-002-F2 Удалённый', 'AC-002-B9 Удалённый');
+caught('SL-29', 'comments/slices/002-comments.md', 'AC-002-B2 Длина текста', 'AC-002-B2 Длина текста (уточнено по находке R2)');
+caught('SL-29', 'comments/slices/README.md', '# ', '_Обновлено 28.10.2026_\n\n# ');
 caught('SL-22', 'comments/slices/002-comments.md', 'THEN отказ «Нет доступа к задаче», комментарий не сохранён', 'THEN мок tasks-core вернул отказ');
 caught('SL-23', 'comments/slices/002-comments.md', 'на его месте «Комментарий удалён»', 'на его месте «Удалено руководителем»');
 caught('SL-24', 'comments/slices/002-comments.md', 'WHEN Дина отправляет', 'WHEN Олег Ким отправляет');
@@ -569,11 +578,37 @@ test('ask: после ревью без блокеров рекомендует�
   const r = run(cwd, 'choose', 'docs/comments', 'blockers:slices');
   assert.match(r.out, /Передай человеку дословно и остановись:\n\nзакрыть блокеры ревью R1/);
 });
-test('choose: ревью — задача сабагенту без пересказа скилла', () => {
+test('ask: инструкция в выводе, варианты с номерами, рекомендация в label, text — для агента без инструмента выбора', () => {
+  const a = ask(workspace());
+  assert.match(a.instruction, /инструментом выбора как есть/);
+  assert.match(a.instruction, /выведи text дословно/);
+  assert.match(a.instruction, /sdd_lint с args \["choose","docs\/comments","<id>"\]/);
+  const opts = a.questions.flatMap((q) => q.options);
+  assert.deepEqual(opts.map((o) => o.n), [1, 2, 3, 4]);
+  assert.equal(opts[0].label, 'Ревью здесь, в сабагенте (рекомендую)');
+  assert.ok(opts.slice(1).every((o) => !o.label.includes('рекомендую')));
+  assert.match(a.text, /^Slices «на ревью»\. Что дальше\?\n1\. Ревью здесь, в сабагенте \(рекомендую\) — /);
+  assert.match(a.text, /\n4\. Одобрить — /);
+});
+test('choose: ревью — задача сабагенту без пересказа скилла, без сабагентов — команда человеку', () => {
   const r = run(workspace(), 'choose', 'docs/comments', 'review-here:slices');
   assert.equal(r.code, 0);
   assert.match(r.out, /Вызови инструмент sdd_lint с args \["prompt","sdd-review","comments","slices"\] и выполни то, что он вернёт\./);
   assert.match(r.out, /Следующий вопрос: sdd_lint с args \["ask","docs\/comments"\]/);
+  assert.match(r.out, /Сабагентов у тебя нет — задание сам не выполняй: передай человеку дословно «\/sdd-review comments slices» и остановись\./);
+});
+test('choose: humanizer — снимок снимает скрипт, сабагенту остаются humanizer и guard', () => {
+  const cwd = workspace();
+  const r = run(cwd, 'choose', 'docs/comments', 'humanize:slices');
+  assert.equal(r.code, 0, r.out);
+  assert.doesNotMatch(r.out, /"snapshot"/);
+  assert.match(r.out, /sdd_lint с args \["guard","docs\/comments"\]/);
+  assert.match(r.out, /передай человеку дословно «\/humanizer по каждому файлу в docs\/comments\/slices\/, затем node scripts\/sdd-lint\.mjs guard docs\/comments»/);
+  assert.ok(fs.readdirSync(path.join(cwd, '.tmp/sdd-lint-snapshots')).length > 0, 'снимок не снят');
+  edit(cwd, 'comments/slices/002-comments.md', 'AC-002-B2 Длина текста', 'AC-002-B2 Длина');
+  const g = run(cwd, 'guard', 'docs/comments');
+  assert.equal(g.code, 1, g.out);
+  assert.match(g.out, /HG-01/);
 });
 test('choose: одобрить — выполняет approve сам, устаревший id — подсказка', () => {
   const cwd = workspace();
@@ -603,4 +638,10 @@ test('prompt: скилл, свой чеклист и шаблон одним т�
   assert.match(sl.out, /^# Скилл sdd-slices: comments\n\nЧеловек выбрал этот шаг/);
   assert.match(sl.out, /Файл скилла references\/calibration\.md:/);
   assert.equal(run(cwd, 'prompt', 'sdd-lint').code, 2);
+});
+test('prompt: аргументы с пробелами — в кавычках, вопрос и решение не сливаются', () => {
+  const r = run(workspace(), 'prompt', 'sdd-decide', 'comments', 'Что видит автор?', 'Ничего');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /^# Скилл sdd-decide: comments "Что видит автор\?" Ничего\n/);
+  assert.match(r.out, /Аргументы скилла: `comments "Что видит автор\?" Ничего`/);
 });
