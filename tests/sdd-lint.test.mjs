@@ -64,22 +64,32 @@ caught('SP-08', 'comments/spec.md', 'Пример: Анна написала в 
 caught('SP-10', 'comments/spec.md', 'NFR-2 Подсказки упоминаний: p95 ≤ 200 мс в проекте до 500 участников.', 'NFR-2 Подсказки упоминаний быстрые.');
 caught('SP-11', 'comments/spec.md', 'При 11 подходящих участниках показываются 10.', '');
 caught('SP-12', 'comments/spec.md', 'показываются до 10 подсказок', 'показываются до 20 подсказок');
-caught('SP-14', 'comments/spec.md', '| 9 | FR-9 |\n', '');
-caught('SP-15', 'comments/spec.md', '| 9 | FR-9 |', '| 9 | FR-99 |');
-caught('SP-16', 'comments/spec.md', '| 8 | FR-8, FR-10 |', '| 8 | FR-8 |');
+caught('SP-13', 'comments/spec.md', '## Открытые вопросы', '## Трассировка\n\n| Протокол | Куда |\n|---|---|\n| 1 | FR-1 |\n\n## Открытые вопросы');
+caught('SP-14', 'comments/spec.md', ', [П1](brainstorming.md#L47)', '');
+caught('SP-15', 'comments/spec.md', '[9](brainstorming.md#L23)', '[99](brainstorming.md#L23)');
+caught('SP-16', 'comments/spec.md', '```\nИз протокола: [9](brainstorming.md#L23)\n', '```\n');
+caught('SP-17', 'comments/spec.md', '## Данные для примеров', 'Из протокола: [1](brainstorming.md#L15)\n\n## Данные для примеров');
+caught('SP-21', 'comments/spec.md', '[9](brainstorming.md#L23)', '9');
+caught('SP-21', 'comments/spec.md', '[9](brainstorming.md#L23)', '[9](brainstorming.md#L22)');
 caught('SP-18', 'comments/spec.md', 'Пример: Борис открыл TASK-42', 'Пример: Олег Ким открыл TASK-42');
 caught('SP-20', 'comments/spec.md', 'p95 ≤ 2 с с момента', 'p95 ≤ 5 с с момента');
-caught('SP-19', 'comments/spec.md', '```\n\n```\nFR-3', '\nFR-3');
+caught('SP-19', 'comments/spec.md', '```\nИз протокола: [2](brainstorming.md#L16)\n\n```\nFR-3', '\nFR-3');
 
 // slices
 caught('SL-02', 'comments/slices/003-mention-notifications.md', 'Почему отдельно: Р1 — ждёт', 'Почему отдельно: ждёт');
 caught('SL-11', 'comments/slices/003-mention-notifications.md', 'Зависимости: 001, 002', 'Зависимости: 001, 004');
 caught('SL-14', 'comments/slices/002-comments.md', '  WHEN Дина отправляет', '  AND Дина отправляет');
-caught('SL-15', 'comments/slices/002-comments.md', '  THEN подсказок нет\n```\n\n```\nAC-002-B6', '  THEN подсказок нет\nпроверить руками\n```\n\n```\nAC-002-B6');
-caught('SL-16', 'comments/slices/002-comments.md', 'AC-002-B1 Кто комментирует [FR-1]', 'AC-002-B1 Кто комментирует');
-caught('SL-17', 'comments/slices/002-comments.md', 'AC-002-B1 Кто комментирует [FR-1]', 'AC-002-B1 Кто комментирует [FR-1, FR-8]');
-caught('SL-18', 'comments/slices/003-mention-notifications.md', 'AC-003-B1 Без дублей [FR-10]', 'AC-003-B1 Без дублей [FR-10, FR-1]');
-caught('SL-19', 'comments/slices/002-comments.md', 'AC-002-B2 Длина текста [FR-2]', 'AC-002-B2 Длина текста [FR-1]');
+caught('SL-15', 'comments/slices/002-comments.md', '  THEN подсказок нет\n```', '  THEN подсказок нет\nпроверить руками\n```');
+caught('SL-16', 'comments/slices/002-comments.md', 'Проверяет: [FR-1](../spec.md#L29)\n', '');
+caught('SL-16', 'comments/slices/002-comments.md', 'AC-002-B1 Кто комментирует', 'AC-002-B1 Кто комментирует [FR-1]');
+caught('SL-16', 'comments/slices/002-comments.md', '## Границы', 'Проверяет: FR-1\n\n## Границы');
+caught('SL-17', 'comments/slices/002-comments.md', 'Проверяет: [FR-1](../spec.md#L29)\n', 'Проверяет: [FR-1](../spec.md#L29), [FR-8](../spec.md#L81)\n');
+caught('SL-18', 'comments/slices/003-mention-notifications.md', 'Проверяет: [FR-10](../spec.md#L95)', 'Проверяет: [FR-10](../spec.md#L95), [FR-1](../spec.md#L29)');
+caught('SL-19', 'comments/slices/002-comments.md', 'Проверяет: [FR-2](../spec.md#L36)', 'Проверяет: [FR-1](../spec.md#L29)');
+caught('SL-28', 'comments/slices/002-comments.md', 'Проверяет: [FR-2](../spec.md#L36)', 'Проверяет: FR-2');
+caught('SL-28', 'comments/slices/002-comments.md', ' ([Dev Spec](../spec.md))', '');
+caught('SL-28', 'comments/slices/002-comments.md', 'Основание: FR-1,', 'Основание: [FR-1](../spec.md#L29),');
+caught('SL-28', 'comments/slices/README.md', '| [FR-8](../spec.md#L81) | 003 |', '| FR-8 | 003 |');
 caught('SL-20', 'comments/slices/002-comments.md', 'AC-002-F2 Удалённый', 'AC-002-B9 Удалённый');
 caught('SL-22', 'comments/slices/002-comments.md', 'THEN отказ «Нет доступа к задаче», комментарий не сохранён', 'THEN мок tasks-core вернул отказ');
 caught('SL-23', 'comments/slices/002-comments.md', 'на его месте «Комментарий удалён»', 'на его месте «Удалено руководителем»');
@@ -87,7 +97,7 @@ caught('SL-24', 'comments/slices/002-comments.md', 'WHEN Дина отправл
 caught('SL-25', 'comments/slices/002-comments.md', 'уведомления об упоминаниях (003)', 'уведомления об упоминаниях (007)');
 
 // README и ADR
-caught('RM-02', 'comments/slices/README.md', '| FR-8 | 003 |', '| FR-8 | 002 |');
+caught('RM-02', 'comments/slices/README.md', '| [FR-8](../spec.md#L81) | 003 |', '| [FR-8](../spec.md#L81) | 002 |');
 caught('RM-04', 'comments/slices/README.md', '| FR-6, FR-7 |', '| FR-6 |');
 caught('AD-04', 'adr/0001-mention-notifications.md', 'Выбран.', 'Хороший вариант.');
 caught('AD-05', 'adr/0001-mention-notifications.md', '- минус: сбой notify-service роняет публикацию (FR-10)\n\nОтклонён: не выполняет FR-10.', '- минус: сложно\n\nОтклонён: не нравится.');
@@ -97,7 +107,7 @@ caught('AD-08', 'adr/0001-mention-notifications.md', ' — блокирует sl
 
 test('gen readme: README собирается заново из slices', () => {
   const cwd = workspace();
-  edit(cwd, 'comments/slices/README.md', '| FR-8 | 003 |', '| FR-8 | 002 |');
+  edit(cwd, 'comments/slices/README.md', '| [FR-8](../spec.md#L81) | 003 |', '| [FR-8](../spec.md#L81) | 002 |');
   assert.equal(run(cwd, 'gen', 'readme', 'docs/comments').code, 0);
   const res = check(cwd);
   assert.ok(!rules(res).includes('RM-02'), rules(res).join(', '));
@@ -113,6 +123,92 @@ test('gen guessed: строит таблицу и сохраняет «Чем п
   const md = fs.readFileSync(file(cwd, 'comments/brainstorming.md'), 'utf8');
   assert.match(md, /\| 1 \| Любой участник проекта \| Любой, кто видит задачу \| Участник без доступа/);
   assert.doesNotMatch(md, /\| 7 \| Только тех/);
+});
+
+test('gen links: номера → ссылки на строку, устаревшие обновляются', () => {
+  const cwd = workspace();
+  edit(cwd, 'comments/spec.md', '[9](brainstorming.md#L23)', '9');
+  edit(cwd, 'comments/spec.md', '[П1](brainstorming.md#L47)', '[П1](brainstorming.md#L40)');
+  assert.ok(rules(check(cwd)).includes('SP-21'));
+  assert.equal(run(cwd, 'gen', 'links', 'docs/comments').code, 0);
+  const res = check(cwd);
+  assert.deepEqual(rules(res), []);
+  const md = fs.readFileSync(file(cwd, 'comments/spec.md'), 'utf8');
+  assert.match(md, /Из протокола: \[9\]\(brainstorming\.md#L23\)/);
+  assert.match(md, /\[4\]\(brainstorming\.md#L18\), \[П1\]\(brainstorming\.md#L47\)/);
+});
+
+test('gen links: старый раздел «Трассировка» переносится', () => {
+  const cwd = workspace();
+  const f = file(cwd, 'comments/spec.md');
+  const md = fs
+    .readFileSync(f, 'utf8')
+    .replace(/^Из протокола:.*\n/gm, '')
+    .replace('## Открытые вопросы', '## Открытые вопросы')
+    .replace(/\s*$/, '\n\n## Трассировка\n\n| Протокол | Куда |\n|---|---|\n| 1 | FR-1 |\n| 2 | FR-2 |\n| 3 | FR-3 |\n| 4, П1 | FR-4 |\n| 5 | FR-5 |\n| 6 | FR-6 |\n| 7 | FR-7 |\n| 8 | FR-8, FR-10 |\n| 9 | не про поведение: повтор при правке решает сервис уведомлений |\n| 10 | NFR-1, NFR-2, NFR-3 |\n');
+  fs.writeFileSync(f, md);
+  assert.ok(rules(check(cwd)).includes('SP-13'));
+  const out = run(cwd, 'gen', 'links', 'docs/comments');
+  assert.match(out.out, /раздел «Трассировка» перенесён/);
+  const after = fs.readFileSync(f, 'utf8');
+  assert.doesNotMatch(after, /## Трассировка/);
+  assert.match(after, /## Не про поведение\n- повтор при правке решает сервис уведомлений \(из протокола: \[9\]\(brainstorming\.md#L23\)\)/);
+  assert.match(after, /```\nИз протокола: \[8\]\(brainstorming\.md#L22\)\n\n## Нефункциональные/);
+  // FR-9 теперь без источника — это и должен показать lint
+  assert.deepEqual(rules(check(cwd)), ['SP-16']);
+});
+
+test('trace: каждая строка протокола и куда ушла, кликабельные file:line', () => {
+  const cwd = workspace();
+  const r = run(cwd, 'trace', 'docs/comments');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /#4 +docs\/comments\/brainstorming\.md:18 +15 минут, пометка «изменён»\n +→ FR-4 docs\/comments\/spec\.md:\d+/);
+  assert.match(r.out, /#П1 +docs\/comments\/brainstorming\.md:47/);
+  edit(cwd, 'comments/spec.md', ', [П1](brainstorming.md#L47)', '');
+  const lost = run(cwd, 'trace', 'docs/comments');
+  assert.equal(lost.code, 1);
+  assert.match(lost.out, /#П1[^\n]*\n +→ НИКУДА/);
+});
+
+test('DF-03: номера строк в ссылках на протокол не отменяют одобрение', () => {
+  const cwd = gitWorkspace();
+  edit(cwd, 'comments/spec.md', '[9](brainstorming.md#L23)', '[9](brainstorming.md#L24)');
+  assert.ok(!diffRules(cwd).includes('DF-03'));
+});
+
+test('close: не закрывает, пока slices не одобрены', () => {
+  const cwd = workspace();
+  const r = run(cwd, 'close', 'docs/comments');
+  assert.equal(r.code, 1);
+  assert.match(r.out, /НЕ ЗАКРЫТО: slices не одобрены/);
+  assert.ok(fs.existsSync(file(cwd, 'comments/brainstorming.md')));
+});
+
+test('close: удаляет протокол и следы его в spec, ссылки на FR остаются верными', () => {
+  const cwd = gitWorkspace();
+  assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
+  const r = run(cwd, 'close', 'docs/comments');
+  assert.equal(r.code, 0, r.out);
+  assert.ok(!fs.existsSync(file(cwd, 'comments/brainstorming.md')));
+  const spec = fs.readFileSync(file(cwd, 'comments/spec.md'), 'utf8');
+  assert.doesNotMatch(spec, /протокол/i);
+  assert.match(spec, /Статус: одобрено/);
+  const res = check(cwd);
+  assert.deepEqual(rules(res), []);
+  assert.match(res.stage, /протокол убран/);
+  const slice = fs.readFileSync(file(cwd, 'comments/slices/002-comments.md'), 'utf8');
+  const fr4 = spec.split('\n').findIndex((t) => t.startsWith('FR-4 ')) + 1;
+  assert.match(slice, new RegExp(`\\[FR-4\\]\\(\\.\\./spec\\.md#L${fr4}\\)`));
+  // по git: удаление протокола после закрытия и одобренные документы — не нарушение
+  assert.deepEqual(diffRules(cwd), []);
+});
+
+test('DF-01: протокол удалён руками до закрытия', () => {
+  const cwd = gitWorkspace();
+  edit(cwd, 'comments/spec.md', /Статус: одобрено.*/.exec(fs.readFileSync(file(cwd, 'comments/spec.md'), 'utf8'))[0], 'Статус: на ревью');
+  fs.rmSync(file(cwd, 'comments/brainstorming.md'));
+  assert.ok(diffRules(cwd).includes('DF-01'));
+  assert.ok(rules(check(cwd)).includes('SP-21'));
 });
 
 test('gate: ворота открываются и закрываются по статусам', () => {
@@ -167,7 +263,7 @@ test('DF-01: дописать строку можно', () => {
 });
 test('DF-02: ID не пропадают', () => {
   const cwd = gitWorkspace();
-  edit(cwd, 'comments/slices/002-comments.md', 'AC-002-F2 Удалённый комментарий [FR-5]', 'AC-002-F4 Удалённый комментарий [FR-5]');
+  edit(cwd, 'comments/slices/002-comments.md', 'AC-002-F2 Удалённый комментарий', 'AC-002-F4 Удалённый комментарий');
   assert.ok(diffRules(cwd).includes('DF-02'));
 });
 test('DF-03: одобренный spec не меняется без сброса статуса', () => {
@@ -267,7 +363,7 @@ test('approve slices: ставит «одобрено <дата>» и показ
   const r = run(cwd, 'approve', 'slices', 'docs/comments');
   assert.equal(r.code, 0, r.out);
   assert.equal(status(cwd, 'comments/slices/README.md'), `Статус: одобрено ${today()}`);
-  assert.match(r.out, /Планирование завершено/);
+  assert.match(r.out, /перед merge убрать протокол: node scripts\/sdd-lint\.mjs close docs\/comments/);
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
 });
 test('approve slices: нельзя, пока spec не одобрен', () => {
