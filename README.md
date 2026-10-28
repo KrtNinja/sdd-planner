@@ -25,7 +25,24 @@
 | Ревью | `/sdd-review <feature> spec\|slices\|adr` | `docs/<feature>/review/<режим>.md`, находки R1, R2 … | блокеры закрыты до одобрения |
 | Позднее решение | `/sdd-decide <feature> "<вопрос>" "<решение>"` или `/sdd-decide <feature> R2 "<решение>"` | протокол → FR → AC | — |
 
-`/sdd-lint <feature>` в любой момент показывает ошибки и следующий шаг.
+`/sdd-lint <feature>` в любой момент показывает ошибки и следующий шаг, `/sdd-lint` без аргументов —
+все фичи с текущим этапом и готовые команды.
+
+### Подсказки при вводе
+
+- **Что принимает скилл.** После имени скилла в списке команд серым показан `argument-hint`:
+  `/sdd-review` → `<feature> spec|slices|adr [NNNN]`. Сборка без поддержки поля просто его не покажет.
+- **Путь по Tab.** В строке GigaCode `@` после команды включает дополнение путей:
+  `/sdd-lint guard @docs/com⇥` → `@docs/comments/` → `@docs/comments/sp⇥`. Скиллы и lint понимают
+  фичу в любом виде: `comments`, `docs/comments`, `@docs/comments/`, файл внутри фичи.
+- **Забыли аргумент — получите варианты.** `sdd-lint approve` без варианта, `sdd-lint gate spec` без
+  фичи, опечатка `aprove` — в ответ список готовых команд со slug ваших фич, а не «неверный вызов».
+  `sdd-lint help <команда>` — справка по одной команде.
+- **Tab в терминале.** `sdd-lint` дополняет команды, варианты, фичи, номера ADR и slices, а пути —
+  по папкам, как `cd` (установка — шаг 5 ниже).
+
+Свой Tab-дополнитель аргументов у скилла (как у `/directory add`) GigaCode и Qwen Code расширениям
+пока не дают: функции дополнения есть только у встроенных команд, расширение задаёт лишь `argument-hint`.
 
 В GigaCode CLI скилл вызывается `/skills sdd-grill <feature>`; если сборка показывает скиллы как команды — `/sdd-grill <feature>`.
 
@@ -40,6 +57,7 @@
 
 | Команда | Что делает | Вместо чего |
 |---|---|---|
+| `/sdd-lint` | фичи с этапом и готовые команды; `help <команда>` — справка по одной | поиска нужной команды по README |
 | `/sdd-lint <feature>` | ~70 проверок с ID правила и подсказкой «как исправить» | чеклистов, которые модель проходила сама |
 | `sdd-lint gate <этап> docs/<feature>` | ворота этапа: код 3 — начинать нельзя | «прочитай статус и остановись» |
 | `sdd-lint approve spec\|slices\|adr docs/<feature>` | ставит «одобрено <дата>» («принято» для ADR), если lint чист и humanizer не тронул защищённые части | ручной правки строки «Статус:» |
@@ -103,6 +121,12 @@ skills/
    ln -s ~/tools/sdd-workflow/skills/sdd-lint/scripts/pre-commit .git/hooks/pre-commit
    ```
    Hook проверяет рабочую копию фич, чьи файлы в коммите. Обойти разово — `git commit --no-verify`.
+5. По желанию — `sdd-lint` в терминале с Tab-дополнением:
+   ```bash
+   ln -s ~/tools/sdd-workflow/skills/sdd-lint/scripts/sdd-lint.mjs ~/.local/bin/sdd-lint
+   echo 'source <(sdd-lint completion bash)' >> ~/.bashrc   # zsh: completion zsh в ~/.zshrc после compinit
+   ```
+   Дальше `sdd-lint ⇥` показывает фичи и команды, `sdd-lint guard docs/⇥` спускается по папкам.
 
 Нужен Node 18+ для `sdd-lint`.
 

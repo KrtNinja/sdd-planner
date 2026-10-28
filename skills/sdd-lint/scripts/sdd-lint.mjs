@@ -21,6 +21,8 @@ const cmds = (text) => text.replace(/(?<![\w/])\/(sdd-[a-z]+|humanizer)\b/g, (_,
 
 const HELP = `sdd-lint — проверки артефактов планирования SDD
 
+  sdd-lint
+      без аргументов — фичи в docs/ с текущим этапом и готовые команды
   sdd-lint [check] docs/<feature> [--snapshot] [--json]
       все проверки и текущий этап. Код 1 — есть ошибки.
       --snapshot — заодно снять снимок защищённых частей для guard
@@ -54,6 +56,12 @@ const HELP = `sdd-lint — проверки артефактов планиро�
   sdd-lint next <FR|NFR|slice|adr> docs/<feature>
   sdd-lint next AC docs/<feature> <NNN> [B|F]
       следующий свободный номер
+  sdd-lint help [<команда>]
+      справка: вся или по одной команде
+  sdd-lint completion <bash|zsh>
+      скрипт Tab-дополнения для терминала: source <(sdd-lint completion bash)
+
+Фича — docs/<feature>, просто <feature> или любой путь внутри неё (@docs/<feature>/spec.md).
 
 Коды выхода: 0 — порядок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты.
 
@@ -156,16 +164,62 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === '--snapshot') flags.snapshot = true;
   else if (a === '--base') flags.base = argv[++i];
   else if (a.startsWith('--base=')) flags.base = a.slice(7);
-  else pos.push(a);
+  // «@docs/comments/» — так путь дописывает Tab в строке GigaCode / Qwen Code.
+  else pos.push(a.replace(/^@(?=.)/, ''));
 }
-const COMMANDS = ['check', 'gate', 'approve', 'diff', 'snapshot', 'guard', 'gen', 'trace', 'close', 'next', 'help'];
-const cmd = COMMANDS.includes(pos[0]) ? pos.shift() : 'check';
+// Команды и их аргументы — одно описание для меню, подсказок и Tab-дополнения.
+const CMD_INFO = {
+  check: 'все проверки и текущий этап',
+  gate: 'ворота перед этапом',
+  approve: 'одобрить spec, slices или принять ADR',
+  gen: 'собрать README, «угадал бы», ссылки',
+  guard: 'сверка после humanizer',
+  snapshot: 'снимок перед humanizer',
+  trace: 'протокол → FR/NFR',
+  diff: 'изменения против git',
+  close: 'убрать протокол перед merge',
+  next: 'следующий свободный номер',
+  help: 'справка по команде',
+  completion: 'Tab-дополнение для bash / zsh',
+};
+const CHOICES = {
+  gate: { spec: 'можно ли писать Dev Spec', slices: 'можно ли резать slices', adr: 'можно ли писать ADR', decide: 'можно ли проводить решение', build: 'можно ли начинать реализацию' },
+  approve: { spec: 'одобрить Dev Spec', slices: 'одобрить slices', adr: 'принять ADR' },
+  gen: { readme: 'slices/README.md: таблица, покрытие, порядок', guessed: '«Где агент угадал бы не так»', links: 'ссылки на строки протокола и spec' },
+  next: { FR: 'номер нового FR', NFR: 'номер нового NFR', AC: 'номер нового AC в slice', slice: 'номер нового slice', adr: 'номер нового ADR' },
+  completion: { bash: 'source <(sdd-lint completion bash)', zsh: 'source <(sdd-lint completion zsh)' },
+};
+// Что идёт после команды: варианты из CHOICES, фича, файл или папка, номер.
+const SLOTS = {
+  check: ['feature'],
+  gate: ['choice', 'feature'],
+  approve: ['choice', 'feature', 'adr'],
+  gen: ['choice', 'feature'],
+  next: ['choice', 'feature', 'slice', 'side'],
+  diff: ['feature'],
+  close: ['feature'],
+  trace: ['feature'],
+  guard: ['target'],
+  snapshot: ['target'],
+  help: ['command'],
+  completion: ['choice'],
+};
+const FLAGS = { check: ['--json', '--snapshot'], diff: ['--json', '--base'], guard: ['--json', '--base'] };
+const COMMANDS = Object.keys(CMD_INFO);
+const cmd = argv[0] === '__complete' ? '__complete' : COMMANDS.includes(pos[0]) ? pos.shift() : 'check';
 const usage = (msg) => {
-  console.error(msg ? `${msg}\nСправка: ${lintCmd('help')}` : HELP);
+  console.error(msg ? `${msg}\nСправка: ${lintCmd('help', cmd === 'check' ? '' : cmd).trim()}` : HELP);
   process.exit(2);
 };
-if (cmd === 'help' || argv.includes('--help') || argv.includes('-h')) {
-  console.log(HELP);
+// Справка по одной команде — её блок из HELP.
+function helpFor(name) {
+  const blocks = HELP.split('\n\n')[1].split(/\n(?=  sdd-lint)/);
+  const own = blocks.filter((b) => b.match(/^\s*sdd-lint\s+\[?(\S+?)\]?(\s|$)/)?.[1] === name);
+  return own.length ? own.join('\n') : null;
+}
+if (cmd === 'help' || (cmd !== '__complete' && (argv.includes('--help') || argv.includes('-h')))) {
+  const one = cmd === 'help' && pos[0] ? helpFor(pos[0]) : cmd !== 'help' && cmd !== 'check' ? helpFor(cmd) : null;
+  console.log(one ? `${one}\n\nВсе команды: ${lintCmd('help')}` : HELP);
   process.exit(0);
 }
 
@@ -1271,9 +1325,56 @@ function gitList(g, ref, d) {
 }
 
 // ---------- команды ----------
-function needDir(d) {
-  if (!d) usage('Укажи папку фичи: docs/<feature>');
-  if (fs.existsSync(d) && fs.statSync(d).isDirectory()) return d;
+const DOCS = 'docs';
+const isDir = (d) => fs.existsSync(d) && fs.statSync(d).isDirectory();
+// Фичи в docs/: папки с протоколом или spec (adr — не фича).
+function listFeatures(root = DOCS) {
+  if (!isDir(root)) return [];
+  return fs
+    .readdirSync(root)
+    .filter((x) => x !== 'adr' && isDir(path.join(root, x)))
+    .filter((x) => ['brainstorming.md', 'spec.md'].some((f) => fs.existsSync(path.join(root, x, f))))
+    .sort();
+}
+// «comments», «docs/comments», «docs/comments/slices/002-x.md» → «docs/comments»; иначе null.
+function resolveFeature(d) {
+  if (!d) return null;
+  const clean = d.replace(/^@/, '').replace(/[\\/]+$/, '');
+  if (!/[\\/]/.test(clean) && isDir(path.join(DOCS, clean))) return path.join(DOCS, clean);
+  if (!fs.existsSync(clean)) return null;
+  const parts = path.relative(process.cwd(), path.resolve(clean)).split(path.sep);
+  const i = parts.length > 1 ? parts.lastIndexOf(DOCS, parts.length - 2) : -1;
+  if (i >= 0 && parts[i + 1] !== 'adr') return parts.slice(0, i + 2).join('/');
+  return isDir(clean) ? clean : null;
+}
+// Аргументы до фичи в текущем вызове — чтобы предложить готовую команду.
+const callPrefix = (n) => [cmd === 'check' ? null : cmd, ...pos.slice(0, n)].filter(Boolean);
+function pickFeature(why, n) {
+  const known = listFeatures();
+  if (!known.length) {
+    console.error(isDir(DOCS) ? `${why}. В ${DOCS}/ пока нет фич. Новая начинается с ${skill('sdd-grill', '<feature>')}.` : `${why}. Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
+    process.exit(2);
+  }
+  const lines = known.map((f) => `  ${lintCmd(...callPrefix(n), f)}`);
+  console.error(`${why}. Фичи в ${DOCS}/:\n${lines.join('\n')}`);
+  process.exit(2);
+}
+// Нет варианта (approve без spec|slices|adr) — показать варианты готовыми командами.
+function pickChoice(name, n = 0) {
+  const ex = pos[n + 1] && resolveFeature(pos[n + 1]) ? pos[n + 1] : listFeatures()[0] || '<feature>';
+  const opts = Object.entries(CHOICES[name]);
+  // completion запускают в терминале, у остальных после варианта идёт фича.
+  const line = (k) => (name === 'completion' ? `sdd-lint completion ${k}` : SLOTS[name].includes('feature') ? lintCmd(name, k, ex) : lintCmd(name, k));
+  const cmdsList = opts.map(([k]) => line(k));
+  const w = Math.max(...cmdsList.map((x) => x.length));
+  const bad = pos[n] ? `Нет варианта «${pos[n]}» у ${name}` : `${name} — выбери вариант`;
+  console.error(`${bad}:\n${opts.map(([, d], i) => `  ${cmdsList[i].padEnd(w)}  — ${d}`).join('\n')}`);
+  process.exit(2);
+}
+function needDir(d, n = 0) {
+  if (!d) pickFeature('Укажи фичу', n);
+  const found = resolveFeature(d);
+  if (found) return found;
   const parent = path.dirname(path.resolve(d));
   const slug = path.basename(path.resolve(d));
   if (!fs.existsSync(parent)) {
@@ -1311,8 +1412,8 @@ function cmdCheck() {
 function cmdGate() {
   const stage = pos[0];
   const gates = ['spec', 'slices', 'adr', 'decide', 'build'];
-  if (!gates.includes(stage)) usage(`Этап для gate: ${gates.join(', ')}`);
-  const m = loadFeature(needDir(pos[1]));
+  if (!gates.includes(stage)) pickChoice('gate');
+  const m = loadFeature(needDir(pos[1], 1));
   runChecks(m);
   const errorsIn = (files) => findings.filter((x) => x.level === 'err' && files.map(rel).includes(x.file));
   const dir = rel(m.dir);
@@ -1349,8 +1450,8 @@ function cmdGate() {
 // и защищённые части совпадают со снимком, если он есть.
 function cmdApprove() {
   const what = pos[0];
-  if (!['spec', 'slices', 'adr'].includes(what)) usage('approve spec | slices docs/<feature>, approve adr docs/<feature> [NNNN]');
-  const d = needDir(pos[1]);
+  if (!['spec', 'slices', 'adr'].includes(what)) pickChoice('approve');
+  const d = needDir(pos[1], 1);
   const m = loadFeature(d);
   const dir = rel(m.dir);
   const refuse = (msg, code = 3) => {
@@ -1483,8 +1584,13 @@ function cmdDiff() {
 }
 
 const targetFiles = (t) => {
-  if (!t || !fs.existsSync(t)) usage(`Нет файла или папки ${t || ''}`);
-  return fs.statSync(t).isDirectory() ? featureFiles(loadFeature(t)) : [path.resolve(t)];
+  if (!t) pickFeature('Укажи файл или фичу', 0);
+  if (!fs.existsSync(t)) {
+    const f = resolveFeature(t);
+    if (!f) usage(`Нет файла или папки ${t}`);
+    t = f;
+  }
+  return fs.statSync(t).isDirectory() ? featureFiles(loadFeature(resolveFeature(t) || t)) : [path.resolve(t)];
 };
 
 function cmdSnapshot() {
@@ -1836,8 +1942,8 @@ function cmdTrace() {
 
 function cmdGen() {
   const what = pos[0];
-  if (!['readme', 'guessed', 'links'].includes(what)) usage('gen readme | gen guessed | gen links');
-  const m = loadFeature(needDir(pos[1]));
+  if (!['readme', 'guessed', 'links'].includes(what)) pickChoice('gen');
+  const m = loadFeature(needDir(pos[1], 1));
   if (what === 'readme') genReadme(m);
   else if (what === 'links') genLinks(m);
   else genGuessed(m);
@@ -1845,7 +1951,8 @@ function cmdGen() {
 
 function cmdNext() {
   const kind = (pos[0] || '').toLowerCase();
-  const m = loadFeature(needDir(pos[1]));
+  if (!['fr', 'nfr', 'ac', 'slice', 'adr'].includes(kind)) pickChoice('next');
+  const m = loadFeature(needDir(pos[1], 1));
   const max = (arr) => arr.reduce((a, b) => Math.max(a, b), 0);
   if (kind === 'fr' || kind === 'nfr') {
     const pre = kind.toUpperCase();
@@ -1864,4 +1971,167 @@ function cmdNext() {
   } else usage('next FR | NFR | AC | slice | adr');
 }
 
-({ check: cmdCheck, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, next: cmdNext })[cmd]();
+// ---------- меню, опечатки, Tab-дополнение ----------
+// Без аргументов: фичи с этапом и командами, которые можно скопировать.
+function cmdMenu() {
+  const known = listFeatures();
+  const out = ['sdd-lint — проверки планирования SDD', ''];
+  if (!isDir(DOCS)) out.push(`Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
+  else if (!known.length) out.push(`В ${DOCS}/ пока нет фич. Новая начинается с ${skill('sdd-grill', '<feature>')}.`);
+  else {
+    out.push(`Фичи в ${DOCS}/:`);
+    const w = Math.max(...known.map((f) => f.length));
+    for (const f of known) {
+      const st = stageOf(loadFeature(path.join(DOCS, f)));
+      out.push(`  ${f.padEnd(w)}  ${st.now}`);
+      const step = st.next.find((x) => !x.startsWith('по желанию')) || st.next[0];
+      if (step) out.push(`  ${' '.repeat(w)}  → ${step}`);
+    }
+  }
+  const ex = known[0] || '<feature>';
+  const rows = [
+    [lintCmd(ex), CMD_INFO.check],
+    [lintCmd('approve', 'spec|slices|adr', ex), CMD_INFO.approve],
+    [lintCmd('gate', 'spec|slices|adr|decide|build', ex), CMD_INFO.gate],
+    [lintCmd('gen', 'readme|guessed|links', ex), CMD_INFO.gen],
+    [lintCmd('guard', `${DOCS}/${ex}/spec.md`), CMD_INFO.guard],
+    [lintCmd('trace', ex), CMD_INFO.trace],
+    [lintCmd('diff', ex), CMD_INFO.diff],
+    [lintCmd('next', 'FR|NFR|AC|slice|adr', ex), CMD_INFO.next],
+    [lintCmd('close', ex), CMD_INFO.close],
+  ];
+  const w = Math.max(...rows.map(([c]) => c.length));
+  out.push('', 'Команды:', ...rows.map(([c, d]) => `  ${c.padEnd(w)}  ${d}`));
+  out.push('', `Справка по команде: ${lintCmd('help', '<команда>')}. Путь к фиче дописывает Tab после @: @${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`);
+  console.log(out.join('\n'));
+  process.exit(0);
+}
+
+function distance(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+// «aprove docs/x» — не фича, а опечатка в команде.
+function checkTypo() {
+  const w = pos[0];
+  if (!w || /[\\/.]/.test(w) || resolveFeature(w)) return;
+  const near = COMMANDS.map((c) => [c, distance(w.toLowerCase(), c)]).filter(([c, n]) => n <= (c.length > 4 ? 2 : 1)).sort((a, b) => a[1] - b[1]);
+  if (!near.length) return;
+  const fixed = lintCmd(near[0][0], ...pos.slice(1));
+  console.error(`Нет команды «${w}». Может, ${near[0][0]}? ${fixed}`);
+  process.exit(2);
+}
+
+// Варианты для Tab: «значение\tописание» по строке. words — слова после имени команды, последнее — дописываемое.
+function complete(words) {
+  const cur = words.length ? words[words.length - 1] : '';
+  const prev = words.slice(0, -1);
+  const out = [];
+  const emit = (v, d = '') => {
+    if (v.startsWith(cur) && !out.some((x) => x.split('\t')[0] === v)) out.push(d ? `${v}\t${d}` : v);
+  };
+  const paths = (dirsOnly) => {
+    const dirPart = cur.includes('/') ? cur.slice(0, cur.lastIndexOf('/') + 1) : '';
+    const base = cur.slice(dirPart.length);
+    if (!isDir(dirPart || '.')) return;
+    for (const e of fs.readdirSync(dirPart || '.').sort()) {
+      if (e.startsWith('.') && !base.startsWith('.')) continue;
+      if (isDir(path.join(dirPart || '.', e))) emit(`${dirPart}${e}/`);
+      else if (!dirsOnly && e.endsWith('.md')) emit(`${dirPart}${e}`);
+    }
+  };
+  const features = (dirsOnly) => {
+    if (cur.includes('/') || cur.startsWith('.')) return paths(dirsOnly);
+    for (const f of listFeatures()) {
+      let st = '';
+      try {
+        st = stageOf(loadFeature(path.join(DOCS, f))).now;
+      } catch {}
+      emit(f, st);
+    }
+    if (isDir(DOCS)) emit(`${DOCS}/`);
+  };
+  if (prev[prev.length - 1] === '--base') {
+    let refs = ['HEAD'];
+    try {
+      refs = [...refs, ...git(['for-each-ref', '--format=%(refname:short)', 'refs/heads', 'refs/remotes', 'refs/tags'], process.cwd()).split('\n').filter(Boolean)];
+    } catch {}
+    refs.forEach((r) => emit(r));
+    return out;
+  }
+  const args = prev.filter((a, i) => !a.startsWith('-') && prev[i - 1] !== '--base').map((a) => a.replace(/^@/, ''));
+  const c = COMMANDS.includes(args[0]) ? args.shift() : 'check';
+  if (cur.startsWith('-')) {
+    (FLAGS[c] || []).forEach((f) => emit(f));
+    return out;
+  }
+  if (c === 'check' && !args.length) {
+    features(true);
+    for (const k of COMMANDS.filter((k) => k !== 'check')) emit(k, CMD_INFO[k]);
+    return out;
+  }
+  const slot = (SLOTS[c] || [])[args.length];
+  const feature = () => resolveFeature(args[1]);
+  if (slot === 'choice') Object.entries(CHOICES[c]).forEach(([k, d]) => emit(k, d));
+  else if (slot === 'command') COMMANDS.forEach((k) => emit(k, CMD_INFO[k]));
+  else if (slot === 'feature') features(true);
+  else if (slot === 'target') features(false);
+  else if (slot === 'adr' && args[0] === 'adr' && feature())
+    loadFeature(feature()).featureAdrs.forEach((a) => emit(a.num, a.status || ''));
+  else if (slot === 'slice' && /^ac$/i.test(args[0]) && feature())
+    [...loadFeature(feature()).slices].forEach(([num, s]) => emit(num, s.title || ''));
+  else if (slot === 'side' && /^ac$/i.test(args[0])) {
+    emit('B', 'AC сервисной половины');
+    emit('F', 'AC frontend-половины');
+  }
+  return out;
+}
+
+// Скрипт для bash / zsh с путём к этому файлу: работает и через alias, и через ссылку в PATH.
+function cmdCompletion() {
+  const shell = pos[0];
+  if (!['bash', 'zsh'].includes(shell)) pickChoice('completion');
+  const self = fs.realpathSync(process.argv[1]).replace(/'/g, `'\\''`);
+  const run = `node '${self}' __complete`;
+  if (shell === 'bash') {
+    console.log(`# sdd-lint: Tab-дополнение для bash. В ~/.bashrc: source <(sdd-lint completion bash)
+_sdd_lint() {
+  local IFS=$'\\n' out
+  out=$(${run} "\${COMP_WORDS[@]:1:COMP_CWORD}" 2>/dev/null) || return 0
+  COMPREPLY=($(printf '%s\\n' "$out" | cut -f1))
+  if [[ \${#COMPREPLY[@]} -eq 1 && \${COMPREPLY[0]} == */ ]]; then compopt -o nospace; fi
+}
+complete -F _sdd_lint sdd-lint sdd-lint.mjs`);
+  } else {
+    console.log(`# sdd-lint: Tab-дополнение для zsh. В ~/.zshrc после compinit: source <(sdd-lint completion zsh)
+_sdd_lint() {
+  local -a lines vals disp dirs
+  local line v
+  lines=("\${(@f)$(${run} "\${(@)words[2,CURRENT]}" 2>/dev/null)}")
+  for line in "\${lines[@]}"; do
+    [[ -z $line ]] && continue
+    v=\${line%%$'\\t'*}
+    if [[ $v == */ ]]; then dirs+=("$v"); continue; fi
+    vals+=("$v")
+    if [[ $line == *$'\\t'* ]]; then disp+=("\${(r:14:)v} -- \${line#*$'\\t'}"); else disp+=("$v"); fi
+  done
+  (( \${#dirs} )) && compadd -S '' -- "\${dirs[@]}"
+  (( \${#vals} )) && compadd -l -d disp -- "\${vals[@]}"
+}
+compdef _sdd_lint sdd-lint sdd-lint.mjs`);
+  }
+  process.exit(0);
+}
+
+if (cmd === '__complete') {
+  console.log(complete(argv.slice(1)).join('\n'));
+  process.exit(0);
+}
+if (cmd === 'check' && !argv.length) cmdMenu();
+if (cmd === 'check') checkTypo();
+
+({ completion: cmdCompletion, check: cmdCheck, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, next: cmdNext })[cmd]();

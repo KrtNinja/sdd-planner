@@ -474,3 +474,72 @@ test('ревью ADR: блокер в review/adr-NNNN.md держит approve ad
   assert.match(run(cwd, 'docs/comments').out, /ADR 0001 «предложено» — ревью уже было/);
   assert.equal(run(cwd, 'approve', 'adr', 'docs/comments').code, 1);
 });
+
+// ---------- вызов без подсказок: меню, slug, опечатки, Tab ----------
+const lines = (out) => out.trim().split('\n').map((l) => l.split('\t')[0]);
+test('без аргументов: меню с фичами, этапом и готовыми командами', () => {
+  const r = run(workspace());
+  assert.equal(r.code, 0);
+  assert.match(r.out, /comments\s+Slices на ревью/);
+  assert.match(r.out, /→ ревью в новой сессии: \/sdd-review comments slices/);
+  assert.match(r.out, /node scripts\/sdd-lint\.mjs approve spec\|slices\|adr comments/);
+});
+test('без аргументов вне репозитория с доками: подсказка, откуда запускать', () => {
+  const r = run(fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-lint-empty-')));
+  assert.match(r.out, /Нет папки docs\/ — запускайте из корня/);
+});
+test('фича — slug, путь с @ или файл внутри неё', () => {
+  const cwd = workspace();
+  for (const arg of ['comments', '@docs/comments/', 'docs/comments/slices/002-comments.md']) {
+    const r = run(cwd, arg);
+    assert.equal(r.code, 0, arg);
+    assert.match(r.out, /Slices на ревью/, arg);
+  }
+  assert.equal(run(cwd, 'next', 'FR', 'comments').out, run(cwd, 'next', 'FR', 'docs/comments').out);
+});
+test('не хватает варианта или фичи: варианты готовыми командами', () => {
+  const cwd = workspace();
+  let r = run(cwd, 'approve');
+  assert.equal(r.code, 2);
+  assert.match(r.out, /approve — выбери вариант/);
+  assert.match(r.out, /approve slices comments\s+— одобрить slices/);
+  r = run(cwd, 'gate', 'spec');
+  assert.equal(r.code, 2);
+  assert.match(r.out, /Укажи фичу\. Фичи в docs\/:\n.*gate spec comments/);
+});
+test('опечатка в команде: «Может, approve?»', () => {
+  const r = run(workspace(), 'aprove', 'slices', 'comments');
+  assert.equal(r.code, 2);
+  assert.match(r.out, /Нет команды «aprove»\. Может, approve\? node scripts\/sdd-lint\.mjs approve slices comments/);
+});
+test('help <команда> — только её справка', () => {
+  const r = run(workspace(), 'help', 'approve');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /approve adr docs\/<feature> \[NNNN\]/);
+  assert.doesNotMatch(r.out, /gen readme/);
+});
+test('Tab: команды, варианты, фичи, спуск по папкам, номера', () => {
+  const cwd = workspace();
+  const c = (...w) => lines(run(cwd, '__complete', ...w).out);
+  assert.ok(['comments', 'docs/', 'approve', 'gate'].every((x) => c('').includes(x)));
+  assert.deepEqual(c('ap'), ['approve']);
+  assert.deepEqual(c('approve', ''), ['spec', 'slices', 'adr']);
+  assert.deepEqual(c('approve', 'spec', 'co'), ['comments']);
+  assert.deepEqual(c('approve', 'adr', 'comments', ''), ['0001']);
+  assert.deepEqual(c('guard', 'docs/comments/'), ['docs/comments/brainstorming.md', 'docs/comments/slices/', 'docs/comments/spec.md']);
+  assert.deepEqual(c('next', 'AC', 'comments', ''), ['001', '002', '003']);
+  assert.deepEqual(c('next', 'AC', 'comments', '002', ''), ['B', 'F']);
+  assert.deepEqual(c('comments', '--'), ['--json', '--snapshot']);
+});
+test('completion bash|zsh печатает скрипт с путём к sdd-lint', () => {
+  const cwd = workspace();
+  assert.match(run(cwd, 'completion', 'bash').out, /complete -F _sdd_lint sdd-lint/);
+  assert.match(run(cwd, 'completion', 'zsh').out, /compdef _sdd_lint sdd-lint/);
+  assert.match(run(cwd, 'completion', 'bash').out, /sdd-lint\.mjs' __complete/);
+});
+test('у каждого sdd-скилла есть argument-hint', () => {
+  for (const d of fs.readdirSync(path.join(root, 'skills')).filter((x) => x.startsWith('sdd-'))) {
+    const md = fs.readFileSync(path.join(root, 'skills', d, 'SKILL.md'), 'utf8');
+    assert.match(md.split('---')[1], /\nargument-hint: '.+'/, d);
+  }
+});

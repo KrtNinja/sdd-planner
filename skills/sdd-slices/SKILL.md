@@ -1,12 +1,14 @@
 ---
 name: sdd-slices
 description: Этап 3 SDD. Режет одобренный Dev Spec на минимально нужное число вертикальных slices с AC-ID (WHEN/THEN) и разбивкой по сервисам, сначала согласуя нарезку таблицей. Запускай, когда spec.md одобрен и нужны slices.
+argument-hint: '<feature>'
 disable-model-invocation: true
 ---
 
 # sdd-slices — нарезка Dev Spec
 
 Скрипт lint: `node <папка этого скилла>/../sdd-lint/scripts/sdd-lint.mjs`, дальше — `<скрипт>`. Запускай из корня репозитория с доками.
+Фича в аргументах — slug (`comments`) или путь (`docs/comments`, `@docs/comments/` после Tab): это одно и то же, `@` и `docs/` отбрасывай. Фича не указана — запусти `<скрипт>` без аргументов: он покажет фичи и этап каждой; спроси, какую взять.
 
 Вход: `docs/<feature>/spec.md` со статусом «одобрено», ADR из `docs/adr/`.
 Выход: `docs/<feature>/slices/NNN-*.md` и `slices/README.md` со статусом «на ревью».

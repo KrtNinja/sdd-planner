@@ -1,12 +1,14 @@
 ---
 name: sdd-spec
 description: Этап 2 SDD. Собирает Dev Spec docs/<feature>/spec.md из протокола brainstorming — только поведение, FR/NFR с примерами на персонажах. Запускай после /sdd-grill, когда протокол готов и нужен Dev Spec.
+argument-hint: '<feature>'
 disable-model-invocation: true
 ---
 
 # sdd-spec — Dev Spec из протокола
 
 Скрипт lint: `node <папка этого скилла>/../sdd-lint/scripts/sdd-lint.mjs`, дальше — `<скрипт>`. Запускай из корня репозитория с доками.
+Фича в аргументах — slug (`comments`) или путь (`docs/comments`, `@docs/comments/` после Tab): это одно и то же, `@` и `docs/` отбрасывай. Фича не указана — запусти `<скрипт>` без аргументов: он покажет фичи и этап каждой; спроси, какую взять.
 
 Вход: `docs/<feature>/brainstorming.md` со статусом «готов».
 Выход: `docs/<feature>/spec.md` со статусом «на ревью»; у каждого требования — «Из протокола:» со ссылками на строки протокола.

@@ -1,12 +1,14 @@
 ---
 name: sdd-grill
 description: Этап 1 SDD. Grilling по новой фиче с записью каждого решения в протокол docs/<feature>/brainstorming.md. Запускай, когда человек приносит фичу одной фразой и хочет начать SDD, brainstorming или «пройтись по вопросам» перед Dev Spec.
+argument-hint: '<feature> ["фича одной фразой"]'
 disable-model-invocation: true
 ---
 
 # sdd-grill — brainstorming фичи
 
 Скрипт lint: `node <папка этого скилла>/../sdd-lint/scripts/sdd-lint.mjs`, дальше — `<скрипт>`. Запускай из корня репозитория с доками.
+Фича в аргументах — slug (`comments`) или путь (`docs/comments`, `@docs/comments/` после Tab): это одно и то же, `@` и `docs/` отбрасывай.
 
 Вход: фраза-запрос и slug папки фичи. Нет slug — предложи его из запроса и спроси.
 Выход: `docs/<feature>/brainstorming.md` — протокол: вопрос, рекомендация агента, решение человека.
