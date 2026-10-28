@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # sdd-slices — нарезка Dev Spec
 
-Скрипт lint: `node <папка этого скилла>/../sdd-lint/scripts/sdd-lint.mjs`, дальше — `<скрипт>`. Запускай из корня репозитория с доками.
+Lint: инструмент MCP `sdd_lint` этого расширения, аргументы скрипта — массивом в `args`: `<скрипт> gate spec docs/x` → `sdd_lint {"args": ["gate", "spec", "docs/x"]}`. Инструмента нет в списке — `node <папка этого скилла>/../sdd-lint/scripts/sdd-lint.mjs`. Дальше — `<скрипт>`. Запускай из корня репозитория с доками.
 Фича в аргументах — slug (`comments`) или путь (`docs/comments`, `@docs/comments/` после Tab): это одно и то же, `@` и `docs/` отбрасывай. Фича не указана — запусти `<скрипт>` без аргументов: он покажет фичи и этап каждой; спроси, какую взять.
 
 Вход: `docs/<feature>/spec.md` со статусом «одобрено», ADR из `docs/adr/`.
