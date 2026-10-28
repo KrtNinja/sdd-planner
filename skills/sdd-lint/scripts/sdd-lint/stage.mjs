@@ -1,0 +1,66 @@
+// Текущий этап фичи и блок «Следующий шаг».
+import { pendingAdrs } from './adr.mjs';
+import { skill, lintCmd } from './config.mjs';
+import { rel, approved } from './md.mjs';
+import { openBlockers, reviewKey } from './review.mjs';
+
+function handoff(m, what) {
+  const dir = rel(m.dir);
+  const target = what === 'spec' ? rel(m.specFile) : `${dir}/slices/`;
+  const human = what === 'spec' ? `${skill('humanizer', target)}` : `${skill('humanizer')} по каждому файлу в ${target}`;
+  const guard = lintCmd('guard', what === 'spec' ? target : dir);
+  const rv = m.reviews.get(what);
+  const open = openBlockers(rv);
+  return [
+    `по желанию убрать следы ИИ из прозы: ${human}, затем ${guard}`,
+    rv ? `ревью уже было: ${rel(rv.file)}; повторить в чистом контексте — ${skill('sdd-review', m.name, what)}` : `ревью в чистом контексте: ${skill('sdd-review', m.name, what)}`,
+    ...(open.length ? [blockersStep(m, rv, open)] : []),
+    `одобрить: ${lintCmd('approve', what, dir)}`,
+  ];
+}
+export function blockersStep(m, rv, open) {
+  const ids = open.map((r) => r.id);
+  return `закрыть блокеры ревью ${ids.join(', ')} (${rel(rv.file)}): решение — ${skill('sdd-decide', m.name, ids[0], '"<решение>"')}, правка — исправьте файл и впишите «исправлено» в колонку «Решение»`;
+}
+function adrSteps(m) {
+  return pendingAdrs(m).flatMap((a) => {
+    const rv = m.reviews.get(reviewKey('adr', a.num));
+    const open = openBlockers(rv);
+    return [
+      rv ? `ADR ${a.num} «${a.status || '—'}» — ревью уже было: ${rel(rv.file)}` : `ADR ${a.num} «${a.status || '—'}» — ревью: ${skill('sdd-review', m.name, 'adr', a.num)}`,
+      ...(open.length ? [blockersStep(m, rv, open)] : []),
+      `ADR ${a.num} — принять: ${lintCmd('approve', 'adr', rel(m.dir), a.num)}`,
+    ];
+  });
+}
+export function stageOf(m) {
+  const st = (now, next = []) => ({ now, next: [...next, ...adrSteps(m)] });
+  // Неодобренный spec важнее всего ниже: после /sdd-decide он возвращается «на ревью»,
+  // и одобрение slices относилось к другой его версии.
+  if (m.slices.size && m.spec && !approved(m.spec.status))
+    return st(
+      approved(m.slicesStatus)
+        ? `Dev Spec «${m.spec.status || '—'}», а slices уже есть — после одобрения spec проверьте и одобрите slices заново`
+        : `Dev Spec «${m.spec.status || '—'}» — slices ждут его одобрения`,
+      handoff(m, 'spec'),
+    );
+  if (m.slices.size && approved(m.slicesStatus)) {
+    const pending = pendingAdrs(m);
+    return pending.length
+      ? { now: `Slices одобрены. Перед реализацией примите ADR: ${pending.map((a) => a.num).join(', ')}`, next: adrSteps(m) }
+      : m.protocol
+        ? { now: 'Slices одобрены, ADR приняты', next: [`перед merge убрать протокол: ${lintCmd('close', rel(m.dir))}`] }
+        : { now: 'Планирование завершено: slices одобрены, ADR приняты, протокол убран', next: [] };
+  }
+  if (m.slices.size) return st('Slices на ревью', handoff(m, 'slices'));
+  if (m.spec && approved(m.spec.status)) return st('Dev Spec одобрен', [skill('sdd-slices', m.name)]);
+  if (m.spec) return st(`Dev Spec «${m.spec.status || '—'}»`, handoff(m, 'spec'));
+  if (m.protocol && /готов/i.test(m.protocol.status || '')) return st('Протокол готов', [skill('sdd-spec', m.name)]);
+  if (m.protocol) return st('Brainstorming идёт', [`продолжить: ${skill('sdd-grill', m.name)}`]);
+  return st('Brainstorming не начат', [skill('sdd-grill', m.name)]);
+}
+export function stageText({ now, next }) {
+  if (!next.length) return now;
+  if (next.length === 1) return `${now}. Следующий шаг: ${next[0]}`;
+  return `${now}. Следующий шаг:\n${next.map((x, i) => `  ${i + 1}. ${x}`).join('\n')}`;
+}
