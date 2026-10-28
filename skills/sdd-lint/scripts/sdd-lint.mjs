@@ -56,6 +56,14 @@ const HELP = `sdd-lint — проверки артефактов планиро�
   sdd-lint next <FR|NFR|slice|adr> docs/<feature>
   sdd-lint next AC docs/<feature> <NNN> [B|F]
       следующий свободный номер
+  sdd-lint ask docs/<feature>
+      вопросы этапа с вариантами (JSON): агент задаёт их инструментом выбора
+  sdd-lint choose docs/<feature> <id>
+      выполнить выбранный вариант: команду lint — сам, остальное — готовым
+      заданием агенту (сабагент, скилл в этом окне, команда человеку)
+  sdd-lint prompt <скилл> <аргументы скилла>
+      скилл sdd-* и его файлы одним текстом — так агент и сабагент получают скилл,
+      который вызывает человек (disable-model-invocation), по выбору человека
   sdd-lint help [<команда>]
       справка: вся или по одной команде
   sdd-lint completion <bash|zsh>
@@ -179,6 +187,9 @@ const CMD_INFO = {
   diff: 'изменения против git',
   close: 'убрать протокол перед merge',
   next: 'следующий свободный номер',
+  ask: 'вопросы этапа с вариантами',
+  choose: 'выполнить выбранный вариант',
+  prompt: 'скилл одним текстом для агента',
   help: 'справка по команде',
   completion: 'Tab-дополнение для bash / zsh',
 };
@@ -196,6 +207,9 @@ const SLOTS = {
   approve: ['choice', 'feature', 'adr'],
   gen: ['choice', 'feature'],
   next: ['choice', 'feature', 'slice', 'side'],
+  ask: ['feature'],
+  choose: ['feature', 'option'],
+  prompt: ['skill', 'feature'],
   diff: ['feature'],
   close: ['feature'],
   trace: ['feature'],
@@ -1166,7 +1180,7 @@ function handoff(m, what) {
   const open = openBlockers(rv);
   return [
     `по желанию убрать следы ИИ из прозы: ${human}, затем ${guard}`,
-    rv ? `ревью уже было: ${rel(rv.file)}; повторить — ${skill('sdd-review', m.name, what)} в новой сессии` : `ревью в новой сессии: ${skill('sdd-review', m.name, what)}`,
+    rv ? `ревью уже было: ${rel(rv.file)}; повторить в чистом контексте — ${skill('sdd-review', m.name, what)}` : `ревью в чистом контексте: ${skill('sdd-review', m.name, what)}`,
     ...(open.length ? [blockersStep(m, rv, open)] : []),
     `одобрить: ${lintCmd('approve', what, dir)}`,
   ];
@@ -1216,6 +1230,99 @@ function stageText({ now, next }) {
   if (!next.length) return now;
   if (next.length === 1) return `${now}. Следующий шаг: ${next[0]}`;
   return `${now}. Следующий шаг:\n${next.map((x, i) => `  ${i + 1}. ${x}`).join('\n')}`;
+}
+
+// ---------- вопрос человеку ----------
+// Что спросить в конце этапа и что сделать по ответу — данные скрипта, а не текст для модели.
+// Агент задаёт вопросы из ask инструментом выбора и передаёт id варианта в choose.
+// Действие: lint — выполняет choose; subagent — задача сабагенту; here — скилл в этом окне;
+// show — команда, которую человек запускает сам; none — ничего.
+const lintArgs = (args) => JSON.stringify(args);
+const fetchTask = (args, tail) => `Вызови инструмент sdd_lint с args ${lintArgs(args)} и выполни то, что он вернёт.${tail ? ` ${tail}` : ''}`;
+function artifactQuestion(m, what, num) {
+  const key = what === 'adr' ? reviewKey('adr', num) : what;
+  const a = what === 'adr' ? m.featureAdrs.find((x) => x.num === num) : null;
+  const dir = rel(m.dir);
+  const rv = m.reviews.get(key);
+  const open = openBlockers(rv);
+  const target = what === 'spec' ? rel(m.specFile) : what === 'slices' ? dir : rel(a.file);
+  const files = what === 'slices' ? `каждому файлу в ${dir}/slices/` : target;
+  const name = what === 'spec' ? 'Dev Spec' : what === 'slices' ? 'Slices' : `ADR ${num}`;
+  const status = what === 'spec' ? m.spec.status : what === 'slices' ? m.slicesStatus : a.status;
+  const rest = [what, num].filter(Boolean);
+  const reviewHere = {
+    id: `review-here:${key}`,
+    label: rv ? 'Повторить ревью здесь' : 'Ревью здесь, в сабагенте',
+    description: `свежий контекст, находки — в ${dir}/review/${key}.md`,
+    action: { subagent: fetchTask(['prompt', 'sdd-review', m.name, ...rest]) },
+  };
+  const reviewWindow = {
+    id: `review-window:${key}`,
+    label: 'Ревью в новом окне',
+    description: 'вы запускаете команду сами',
+    action: { show: skill('sdd-review', m.name, ...rest) },
+  };
+  const humanize = {
+    id: `humanize:${key}`,
+    label: 'Убрать следы ИИ из прозы',
+    description: 'humanizer в сабагенте, затем guard',
+    action: {
+      subagent:
+        `Вызови инструмент sdd_lint с args ${lintArgs(['snapshot', target])}. Затем загрузи скилл humanizer и примени его к ${files}: ` +
+        'меняй только прозу вне блоков кода; ID, строки шапки, заголовки, таблицы, тексты в «ёлочках», числа и сроки не трогай. ' +
+        `Затем вызови sdd_lint с args ${lintArgs(['guard', target])}; при ошибках верни защищённые части как были и повтори guard. ` +
+        'Последним сообщением — итог guard.',
+    },
+  };
+  const finish = open.length
+    ? { id: `blockers:${key}`, label: `Закрыть блокеры ${open.map((r) => r.id).join(', ')}`, description: 'решение даёте вы', action: { show: blockersStep(m, rv, open) } }
+    : {
+        id: `approve:${key}`,
+        label: what === 'adr' ? 'Принять' : 'Одобрить',
+        description: lintCmd('approve', ...(what === 'adr' ? ['adr', dir, num] : [what, dir])),
+        action: { lint: what === 'adr' ? ['approve', 'adr', dir, num] : ['approve', what, dir] },
+      };
+  const options = [reviewHere, reviewWindow, humanize, finish];
+  const rec = open.length ? finish : rv ? finish : reviewHere;
+  rec.recommended = true;
+  return { header: name, question: `${name} «${status || '—'}». Что дальше?`, options };
+}
+function nextSkillQuestion(m, now, name, label) {
+  return {
+    header: 'Следующий этап',
+    question: `${now}. ${label}?`,
+    options: [
+      { id: `here:${name}`, label: 'Здесь, в этом окне', description: skill(name, m.name), recommended: true, action: { here: ['prompt', name, m.name] } },
+      { id: `window:${name}`, label: 'В новом окне', description: 'вы запускаете команду сами', action: { show: skill(name, m.name) } },
+    ],
+  };
+}
+function askOf(m) {
+  const st = stageOf(m);
+  const adrQs = () => pendingAdrs(m).map((a) => artifactQuestion(m, 'adr', a.num));
+  let qs = [];
+  if (m.slices.size && m.spec && !approved(m.spec.status)) qs = [artifactQuestion(m, 'spec'), ...adrQs()];
+  else if (m.slices.size && approved(m.slicesStatus)) {
+    qs = adrQs();
+    if (!qs.length && m.protocol)
+      qs = [
+        {
+          header: 'Перед merge',
+          question: `${st.now}. Убрать протокол brainstorming?`,
+          options: [
+            { id: 'close', label: 'Убрать протокол', description: lintCmd('close', rel(m.dir)), recommended: true, action: { lint: ['close', rel(m.dir)] } },
+            { id: 'later', label: 'Позже', description: 'ничего не делать', action: { none: true } },
+          ],
+        },
+      ];
+  } else if (m.slices.size) qs = [artifactQuestion(m, 'slices'), ...adrQs()];
+  else if (m.spec && approved(m.spec.status)) qs = [nextSkillQuestion(m, st.now, 'sdd-slices', 'Резать slices'), ...adrQs()];
+  else if (m.spec) qs = [artifactQuestion(m, 'spec'), ...adrQs()];
+  else if (m.protocol && /готов/i.test(m.protocol.status || '')) qs = [nextSkillQuestion(m, st.now, 'sdd-spec', 'Писать Dev Spec')];
+  else if (m.protocol) qs = [nextSkillQuestion(m, st.now, 'sdd-grill', 'Продолжить brainstorming')];
+  else qs = [nextSkillQuestion(m, st.now, 'sdd-grill', 'Начать brainstorming')];
+  // Инструменты выбора берут до 4 вопросов за раз; остальные ADR — следующим вопросом.
+  return { stage: st.now, questions: qs.slice(0, 4) };
 }
 
 function checkReviews(m) {
@@ -2084,11 +2191,121 @@ function complete(words) {
     loadFeature(feature()).featureAdrs.forEach((a) => emit(a.num, a.status || ''));
   else if (slot === 'slice' && /^ac$/i.test(args[0]) && feature())
     [...loadFeature(feature()).slices].forEach(([num, s]) => emit(num, s.title || ''));
+  else if (slot === 'option' && resolveFeature(args[0])) askOf(loadFeature(resolveFeature(args[0]))).questions.forEach((q) => q.options.forEach((o) => emit(o.id, o.label)));
+  else if (slot === 'skill') promptSkills().forEach((k) => emit(k));
   else if (slot === 'side' && /^ac$/i.test(args[0])) {
     emit('B', 'AC сервисной половины');
     emit('F', 'AC frontend-половины');
   }
   return out;
+}
+
+// Скилл одним текстом: SKILL.md без шапки и файлы, на которые он ссылается.
+// Агент получает его через MCP и не читает файлы расширения вне проекта; disable-model-invocation
+// не снимается — скилл попадает к агенту только через вариант, который выбрал человек.
+const SELF = fs.realpathSync(process.argv[1]);
+const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
+const promptSkills = () => (isDir(SKILLS_DIR) ? fs.readdirSync(SKILLS_DIR).filter((x) => /^sdd-[a-z]+$/.test(x) && x !== 'sdd-lint' && fs.existsSync(path.join(SKILLS_DIR, x, 'SKILL.md'))) : []);
+function skillPrompt(name, args) {
+  const dir = path.join(SKILLS_DIR, name);
+  const body = read(path.join(dir, 'SKILL.md')).replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+  let links = uniq([...body.matchAll(/\]\(((?:references|assets)\/[^)\s]+\.md)\)/g)].map((x) => x[1]));
+  // Ревьюеру — только чеклист своего режима.
+  if (name === 'sdd-review') links = links.filter((f) => !f.startsWith('references/') || f === `references/${args[1]}.md`);
+  const head =
+    name === 'sdd-review'
+      ? [
+          `# Ревью SDD: ${args.join(' ')}`,
+          '',
+          'Ты ревьюер в чистом контексте: как писали артефакт, тебе не передано. Суди только по файлам',
+          `в ${DOCS}/${args[0]}/ и ${DOCS}/adr/; корень репозитория — текущая папка.`,
+          'Последним сообщением выведи таблицу находок и итог из шага 5 — его прочитает человек;',
+          'свои шаги не пересказывай.',
+        ]
+      : [`# Скилл ${name}: ${args.join(' ')}`, '', 'Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.'];
+  return [
+    ...head,
+    `Аргументы скилла: \`${args.join(' ')}\`. Lint — инструмент MCP \`sdd_lint\`; его нет — \`node ${SELF}\`.`,
+    links.length ? 'Файлы, на которые ссылается скилл, приложены в конце — их не открывай.' : null,
+    '',
+    '---',
+    '',
+    body,
+    ...links.flatMap((f) => {
+      const t = read(path.join(dir, f));
+      return t == null ? [] : ['', '---', '', `Файл скилла ${f}:`, '', t.trim()];
+    }),
+  ]
+    .filter((x) => x !== null)
+    .join('\n');
+}
+function cmdPrompt() {
+  const known = promptSkills();
+  const name = pos[0];
+  if (!known.includes(name)) {
+    console.error(`${name ? `Нет скилла «${name}»` : 'Укажи скилл'}. Скиллы: ${known.join(', ')}`);
+    process.exit(2);
+  }
+  const args = pos.slice(1);
+  if (args.length) {
+    const m = loadFeature(needDir(args[0], 1));
+    args[0] = m.name;
+    if (name === 'sdd-review') {
+      if (!['spec', 'slices', 'adr'].includes(args[1])) {
+        console.error(`Режим ревью: ${['spec', 'slices', 'adr'].map((x) => lintCmd('prompt', name, m.name, x)).join(', ')}`);
+        process.exit(2);
+      }
+      if (args[1] === 'adr') {
+        const nums = m.featureAdrs.map((a) => a.num);
+        const num = args[2] ? args[2].padStart(4, '0') : nums.length === 1 ? nums[0] : null;
+        if (!num || !nums.includes(num)) {
+          const list = nums.length ? nums.map((n) => `  ${lintCmd('prompt', name, m.name, 'adr', n)}`).join('\n') : '  у фичи нет ADR';
+          console.error(`${args[2] ? `ADR ${args[2]} у фичи нет` : 'Укажи номер ADR'}:\n${list}`);
+          process.exit(2);
+        }
+        args[2] = num;
+      }
+    }
+  } else if (name !== 'sdd-grill') pickFeature('Укажи фичу', 1);
+  console.log(skillPrompt(name, args));
+  process.exit(0);
+}
+// Вопросы этапа. Действия в вывод не идут: их выполняет choose по id.
+function cmdAsk() {
+  const m = loadFeature(needDir(pos[0]));
+  const { stage, questions } = askOf(m);
+  const strip = (q) => ({ ...q, options: q.options.map(({ action, ...o }) => o) });
+  console.log(JSON.stringify({ stage, choose: ['choose', rel(m.dir), '<id>'], questions: questions.map(strip) }, null, 2));
+  process.exit(0);
+}
+function cmdChoose() {
+  const m = loadFeature(needDir(pos[0]));
+  const id = pos[1];
+  const all = askOf(m).questions.flatMap((q) => q.options);
+  const opt = all.find((o) => o.id === id);
+  const again = `Следующий вопрос: sdd_lint с args ${lintArgs(['ask', rel(m.dir)])}.`;
+  if (!opt) {
+    console.error(`${id ? `Варианта «${id}» сейчас нет — этап изменился` : 'Укажи вариант'}. Варианты: ${all.map((o) => o.id).join(', ') || 'нет'}. Задай вопрос заново: sdd_lint с args ${lintArgs(['ask', rel(m.dir)])}.`);
+    process.exit(2);
+  }
+  const a = opt.action;
+  if (a.lint) {
+    let out = '';
+    let code = 0;
+    try {
+      out = execFileSync(process.execPath, [SELF, ...a.lint], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) {
+      out = `${e.stdout || ''}${e.stderr || ''}`;
+      code = typeof e.status === 'number' ? e.status : 1;
+    }
+    console.log(`${out.trimEnd()}\n\nПередай вывод человеку как есть. ${code ? 'Остановись.' : again}`);
+    process.exit(code);
+  }
+  if (a.subagent) console.log(`Запусти сабагента. Его задача целиком, ничего не добавляй и не пересказывай:\n\n${a.subagent}\n\nОтвет сабагента передай человеку как есть. ${again}`);
+  else if (a.here) console.log(skillPrompt(a.here[1], a.here.slice(2)));
+  else if (a.show) console.log(`Передай человеку дословно и остановись:\n\n${a.show}`);
+  else console.log('Ничего не делай, остановись.');
+  process.exit(0);
 }
 
 // Скрипт для bash / zsh с путём к этому файлу: работает и через alias, и через ссылку в PATH.
@@ -2134,4 +2351,4 @@ if (cmd === '__complete') {
 if (cmd === 'check' && !argv.length) cmdMenu();
 if (cmd === 'check') checkTypo();
 
-({ completion: cmdCompletion, check: cmdCheck, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, next: cmdNext })[cmd]();
+({ completion: cmdCompletion, check: cmdCheck, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, next: cmdNext, ask: cmdAsk, choose: cmdChoose, prompt: cmdPrompt })[cmd]();
