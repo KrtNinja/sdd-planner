@@ -111,6 +111,7 @@ const RULES = {
   'SP-20': ['warn', 'число в NFR берётся из решения человека в протоколе; нет решения — «Открытые вопросы»'],
   'SP-21': ['err', 'номера в «Из протокола:» — ссылки на строку протокола, их ставит и обновляет скрипт: sdd-lint fix docs/<feature>'],
   'SP-22': ['err', 'пометок правок не пишем: решение живёт в самом требовании, история — в git. Убери «изменено / добавлено после ревью», дату правки и ссылку на находку'],
+  'SP-23': ['warn', 'Dev Spec читают целиком — сократи формулировки без смены смысла: повтор правила в «Пример:», лишние персонажи, пересказ «Вне scope». Требования не удаляй; не влезает — скажи человеку, что фичу стоит разделить'],
 
   'SL-01': ['err', 'шапка slice: Тип, Основание, Зависимости, Половины, Результат, Почему отдельно — см. шаблон'],
   'SL-02': ['err', '«Почему отдельно: Р1 | Р2 | Р3 — пояснение»; без причины slice склеивается с соседом'],
@@ -141,11 +142,13 @@ const RULES = {
   'SL-27': ['warn', 'ссылка на AC, которого нет'],
   'SL-28': ['err', 'ссылки на spec.md ставит и обновляет скрипт: «Основание» — FR текстом и одна ссылка на spec.md, «Проверяет:» и «Покрытие» в README — ссылки на строки FR: sdd-lint fix docs/<feature>'],
   'SL-29': ['err', 'пометок правок не пишем: решение живёт в самом AC, история — в git. Убери «изменено / добавлено после ревью», дату правки и ссылку на находку'],
+  'SL-30': ['warn', 'slice читают целиком — сократи формулировки без смены смысла: не пересказывай Dev Spec, не повторяй одно условие в каждом AC. AC не удаляй; не влезает — спроси человека о нарезке (Р2: по наблюдаемому результату, не по слою)'],
 
   'RM-01': ['warn', 'создай README: sdd-lint fix docs/<feature>'],
   'RM-02': ['warn', 'README расходится со slices — не правь руками: sdd-lint fix docs/<feature>'],
   'RM-03': ['warn', 'FR делят несколько slices: опиши в «Пересечения», где граница; если это один экран или обработчик — кандидат на склейку (С4)'],
   'RM-04': ['warn', 'сквозная «Проверка фичи» проходит через каждый FR: добавь шаг'],
+  'RM-05': ['warn', 'README читают целиком — сократи «Пересечения» и «Проверка фичи»; таблицы собирает скрипт. Всё равно длинно — slices слишком много: проверь склейку С1–С4'],
 
   'AD-01': ['warn', 'добавь «Статус: предложено | принято | отклонено»'],
   'AD-02': ['err', 'разделы ADR: Контекст, Варианты, Решение, Последствия, Не выяснено'],
@@ -1427,6 +1430,49 @@ function checkEditMarks(m) {
   if (m.readmeSc) editMarks(m.readmeFile, m.readmeSc, 'SL-29');
 }
 
+// ---------- объём для чтения ----------
+// Dev Spec, slice и README человек читает целиком; комфортно — до READ_LIMIT символов.
+// Считается то, что видно в отрисованном markdown и останется после close: без пробелов,
+// адресов ссылок, HTML-комментариев и тегов, разметки (```, #, **, `, |, строки-разделители
+// таблиц) и следов протокола в spec. Текст внутри блоков кода (FR, AC) считается.
+// Протокол и ревью — леса этапа, их не меряем.
+const READ_LIMIT = 10000;
+function visibleLength(md) {
+  let inCode = false;
+  const out = [];
+  for (const t of (md || '').replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '').split('\n')) {
+    if (/^\s*```/.test(t)) {
+      inCode = !inCode;
+      continue;
+    }
+    if (inCode) {
+      out.push(t);
+      continue;
+    }
+    if (/^\s*\[[^\]]+\]:\s*\S/.test(t)) continue; // [id]: url
+    if (/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(t)) continue; // |---|---|
+    out.push(
+      t
+        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/<\/?[a-z][^>]*>/gi, '')
+        .replace(/^\s{0,3}#{1,6}\s+/, '')
+        .replace(/^\s*>\s?/, '')
+        .replace(/\*\*|__|`|\|/g, ''),
+    );
+  }
+  return out.join('').replace(/\s+/g, '').length;
+}
+const thousands = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+function readSize(rule, file, md) {
+  const n = visibleLength(md);
+  if (n > READ_LIMIT) add(rule, file, null, `${thousands(n)} символов при ориентире ${thousands(READ_LIMIT)} (без пробелов, ссылок и разметки)`);
+}
+function checkReadSize(m) {
+  if (m.spec) readSize('SP-23', m.spec.file, stripProtocol(m.spec.md));
+  for (const sl of m.slices.values()) readSize('SL-30', sl.file, sl.md);
+  if (m.readme != null) readSize('RM-05', m.readmeFile, m.readme);
+}
+
 function runChecks(m) {
   checkProtocol(m);
   checkSpec(m);
@@ -1434,6 +1480,7 @@ function runChecks(m) {
   checkAdrs(m);
   checkReviews(m);
   checkEditMarks(m);
+  checkReadSize(m);
   checkApprovals(m);
 }
 

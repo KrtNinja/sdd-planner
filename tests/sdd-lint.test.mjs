@@ -118,6 +118,27 @@ caught('AD-06', 'adr/0001-mention-notifications.md', 'FR-10 и NFR-3: уведо
 caught('AD-07', 'adr/0001-mention-notifications.md', '- Slice 003: notify-service', '- notify-service');
 caught('AD-08', 'adr/0001-mention-notifications.md', ' — блокирует slice 003.', '.');
 
+// объём для чтения: Dev Spec, slice и README — до 10 000 видимых символов
+const prose = (n) => 'Анна читает Dev Spec. '.repeat(n); // 18 видимых символов на повтор
+caught('SP-23', 'comments/spec.md', '## Открытые вопросы', `${prose(500)}\n\n## Открытые вопросы`);
+caught('SL-30', 'comments/slices/002-comments.md', '## Границы', `${prose(500)}\n\n## Границы`);
+caught('RM-05', 'comments/slices/README.md', '## Пересечения', `## Пересечения\n\n${prose(500)}`);
+const READ_RULES = ['SP-23', 'SL-30', 'RM-05'];
+const sized = (res) => rules(res).filter((r) => READ_RULES.includes(r));
+test('объём: адреса ссылок, HTML-комментарии и пробелы не считаются', () => {
+  const cwd = workspace();
+  const url = `https://example.com/${'x'.repeat(9000)}`;
+  edit(cwd, 'comments/spec.md', '## Данные для примеров', `[Анна](${url}) <!-- ${'скрыто '.repeat(1500)} -->\n\n## Данные для примеров`);
+  edit(cwd, 'comments/slices/002-comments.md', '## Границы', `${' \n'.repeat(9000)}\n## Границы`);
+  assert.deepEqual(sized(check(cwd)), []);
+});
+test('объём: леса не считаются — следы протокола в spec и сам протокол', () => {
+  const cwd = workspace();
+  edit(cwd, 'comments/spec.md', '## Открытые вопросы', `## Не про поведение\n\n- ${prose(500)} (из протокола: 1)\n\n## Открытые вопросы`);
+  fs.appendFileSync(file(cwd, 'comments/brainstorming.md'), `\n${prose(2000)}\n`);
+  assert.deepEqual(sized(check(cwd)), []);
+});
+
 test('gen readme: README собирается заново из slices', () => {
   const cwd = workspace();
   edit(cwd, 'comments/slices/README.md', '| [FR-8](../spec.md#L81) | 003 |', '| [FR-8](../spec.md#L81) | 002 |');
