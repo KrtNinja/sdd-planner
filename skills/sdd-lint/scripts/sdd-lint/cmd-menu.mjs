@@ -39,6 +39,7 @@ export function cmdMenu() {
     [lintCmd('diff', ex), CMD_INFO.diff],
     [lintCmd('next', 'FR|NFR|AC|slice|adr', ex), CMD_INFO.next],
     [lintCmd('close', ex), CMD_INFO.close],
+    [lintCmd('export', ex), CMD_INFO.export],
   ];
   const w = Math.max(...rows.map(([c]) => c.length));
   out.push('', 'Команды:', ...rows.map(([c, d]) => `  ${c.padEnd(w)}  ${d}`));

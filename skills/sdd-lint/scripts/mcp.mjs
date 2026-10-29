@@ -17,7 +17,8 @@ const TOOL = {
     'Запускает sdd-lint из корня репозитория с доками. args — аргументы командной строки скрипта ' +
     'по одному элементу: [] — фичи и этапы, ["docs/comments"] — проверка фичи, ' +
     '["fix","docs/comments"] — после правки: номера, ссылки, README скриптом и проверка, ' +
-    '["gate","spec","docs/comments"], ["approve","slices","docs/comments"], ["help","gen"]. ' +
+    '["gate","spec","docs/comments"], ["approve","slices","docs/comments"], ' +
+    '["export","docs/comments"] — требования в JSON для реализации, ["help","gen"]. ' +
     'Возвращает вывод скрипта и код выхода (0 — ок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты).',
   inputSchema: {
     type: 'object',

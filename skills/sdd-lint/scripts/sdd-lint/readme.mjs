@@ -23,7 +23,7 @@ const sameSet = (a, b) => {
 };
 
 // слои порядка работ: внутри слоя slices можно делать параллельно
-function layers(m) {
+export function layers(m) {
   const left = new Set(m.slices.keys());
   const done = new Set();
   const out = [];

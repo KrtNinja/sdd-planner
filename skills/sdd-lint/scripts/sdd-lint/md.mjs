@@ -23,7 +23,8 @@ export function scan(md) {
       inCode = !inCode;
       if (inCode) {
         block += 1;
-        blocks.push({ idx: block, start: n, h2, lines: [] });
+        // lang — язык после ``` («ts», «mermaid»); у FR и AC его нет.
+        blocks.push({ idx: block, start: n, h2, lang: text.trim().slice(3).trim().toLowerCase(), lines: [] });
       }
       return;
     }
