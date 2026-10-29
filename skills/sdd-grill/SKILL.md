@@ -20,8 +20,8 @@ Lint: инструмент MCP `sdd_lint` этого расширения, ар�
 ## Шаги
 
 1. Загрузи скилл `grilling` инструментом Skill.
-   Готово, когда текст `grilling` в контексте. Он входит в sdd-workflow; если его нет — напиши
-   «Не найден скилл grilling: переустановите расширение sdd-workflow» и остановись.
+   Готово, когда текст `grilling` в контексте. Он входит в sdd-planner; если его нет — напиши
+   «Не найден скилл grilling: переустановите расширение sdd-planner» и остановись.
 2. Если протокола нет — создай его из [assets/brainstorming.md](assets/brainstorming.md).
    Если есть — прочитай и продолжи с веток без решения.
 3. Построй design tree. Стартовые узлы — темы из [references/questions.md](references/questions.md):

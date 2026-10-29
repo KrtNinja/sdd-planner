@@ -9,9 +9,7 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LINT =
-  process.env.SDD_LINT ||
-  ['scripts/sdd-lint.mjs', 'skills/sdd-lint/scripts/sdd-lint.mjs'].map((p) => path.join(root, p)).find((p) => fs.existsSync(p));
+const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
 const GOOD = path.join(root, 'tests/fixtures/good');
 // Статусы эталона: «одобрено» и «принято» с отметкой approve (отпечаток содержимого).
 const SPEC_OK = 'Статус: одобрено 27.10.2026 · 67e1fb';
@@ -23,7 +21,7 @@ function workspace() {
   fs.cpSync(GOOD, dir, { recursive: true });
   return dir;
 }
-// Форма команд в подсказках у веток-адаптеров разная; тесты закрепляют одну.
+// Форма команд в подсказках настраивается окружением; тесты закрепляют одну.
 const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: 'node scripts/sdd-lint.mjs' };
 function run(cwd, ...args) {
   const r = spawnSync('node', [LINT, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, TMPDIR: path.join(cwd, '.tmp') } });
@@ -543,8 +541,8 @@ test('approve adr: единственный ждущий ADR принимает�
 });
 
 // ---------- evals ----------
-// Рабочая папка eval собирается из текущих правил и lint, а не из копий.
-test('evals: place-files.sh кладёт текущие правила и lint', () => {
+// Рабочая папка eval собирается из текущих правил, а не из копий.
+test('evals: place-files.sh кладёт текущие правила', () => {
   const cases = fs
     .readdirSync(path.join(root, 'skills'))
     .flatMap((s) => {
@@ -554,15 +552,27 @@ test('evals: place-files.sh кладёт текущие правила и lint',
     .filter((d) => fs.existsSync(path.join(d, 'place-files.sh')));
   assert.ok(cases.length > 0, 'нет ни одного eval с place-files.sh');
   const rulesText = fs.readFileSync(path.join(root, 'rules/AGENTS.planning.md'), 'utf8');
-  const lintSrc = path.join(root, 'scripts/sdd-lint.mjs');
   for (const c of cases) {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-eval-'));
     execFileSync('bash', [path.join(c, 'place-files.sh')], { cwd, stdio: 'pipe' });
     const name = path.relative(root, c);
     assert.equal(fs.readFileSync(path.join(cwd, 'AGENTS.md'), 'utf8'), `# AGENTS.md\n\n${rulesText}`, `${name}: AGENTS.md не совпадает с правилами`);
-    if (fs.existsSync(lintSrc))
-      assert.equal(fs.readFileSync(path.join(cwd, 'scripts/sdd-lint.mjs'), 'utf8'), fs.readFileSync(lintSrc, 'utf8'), `${name}: lint не совпадает`);
     assert.ok(fs.existsSync(path.join(cwd, 'docs')), `${name}: нет docs/`);
+  }
+});
+
+// ---------- манифест расширения ----------
+// GigaCode ставит пул по манифесту: правила и lint должны лежать там, куда он указывает.
+test('манифест: sdd-planner, файл правил и MCP-сервер lint на месте', () => {
+  const m = JSON.parse(fs.readFileSync(path.join(root, 'gigacode-extension.json'), 'utf8'));
+  assert.equal(m.name, 'sdd-planner');
+  assert.match(m.version, /^\d+\.\d+\.\d+$/);
+  assert.ok(fs.existsSync(path.join(root, m.contextFileName)), `нет ${m.contextFileName}`);
+  const srv = m.mcpServers?.['sdd-lint'];
+  assert.ok(srv, 'нет mcpServers.sdd-lint');
+  for (const a of srv.args.filter((x) => x.includes('${extensionPath}'))) {
+    const rel = a.replace('${extensionPath}/', '');
+    assert.ok(fs.existsSync(path.join(root, rel)), `MCP указывает на несуществующий ${rel}`);
   }
 });
 

@@ -9,7 +9,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === '--snapshot') flags.snapshot = true;
   else if (a === '--base') flags.base = argv[++i];
   else if (a.startsWith('--base=')) flags.base = a.slice(7);
-  // «@docs/comments/» — так путь дописывает Tab в строке GigaCode / Qwen Code.
+  // «@docs/comments/» — так путь дописывает Tab в строке GigaCode.
   else pos.push(a.replace(/^@(?=.)/, ''));
 }
 // Команды и их аргументы — одно описание для меню, подсказок и Tab-дополнения.

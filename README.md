@@ -1,15 +1,34 @@
-# sdd-workflow — пул для этапа «Планирование»
+# sdd-planner — зона «Планирование»
 
-Скиллы, правила и проверки, чтобы вести фичу по Spec-Driven Development от одной фразы до
-одобренных slices: brainstorming → Dev Spec → slices → ADR. Реализация (slice 001, OpenSpec Change)
-— следующий этап, сюда не входит.
+Расширение GigaCode CLI: скиллы, правила и проверки, чтобы вести фичу по Spec-Driven Development
+от одной фразы до одобренных требований: brainstorming → Dev Spec → slices → ADR. На выходе —
+документы, по которым разработчик или агент пишет код, не угадывая поведение.
 
-## Ветки
+Реализация (slice 001, OpenSpec Change, код) — другая зона, сюда не входит: она забирает результат
+отсюда. Репозиторий вынесен из ветки `gigacode` [sdd-workflow](https://github.com/KrtNinja/sdd-workflow)
+вместе с историей.
 
-Это ветка-адаптер `gigacode`: общая база из [`main`](https://github.com/KrtNinja/sdd-workflow/tree/main)
-плюс то, что нужно GigaCode CLI — манифест расширения, правила как контекст, lint внутри скилла,
-встроенные grilling и humanizer. Изменения процесса делаются в `main`, сюда переносятся
-перебазированием на неё.
+## Результат зоны
+
+Что получает разработка по фиче `<feature>` в репозитории с доками:
+
+| Файл | Что в нём для разработчика / агента | Готов, когда |
+|---|---|---|
+| `docs/<feature>/spec.md` | Dev Spec: FR/NFR, примеры, тексты сообщений, границы, что вне scope | «Статус: одобрено <дата> · xxxxxx» |
+| `docs/<feature>/slices/README.md` | порядок работ, покрытие FR → slice, проверка фичи целиком | одобрено вместе со slices |
+| `docs/<feature>/slices/NNN-*.md` | единица работы: контракты, AC в формате WHEN / THEN по половинам сервисов, «Проверяет:» → FR, Definition of Done | одобрено |
+| `docs/adr/NNNN-*.md` | архитектурное решение и правила для AGENTS.md затронутых сервисов | «Статус: принято …» |
+
+Готовность проверяет скрипт, а не человек или модель:
+
+```bash
+sdd-lint gate build docs/<feature>   # код 0 — можно отдавать в реализацию, код 3 — нельзя и почему
+sdd-lint close docs/<feature>        # перед merge: убирает brainstorming.md и ссылки на него
+```
+
+`gate build` открыт, только если slices одобрены, все ADR фичи приняты и lint не нашёл ни одной
+ошибки — в том числе правки после одобрения (`AP-02`). Протокол brainstorming — леса этапа:
+`close` удаляет его, в репозиторий уходят только требования.
 
 ## Поток
 
@@ -38,8 +57,8 @@
 - **Tab в терминале.** `sdd-lint` дополняет команды, варианты, фичи, номера ADR и slices, а пути —
   по папкам, как `cd` (установка — шаг 5 ниже).
 
-Свой Tab-дополнитель аргументов у скилла (как у `/directory add`) GigaCode и Qwen Code расширениям
-пока не дают: функции дополнения есть только у встроенных команд, расширение задаёт лишь `argument-hint`.
+Свой Tab-дополнитель аргументов у скилла (как у `/directory add`) GigaCode расширениям
+пока не даёт: функции дополнения есть только у встроенных команд, расширение задаёт лишь `argument-hint`.
 
 В GigaCode CLI скилл вызывается сразу по имени: `/sdd-grill <feature>` (без `/skills`; `/skills` только показывает список).
 
@@ -83,9 +102,9 @@ HTML-комментариев и разметки. Леса не считают�
 ## Что внутри
 
 ```
-gigacode-extension.json    — манифест расширения GigaCode CLI (qwen-extension.json — то же для Qwen Code)
+gigacode-extension.json    — манифест расширения GigaCode CLI
 rules/AGENTS.planning.md   — правила этапов и артефактов; расширение подключает их как контекст
-tests/                     — тесты sdd-lint на эталонной фиче и её порче
+tests/                     — тесты sdd-lint на эталонной фиче и её порче, проверка манифеста
 skills/
   sdd-lint/     — scripts/sdd-lint.mjs: проверки, ворота, генерация README и номеров, diff по git,
                   guard после humanizer; это точка входа, код — в scripts/sdd-lint/ по модулю на тему
@@ -108,41 +127,43 @@ skills/
 
 1. Подключить папку с репозиторием — ту, где лежат `gigacode-extension.json` и `skills/`:
    ```bash
-   gigacode extensions link ~/tools/sdd-workflow
+   gigacode extensions link ~/tools/sdd-planner
    ```
-   Если сборка не знает `link`: `gigacode extensions install ~/tools/sdd-workflow`.
+   Если сборка не знает `link`: `gigacode extensions install ~/tools/sdd-planner`.
 2. Перезапустить GigaCode и проверить: `gigacode extensions list`, внутри сессии — `/extensions`
    и `/skills` (в списке sdd-grill … sdd-lint, grilling, humanizer).
 3. Правила из `rules/AGENTS.planning.md` расширение добавляет в контекст само. Чтобы они не
    попадали в другие проекты, включите расширение только в репозитории с доками:
    ```bash
-   gigacode extensions disable sdd-workflow
-   cd ~/work/docs-repo && gigacode extensions enable sdd-workflow --scope=workspace
+   gigacode extensions disable sdd-planner
+   cd ~/work/docs-repo && gigacode extensions enable sdd-planner --scope=workspace
    ```
    Если `--scope` ваша сборка не поддерживает, оставьте расширение включённым: правила
    говорят только о файлах в `docs/` и в коде ничего не меняют.
 4. Git hook в репозитории с доками — lint срабатывает на каждый коммит, даже если агент его пропустил:
    ```bash
-   ln -s ~/tools/sdd-workflow/skills/sdd-lint/scripts/pre-commit .git/hooks/pre-commit
+   ln -s ~/tools/sdd-planner/skills/sdd-lint/scripts/pre-commit .git/hooks/pre-commit
    ```
    Hook проверяет рабочую копию фич, чьи файлы в коммите. Обойти разово — `git commit --no-verify`.
 5. По желанию — `sdd-lint` в терминале с Tab-дополнением:
    ```bash
-   ln -s ~/tools/sdd-workflow/skills/sdd-lint/scripts/sdd-lint.mjs ~/.local/bin/sdd-lint
+   ln -s ~/tools/sdd-planner/skills/sdd-lint/scripts/sdd-lint.mjs ~/.local/bin/sdd-lint
    echo 'source <(sdd-lint completion bash)' >> ~/.bashrc   # zsh: completion zsh в ~/.zshrc после compinit
    ```
    Дальше `sdd-lint ⇥` показывает фичи и команды, `sdd-lint guard docs/⇥` спускается по папкам.
 
 Нужен Node 18+ для `sdd-lint`.
 
-## Установка в другие агенты
+Расширение раньше называлось `sdd-workflow`. Если оно уже стоит: `gigacode extensions uninstall sdd-workflow`,
+затем шаги выше, и перенаправить симлинки hook и `sdd-lint` на новую папку.
 
-- Codex, opencode, Cursor и другие агенты со скиллами: `npx skills@latest add KrtNinja/sdd-workflow`
-  (или скопировать `skills/*` в папку скиллов агента), затем вставить `rules/AGENTS.planning.md`
-  в `AGENTS.md` репозитория с доками.
-- Qwen Code: `qwen extensions link <путь к репозиторию>` — тот же манифест (`qwen-extension.json`).
+Если grilling задаёт вопросы по одному удобнее, чем раундами, добавьте в AGENTS.md репозитория с доками строку
+`When grilling, ask one question at a time.`
 
-CI (GitLab), если нужен: скопируйте `skills/sdd-lint/scripts/sdd-lint.mjs` в `scripts/` репозитория с доками и
+## Проверка в CI
+
+GitLab, если нужен: скопируйте `skills/sdd-lint/scripts/sdd-lint.mjs` и папку `skills/sdd-lint/scripts/sdd-lint/`
+в `scripts/` репозитория с доками (точка входа импортирует модули из соседней папки) и
 ```yaml
 sdd-lint:
   image: node:20-alpine
@@ -152,19 +173,15 @@ sdd-lint:
     - for f in docs/*/; do [ "$(basename "$f")" = adr ] || node scripts/sdd-lint.mjs "$f" || exit 1; done
 ```
 
-Если grilling задаёт вопросы по одному удобнее, чем раундами, добавьте в AGENTS.md строку
-`When grilling, ask one question at a time.`
-
 ## Почему так: расчёт на flash-модели
 
-Пул запускается на GLM-5.3-flash, Qwen3.8-flash-next, DeepSeek-4.1-flash. Поэтому:
+Пул запускается на Qwen3.8-flash-next, GLM-5.3-Flash, DeepSeek-V4.1-Flash. Поэтому:
 
 - **Один скилл — один этап.** Короткие нумерованные шаги, у каждого шага «Готово, когда…»,
   в конце вопрос этапа и остановка. Быстрые модели склонны проскакивать ворота, а явная
   точка остановки и правило в AGENTS.md это держат.
 - **Скиллы вызывает человек** (`disable-model-invocation: true`): нет постоянной нагрузки на контекст
-  и нет случайных срабатываний. Поле понимают GigaCode и Qwen Code; агенты, которые его не знают, просто
-  покажут скилл в списке. Агенту скилл попадает только через `sdd-lint prompt`, когда человек выбрал вариант.
+  и нет случайных срабатываний. Агенту скилл попадает только через `sdd-lint prompt`, когда человек выбрал вариант.
 - **Механику проверяет и собирает скрипт, а не модель.** Ворота, трассировка, ссылки AC на FR,
   номера, README, неизменность протокола и одобренных файлов — `sdd-lint`. Чеклисты `sdd-review`
   содержат только смысловые пункты и прямо говорят, что lint уже проверил.
@@ -183,7 +200,7 @@ sdd-lint:
 - **Lint — инструмент MCP расширения.** Манифест поднимает `skills/sdd-lint/scripts/mcp.mjs`
   (stdio, без зависимостей) по `${extensionPath}`, скиллы вызывают `sdd_lint {"args": [...]}`. Путь к
   скрипту вне проекта не попадает в shell-команды агента, поэтому GigaCode не отказывает в доступе,
-  а скрипт не нужно копировать в проект или ставить в PATH. Без MCP (другие агенты) скиллы вызывают
+  а скрипт не нужно копировать в проект или ставить в PATH. Если MCP-сервер не поднялся, скиллы вызывают
   `../sdd-lint/scripts/sdd-lint.mjs` от своей папки.
 - **Humanizer — отдельно, перед одобрением.** Его ~400 строк в контексте сбивали бы flash-модель
   на последнем шаге, поэтому скиллы только подсказывают `/humanizer <файл>`. Что он не тронул FR/AC, ID,
