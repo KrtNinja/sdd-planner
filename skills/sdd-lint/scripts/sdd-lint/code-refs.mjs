@@ -25,7 +25,8 @@ const PLAIN_LANGS = new Set(['', 'text', 'txt', 'plain', 'mermaid']);
 
 // Внешние контракты (поля API и БД, DTO, события, коды ошибок) живут версиями и в доках допустимы,
 // в том числе в AC: ответ по контракту наблюдаем на границе. Внутренние имена — классы, порты,
-// адаптеры — меняются при рефакторинге; узнаём их по суффиксу. В ADR — допустимы: там архитектура.
+// адаптеры — меняются при рефакторинге; узнаём их по суффиксу. ADR тоже без них: он фиксирует выбор
+// и его причины, а соглашения о коде живут в репозитории сервиса.
 const INTERNAL_RE =
   /(?<![\w-])[A-Z][a-z0-9]+[A-Za-z0-9]*?(?:Service|Controller|Repository|Repo|Handler|Port|Adapter|Gateway|Factory|Manager|UseCase|Store|Component|Provider|Module|Helper|Utils?|Impl|Mapper|Resolver|Middleware)(?![\w-])/g;
 
@@ -77,5 +78,5 @@ export function checkCodeRefs(m) {
   if (m.spec) checkFile(m.spec.file, m.spec.sc);
   for (const sl of m.slices.values()) checkFile(sl.file, sl.sc, { inAc: false });
   if (m.readmeSc) checkFile(m.readmeFile, m.readmeSc);
-  for (const a of m.featureAdrs) checkFile(a.file, a.sc, { names: false });
+  for (const a of m.featureAdrs) checkFile(a.file, a.sc);
 }

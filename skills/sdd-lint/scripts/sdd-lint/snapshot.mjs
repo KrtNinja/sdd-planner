@@ -21,7 +21,7 @@ export function protectedParts(md) {
     'строка таблицы': outside.filter((l) => l.text.trim().startsWith('|')).map((l) => l.text.trim().replace(/\s+/g, ' ')),
     текст: quotes(md).map((q) => `«${q}»`),
     число: numbers(md),
-    ID: [...md.matchAll(/\b(?:N?FR-\d+|AC-\d{3}-[BF]?\d+|ADR-\d+)\b/g)].map((x) => x[0]),
+    ID: [...md.matchAll(/\b(?:N?FR-\d+|AC-\d{3}-[BF]?\d+|ADR-\d+)\b|(?<![\p{L}\d])ОГР-\d+(?!\d)/gu)].map((x) => x[0]),
     'ссылка на протокол': outside.filter((l) => SRC_RE.test(l.text)).map((l) => srcRefs(l.text).map((r) => r.id).join(', ')),
   };
 }

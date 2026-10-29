@@ -4,8 +4,16 @@ import path from 'node:path';
 import { add } from './findings.mjs';
 import { rel, uniq, approved, scan, inSection, hasSection, sectionText, header, reqIds } from './md.mjs';
 
+// Ограничение — то, что в решении не обсуждается: решение компании, бюджет, ресурсы, сроки.
+// Описывается в «Контексте» строкой «- ОГР-n что именно — кто поставил», на него ссылаются варианты.
+export const LIMIT_RE = /(?<![\p{L}\d])ОГР-(\d+)(?!\d)/gu;
+const limitIds = (s) => [...(s || '').matchAll(LIMIT_RE)].map((m) => m[0]);
+
 export function parseAdr(file, md) {
   const sc = scan(md);
+  const limits = inSection(sc, /^Контекст/)
+    .filter((l) => !l.inCode && /^\s*[-*]\s*ОГР-\d+/u.test(l.text))
+    .map((l) => ({ id: l.text.match(/ОГР-\d+/u)[0], n: l.n }));
   const variants = [];
   let cur = null;
   for (const l of inSection(sc, /^Варианты/)) {
@@ -27,6 +35,7 @@ export function parseAdr(file, md) {
     headNum: (md.match(/^#\s+ADR-(\d+)/m) || [])[1] || null,
     status: header(md, 'Статус'),
     variants,
+    limits,
   };
 }
 
@@ -46,11 +55,19 @@ export function checkAdrs(m) {
       if (a.variants.length < 2) add('AD-03', f, null, `вариантов: ${a.variants.length}`);
       for (const v of a.variants) {
         if (!v.verdict) add('AD-04', f, v.n, `«${v.title}» без строки «Отклонён | Выбран | Отложен»`);
-        else if (v.verdict.startsWith('отклон') && !reqIds(v.text).length) add('AD-05', f, v.n, `«${v.title}» отклонён без ссылки на FR/NFR`);
+        else if (v.verdict.startsWith('отклон') && !reqIds(v.text).length && !limitIds(v.text).length)
+          add('AD-05', f, v.n, `«${v.title}» отклонён без ссылки на FR/NFR или ограничение ОГР-n`);
       }
       const chosen = a.variants.filter((v) => v.verdict === 'выбран').length;
       if (a.variants.length && chosen !== 1) add('AD-04', f, null, `выбрано вариантов: ${chosen}, нужен ровно один`);
     }
+    const defined = new Map();
+    for (const x of a.limits) {
+      if (defined.has(x.id)) add('AD-11', f, x.n, `${x.id} уже описано в строке ${defined.get(x.id)}`);
+      else defined.set(x.id, x.n);
+    }
+    for (const l of a.sc.lines)
+      for (const id of uniq(limitIds(l.text))) if (!defined.has(id)) add('AD-11', f, l.n, `${id} нет в «Контексте»`);
     if (hasSection(a.sc, /^Контекст/)) {
       const ids = reqIds(sectionText(a.sc, /^Контекст/));
       if (!ids.length) add('AD-06', f, null, '«Контекст» без FR/NFR');

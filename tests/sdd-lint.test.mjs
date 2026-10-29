@@ -13,7 +13,7 @@ const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sd
 const GOOD = path.join(root, 'tests/fixtures/good');
 // Статусы эталона: «одобрено» и «принято» с отметкой approve (отпечаток содержимого).
 const SPEC_OK = 'Статус: одобрено 27.10.2026 · 67e1fb';
-const ADR_OK = 'Статус: принято 27.10.2026 · 1e0e1f';
+const ADR_OK = 'Статус: принято 27.10.2026 · 9aebc0';
 const FP = '[0-9a-f]{6}';
 
 function workspace() {
@@ -115,6 +115,25 @@ caught('AD-05', 'adr/0001-mention-notifications.md', '- минус: сбой not
 caught('AD-06', 'adr/0001-mention-notifications.md', 'FR-10 и NFR-3: уведомление', 'FR-12 и NFR-3: уведомление');
 caught('AD-07', 'adr/0001-mention-notifications.md', '- Slice 003: notify-service', '- notify-service');
 caught('AD-08', 'adr/0001-mention-notifications.md', ' — блокирует slice 003.', '.');
+// ограничения: отказ по ОГР-n — законная причина, если ограничение описано в «Контексте»
+const ADR = 'adr/0001-mention-notifications.md';
+caught('AD-05', ADR, 'Отклонён: нарушает ОГР-1.', 'Отклонён: дорого.');
+caught('AD-11', ADR, 'Отклонён: нарушает ОГР-1.', 'Отклонён: нарушает ОГР-2.');
+caught('AD-11', ADR, '(решение архитектурного комитета).', '(решение архитектурного комитета).\n- ОГР-1 Бюджет на инфраструктуру заморожен.');
+caught('AD-11', ADR, '- ОГР-1 Новой инфраструктуры', '- Новой инфраструктуры');
+test('AD-05: вариант, отклонённый только по ограничению, — без находок AD', () => {
+  const res = check(workspace());
+  assert.deepEqual(rules(res).filter((r) => r.startsWith('AD')), []);
+});
+test('guard: humanizer не меняет номер ограничения', () => {
+  const cwd = workspace();
+  const adr = `docs/${ADR}`;
+  assert.equal(run(cwd, 'snapshot', adr).code, 0);
+  edit(cwd, ADR, 'Отклонён: нарушает ОГР-1.', 'Отклонён: нарушает ОГР-2.');
+  const r = run(cwd, 'guard', adr);
+  assert.equal(r.code, 1);
+  assert.match(r.out, /HG-01.*ОГР-/);
+});
 
 // ссылки на код: требования не врут после переименований в коде
 const C001 = 'comments/slices/001-contracts.md';
@@ -135,6 +154,8 @@ caught('CD-04', C001, '## Границы', '```json\n{ "text": "…" }\n```\n\n#
 caught('CD-05', C001, 'tasks-core: событие об упоминании', 'tasks-core: MentionService публикует событие об упоминании');
 caught('CD-05', 'comments/spec.md', 'оставил комментарий.', 'оставил комментарий через CommentRepository.');
 caught('CD-05', 'comments/slices/README.md', '# ', 'Порядок задаёт CommentsController.\n\n# ');
+// ADR фиксирует выбор и причины; соглашения о коде — в репозитории сервиса
+caught('CD-05', ADR, 'через outbox в брокер компании', 'через MentionOutboxAdapter в брокер компании');
 test('CD: протокол и ревью — леса, их не проверяем', () => {
   const cwd = workspace();
   edit(cwd, 'comments/brainstorming.md', '## Решения', 'Сейчас: src/comments/comment.controller.ts, create(dto), CommentService.\n\n```ts\nconst x = 1;\n```\n\n## Решения');
@@ -149,8 +170,6 @@ test('CD: внешние контракты, имена продуктов, сх
   edit(cwd, C001, '- tasks-core: событие об упоминании', '- tasks-core: POST /tasks/{id}/comments, CommentDto, событие comment.mentioned, таблица task_comments (поле edited_at)\n- tasks-core: событие об упоминании');
   edit(cwd, 'comments/spec.md', 'оставил комментарий.', 'оставил комментарий (клиенты на Node.js и Vue.js, SLA(99,9%)).');
   edit(cwd, C002, '## Границы', '```mermaid\nflowchart LR\n  A --> B\n```\n\n![схема](flow.png)\n\n## Границы');
-  // в ADR архитектура: имена портов и адаптеров допустимы
-  edit(cwd, 'adr/0001-mention-notifications.md', 'Outbox в tasks-core, событие', 'Outbox в tasks-core через MentionOutboxAdapter, событие');
   assert.deepEqual(check(cwd).findings.filter((f) => f.rule.startsWith('CD')), []);
 });
 
@@ -614,7 +633,7 @@ test('approve adr: единственный ждущий ADR принимает�
   assert.match(run(cwd, 'docs/comments').out, /approve adr docs\/comments 0001/);
   const r = run(cwd, 'approve', 'adr', 'docs/comments');
   assert.equal(r.code, 0, r.out);
-  assert.match(status(cwd, 'adr/0001-mention-notifications.md'), new RegExp(`^Статус: принято ${today()} · 1e0e1f$`));
+  assert.match(status(cwd, 'adr/0001-mention-notifications.md'), new RegExp(`^Статус: принято ${today()} · 9aebc0$`));
 });
 
 // ---------- evals ----------
