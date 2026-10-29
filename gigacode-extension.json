@@ -1,6 +1,6 @@
 {
   "name": "sdd-workflow",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "SDD, этап «Планирование»: brainstorming → Dev Spec → slices → ADR, ревью и lint",
   "contextFileName": "rules/AGENTS.planning.md",
   "mcpServers": {

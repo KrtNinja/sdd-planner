@@ -41,11 +41,11 @@
 Свой Tab-дополнитель аргументов у скилла (как у `/directory add`) GigaCode и Qwen Code расширениям
 пока не дают: функции дополнения есть только у встроенных команд, расширение задаёт лишь `argument-hint`.
 
-В GigaCode CLI скилл вызывается `/skills sdd-grill <feature>`; если сборка показывает скиллы как команды — `/sdd-grill <feature>`.
+В GigaCode CLI скилл вызывается сразу по имени: `/sdd-grill <feature>` (без `/skills`; `/skills` только показывает список).
 
-`sdd-lint` печатает следующий шаг готовыми командами со slug фичи: `/skills sdd-review comments slices`,
-`/skills sdd-lint approve slices docs/comments`. Если ваша сборка понимает `/sdd-review`, задайте
-`export SDD_SKILL_PREFIX=/ SDD_LINT_CMD=/sdd-lint` в профиле оболочки.
+`sdd-lint` печатает следующий шаг готовыми командами со slug фичи: `/sdd-review comments slices`,
+`/sdd-lint approve slices docs/comments`. Другую форму команд можно задать в профиле оболочки через
+`SDD_SKILL_PREFIX` и `SDD_LINT_CMD`.
 
 ## sdd-lint: механика — скрипту, смысл — модели
 

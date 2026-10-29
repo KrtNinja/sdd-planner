@@ -60,8 +60,8 @@ export const HELP = `sdd-lint — проверки артефактов план
 
 Коды выхода: 0 — порядок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты.
 
-Форма команд в подсказках: SDD_SKILL_PREFIX (по умолчанию «/skills ») и SDD_LINT_CMD
-(по умолчанию «/skills sdd-lint»).`;
+Форма команд в подсказках: SDD_SKILL_PREFIX (по умолчанию «/») и SDD_LINT_CMD
+(по умолчанию «/sdd-lint»).`;
 
 export const usage = (msg) => {
   console.error(msg ? `${msg}\nСправка: ${lintCmd('help', cmd === 'check' ? '' : cmd).trim()}` : HELP);

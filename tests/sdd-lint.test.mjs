@@ -458,6 +458,16 @@ test('следующий шаг: готовые команды со slug фич�
   assert.match(r.out, /ревью в чистом контексте: \/sdd-review comments slices/);
   assert.match(r.out, /одобрить: node scripts\/sdd-lint\.mjs approve slices docs\/comments/);
 });
+test('следующий шаг: по умолчанию скилл вызывается сразу по имени, без /skills', () => {
+  const cwd = workspace();
+  const env = { ...process.env, TMPDIR: path.join(cwd, '.tmp') };
+  delete env.SDD_SKILL_PREFIX; delete env.SDD_LINT_CMD;
+  const r = spawnSync('node', [LINT, 'docs/comments'], { cwd, encoding: 'utf8', env });
+  const out = r.stdout + r.stderr;
+  assert.match(out, /(^|\s)\/sdd-review comments slices/);
+  assert.match(out, /(^|\s)\/sdd-lint approve slices docs\/comments/);
+  assert.doesNotMatch(out, /\/skills /);
+});
 test('следующий шаг: форма команд задаётся окружением', () => {
   const cwd = workspace();
   const r = runEnv(cwd, { SDD_SKILL_PREFIX: '/skills ', SDD_LINT_CMD: '/skills sdd-lint' }, 'docs/comments');
