@@ -13,7 +13,7 @@ const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sd
 const GOOD = path.join(root, 'tests/fixtures/good');
 // Статусы эталона: «одобрено» и «принято» с отметкой approve (отпечаток содержимого).
 const SPEC_OK = 'Статус: одобрено 27.10.2026 · 67e1fb';
-const ADR_OK = 'Статус: принято 27.10.2026 · 1e0e1f';
+const ADR_OK = 'Статус: принято 27.10.2026 · 9aebc0';
 const FP = '[0-9a-f]{6}';
 
 function workspace() {
@@ -115,6 +115,63 @@ caught('AD-05', 'adr/0001-mention-notifications.md', '- минус: сбой not
 caught('AD-06', 'adr/0001-mention-notifications.md', 'FR-10 и NFR-3: уведомление', 'FR-12 и NFR-3: уведомление');
 caught('AD-07', 'adr/0001-mention-notifications.md', '- Slice 003: notify-service', '- notify-service');
 caught('AD-08', 'adr/0001-mention-notifications.md', ' — блокирует slice 003.', '.');
+// ограничения: отказ по ОГР-n — законная причина, если ограничение описано в «Контексте»
+const ADR = 'adr/0001-mention-notifications.md';
+caught('AD-05', ADR, 'Отклонён: нарушает ОГР-1.', 'Отклонён: дорого.');
+caught('AD-11', ADR, 'Отклонён: нарушает ОГР-1.', 'Отклонён: нарушает ОГР-2.');
+caught('AD-11', ADR, '(решение архитектурного комитета).', '(решение архитектурного комитета).\n- ОГР-1 Бюджет на инфраструктуру заморожен.');
+caught('AD-11', ADR, '- ОГР-1 Новой инфраструктуры', '- Новой инфраструктуры');
+test('AD-05: вариант, отклонённый только по ограничению, — без находок AD', () => {
+  const res = check(workspace());
+  assert.deepEqual(rules(res).filter((r) => r.startsWith('AD')), []);
+});
+test('guard: humanizer не меняет номер ограничения', () => {
+  const cwd = workspace();
+  const adr = `docs/${ADR}`;
+  assert.equal(run(cwd, 'snapshot', adr).code, 0);
+  edit(cwd, ADR, 'Отклонён: нарушает ОГР-1.', 'Отклонён: нарушает ОГР-2.');
+  const r = run(cwd, 'guard', adr);
+  assert.equal(r.code, 1);
+  assert.match(r.out, /HG-01.*ОГР-/);
+});
+
+// ссылки на код: требования не врут после переименований в коде
+const C001 = 'comments/slices/001-contracts.md';
+const C002 = 'comments/slices/002-comments.md';
+caught('CD-01', C001, 'tasks-core: контракт комментариев', 'tasks-core: src/comments/comment.controller.ts');
+caught('CD-01', C001, 'tasks-core: контракт комментариев', 'tasks-core: comments.openapi.yaml');
+caught('CD-01', C001, 'tasks-core: событие об упоминании', 'tasks-core: tests/fixtures/comments/');
+caught('CD-01', 'comments/spec.md', 'оставил комментарий.', 'оставил комментарий (domain/errors/CommentErrors.ts).');
+caught('CD-01', 'adr/0001-mention-notifications.md', '- Slice 003: notify-service', '- Slice 003: notify-service в src/mentions/consumer.ts');
+caught('CD-02', C002, '## Границы', '[код](https://github.com/org/tasks-core/blob/main/src/comments.ts#L10)\n\n## Границы');
+caught('CD-02', C002, '## Границы', 'Как сейчас: [обработчик](../../../../tasks-core/src/comments.ts#L42)\n\n## Границы');
+caught('CD-02', C002, '## Границы', 'См. https://gitlab.example.ru/team/tasks-core/-/blob/main/app/comments.rb\n\n## Границы');
+caught('CD-02', C002, '## Границы', 'См. https://gitverse.ru/team/tasks-core/content/master/comments\n\n## Границы');
+caught('CD-03', C002, 'WHEN Дина отправляет комментарий к TASK-42', 'WHEN Дина вызывает createComment(TASK-42)');
+caught('CD-03', 'comments/spec.md', 'оставил комментарий.', 'оставил комментарий: comments.create() вернул 201.');
+caught('CD-04', C002, '## Границы', '```ts\nexport type Comment = { text: string };\n```\n\n## Границы');
+caught('CD-04', C001, '## Границы', '```json\n{ "text": "…" }\n```\n\n## Границы');
+caught('CD-05', C001, 'tasks-core: событие об упоминании', 'tasks-core: MentionService публикует событие об упоминании');
+caught('CD-05', 'comments/spec.md', 'оставил комментарий.', 'оставил комментарий через CommentRepository.');
+caught('CD-05', 'comments/slices/README.md', '# ', 'Порядок задаёт CommentsController.\n\n# ');
+// ADR фиксирует выбор и причины; соглашения о коде — в репозитории сервиса
+caught('CD-05', ADR, 'через outbox в брокер компании', 'через MentionOutboxAdapter в брокер компании');
+test('CD: протокол и ревью — леса, их не проверяем', () => {
+  const cwd = workspace();
+  edit(cwd, 'comments/brainstorming.md', '## Решения', 'Сейчас: src/comments/comment.controller.ts, create(dto), CommentService.\n\n```ts\nconst x = 1;\n```\n\n## Решения');
+  fs.mkdirSync(file(cwd, 'comments/review'), { recursive: true });
+  fs.writeFileSync(file(cwd, 'comments/review/slices.md'), '# Ревью slices\n\nСм. src/comments.ts#L42, deleteComment(id).\n');
+  assert.deepEqual(rules(check(cwd)).filter((r) => r.startsWith('CD')), []);
+});
+test('CD: внешние контракты, имена продуктов, схемы и маршруты API — не код', () => {
+  const cwd = workspace();
+  // коды ошибок, поля ответа, DTO и события — внешний контракт: в AC они наблюдаемы на границе
+  edit(cwd, C002, '  THEN отказ «Нет доступа к задаче», комментарий не сохранён', '  THEN ошибка TASK_FORBIDDEN, в ответе нет поля commentId, комментарий не сохранён');
+  edit(cwd, C001, '- tasks-core: событие об упоминании', '- tasks-core: POST /tasks/{id}/comments, CommentDto, событие comment.mentioned, таблица task_comments (поле edited_at)\n- tasks-core: событие об упоминании');
+  edit(cwd, 'comments/spec.md', 'оставил комментарий.', 'оставил комментарий (клиенты на Node.js и Vue.js, SLA(99,9%)).');
+  edit(cwd, C002, '## Границы', '```mermaid\nflowchart LR\n  A --> B\n```\n\n![схема](flow.png)\n\n## Границы');
+  assert.deepEqual(check(cwd).findings.filter((f) => f.rule.startsWith('CD')), []);
+});
 
 // объём для чтения: Dev Spec, slice и README — до 10 000 видимых символов
 const prose = (n) => 'Анна читает Dev Spec. '.repeat(n); // 18 видимых символов на повтор
@@ -503,6 +560,45 @@ test('approve slices: ставит «одобрено <дата>» и показ
   assert.match(r.out, /перед merge убрать протокол: node scripts\/sdd-lint\.mjs close docs\/comments/);
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
 });
+// ---------- export: интерфейс для зоны реализации ----------
+const exported = (cwd) => {
+  const r = run(cwd, 'export', 'comments');
+  return { code: r.code, ...JSON.parse(r.out) };
+};
+test('export: ворота build закрыты — код 3, причина и подсказка в JSON', () => {
+  const e = exported(workspace());
+  assert.equal(e.code, 3);
+  assert.deepEqual(e.gate, { build: 'closed', reason: 'slices не одобрены', hint: 'Сначала одобрите slices: node scripts/sdd-lint.mjs approve slices docs/comments' });
+});
+test('export: после одобрения — slices, слои, сервисы и ссылки на AC для тестов', () => {
+  const cwd = workspace();
+  assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
+  const e = exported(cwd);
+  assert.equal(e.code, 0);
+  assert.equal(e.gate.build, 'open');
+  assert.deepEqual(e.ref, { format: 'comments/<AC-ID>', pattern: 'comments/AC-\\d{3}-[BF]?\\d+' });
+  assert.deepEqual(e.slices.map((s) => [s.num, s.layer, s.services]), [
+    ['001', 1, ['tasks-core', 'notify-service', 'frontend']],
+    ['002', 2, ['tasks-core', 'frontend']],
+    ['003', 3, ['tasks-core', 'notify-service', 'frontend']],
+  ]);
+  const acs = e.slices.flatMap((s) => s.acs);
+  assert.equal(acs.length, 14);
+  assert.deepEqual(acs.find((a) => a.id === 'AC-003-B1'), {
+    id: 'AC-003-B1', ref: 'comments/AC-003-B1', name: 'Без дублей', half: 'backend', service: 'notify-service', checks: ['FR-10'], line: 25, deleted: false,
+  });
+  assert.deepEqual(acs.filter((a) => a.half === 'common').map((a) => [a.id, a.service]), [['AC-002-1', null], ['AC-003-1', null]]);
+  assert.ok(acs.filter((a) => a.half === 'frontend').every((a) => a.service === 'frontend'));
+  for (const a of acs) assert.match(a.ref, new RegExp(`^${e.ref.pattern}$`));
+  assert.deepEqual(e.adrs.map((a) => [a.num, a.title]), [['0001', 'Доставка уведомлений об упоминаниях через брокер']]);
+});
+test('export: статус ворот тот же, что у gate build', () => {
+  const cwd = workspace();
+  assert.equal(run(cwd, 'gate', 'build', 'docs/comments').code, exported(cwd).code);
+  assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
+  assert.equal(run(cwd, 'gate', 'build', 'docs/comments').code, exported(cwd).code);
+});
+
 test('approve slices: нельзя, пока spec не одобрен', () => {
   const cwd = workspace();
   edit(cwd, 'comments/spec.md', SPEC_OK, 'Статус: на ревью');
@@ -537,7 +633,7 @@ test('approve adr: единственный ждущий ADR принимает�
   assert.match(run(cwd, 'docs/comments').out, /approve adr docs\/comments 0001/);
   const r = run(cwd, 'approve', 'adr', 'docs/comments');
   assert.equal(r.code, 0, r.out);
-  assert.match(status(cwd, 'adr/0001-mention-notifications.md'), new RegExp(`^Статус: принято ${today()} · 1e0e1f$`));
+  assert.match(status(cwd, 'adr/0001-mention-notifications.md'), new RegExp(`^Статус: принято ${today()} · 9aebc0$`));
 });
 
 // ---------- evals ----------

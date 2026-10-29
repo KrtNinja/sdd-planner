@@ -38,6 +38,9 @@ export const HELP = `sdd-lint — проверки артефактов план
   sdd-lint close docs/<feature>
       перед merge: spec и slices одобрены, ошибок нет → удаляет brainstorming.md
       и всё, что в spec на него ссылается, обновляет ссылки на FR
+  sdd-lint export docs/<feature>
+      требования в JSON для зоны реализации: slices, сервисы, AC со ссылкой
+      <feature>/<AC-ID> для названий тестов, статус ворот build. Код 3 — ворота build закрыты
   sdd-lint trace docs/<feature>
       каждая строка протокола: решение → куда ушла (FR/NFR, вне scope, открытый вопрос)
   sdd-lint next <FR|NFR|slice|adr> docs/<feature>

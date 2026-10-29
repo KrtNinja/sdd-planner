@@ -23,13 +23,11 @@ export function cmdCheck() {
   process.exit(c.err ? 1 : 0);
 }
 
-export function cmdGate() {
-  const stage = pos[0];
-  const gates = ['spec', 'slices', 'adr', 'decide', 'build'];
-  if (!gates.includes(stage)) pickChoice('gate');
-  const m = loadFeature(needDir(pos[1], 1));
-  runChecks(m);
-  const errorsIn = (files) => findings.filter((x) => x.level === 'err' && files.map(rel).includes(x.file));
+const errorsIn = (files) => findings.filter((x) => x.level === 'err' && files.map(rel).includes(x.file));
+
+// Ворота этапа после runChecks: null — открыты, иначе [почему закрыты, что сказать человеку].
+// Ими же пользуется export: зона реализации видит тот же статус build, что и gate.
+export function gateClosed(m, stage) {
   const dir = rel(m.dir);
   const check = lintCmd(dir);
   let closed = null;
@@ -49,6 +47,16 @@ export function cmdGate() {
     else if (pending.length) closed = [`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`, `Сначала примите ADR: ${pending.map((a) => lintCmd('approve', 'adr', dir, a.num)).join('; ')}`];
     else if (findings.some((x) => x.level === 'err')) closed = ['есть ошибки lint', `Исправьте ошибки lint, список: ${check}`];
   }
+  return closed;
+}
+
+export function cmdGate() {
+  const stage = pos[0];
+  const gates = ['spec', 'slices', 'adr', 'decide', 'build'];
+  if (!gates.includes(stage)) pickChoice('gate');
+  const m = loadFeature(needDir(pos[1], 1));
+  runChecks(m);
+  const closed = gateClosed(m, stage);
   if (closed) {
     const relevant = stage === 'build' ? findings : errorsIn([m.protocolFile, m.specFile]);
     for (const x of relevant.filter((y) => y.level === 'err')) console.log(line(x));

@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { parseAdr, checkAdrs } from './adr.mjs';
 import { verifyApprovals, checkApprovals } from './approval.mjs';
+import { checkCodeRefs } from './code-refs.mjs';
 import { checkEditMarks } from './edit-marks.mjs';
 import { read, scan, header } from './md.mjs';
 import { parseProtocol, checkProtocol } from './protocol.mjs';
@@ -76,6 +77,7 @@ export function runChecks(m) {
   checkAdrs(m);
   checkReviews(m);
   checkEditMarks(m);
+  checkCodeRefs(m);
   checkReadSize(m);
   checkApprovals(m);
 }

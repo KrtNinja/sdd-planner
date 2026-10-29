@@ -1,7 +1,7 @@
 ---
 name: sdd-lint
 description: Проверяет артефакты планирования SDD в docs/<feature> скриптом и показывает ошибки и следующий шаг процесса; после humanizer сверяет, что защищённые части не тронуты (guard). Запускай, когда человек спрашивает, где фича по процессу, просит проверить spec и slices или запустить guard.
-argument-hint: '[<feature> | approve | gate | gen | guard | trace | next …] (пусто — меню)'
+argument-hint: '[<feature> | approve | gate | gen | guard | trace | export | next …] (пусто — меню)'
 disable-model-invocation: true
 ---
 
@@ -24,6 +24,8 @@ disable-model-invocation: true
    - перед merge убрать протокол и ссылки на него — `<скрипт> close docs/<feature>`. Только по прямой
      просьбе человека, как approve;
    - откуда какое требование — `<скрипт> trace docs/<feature>`: решение протокола → FR/NFR;
+   - требования для зоны реализации — `<скрипт> export docs/<feature>`: JSON со slices, сервисами
+     и ссылками `<feature>/<AC-ID>` для тестов; код 3 — ворота build закрыты, причина в JSON;
    - одобрить spec, slices или ADR — `<скрипт> approve spec|slices docs/<feature>`,
      `<скрипт> approve adr docs/<feature> [NNNN]`. Только по прямой просьбе человека; отказ скрипта
      передай как есть — статус руками не ставь.
