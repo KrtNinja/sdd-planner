@@ -6,6 +6,7 @@ import { usage } from './cli.mjs';
 import { add } from './findings.mjs';
 import { linkReqs, basisPlain, staleReqLinks } from './links.mjs';
 import { rel, uniq, scan, isH2, inSection, sectionText, tables, col, reqIds, replaceSection } from './md.mjs';
+import { registry } from './services.mjs';
 
 export const coverage = (m) => {
   const covered = new Map();
@@ -22,13 +23,16 @@ const sameSet = (a, b) => {
   return A.size === B.size && [...A].every((x) => B.has(x));
 };
 
-// слои порядка работ: внутри слоя slices можно делать параллельно
-export function layers(m) {
-  const left = new Set(m.slices.keys());
+// slices, которые делят требование: всё, кроме 001 «подготовка» — он ссылается на все FR через контракты.
+export const sharing = (m, nums) => [...nums].filter((n) => !(n === '001' && /подготов/i.test(m.slices.get(n).type || '')));
+
+// слои порядка работ: внутри слоя slices можно делать параллельно. items — Map номер → { deps }.
+export function layers(m, items = m.slices) {
+  const left = new Set(items.keys());
   const done = new Set();
   const out = [];
   while (left.size) {
-    const layer = [...left].filter((n) => m.slices.get(n).deps.every((d) => done.has(d) || !m.slices.has(d) || d === n)).sort();
+    const layer = [...left].filter((n) => items.get(n).deps.every((d) => done.has(d) || !items.has(d) || d === n)).sort();
     if (!layer.length) {
       out.push([...left].sort());
       break;
@@ -102,7 +106,7 @@ export function checkReadme(m) {
 
   const cross = sectionText(sc, /^Пересечения/);
   for (const [id, nums] of covered) {
-    const beh = [...nums].filter((n) => /поведение/i.test(m.slices.get(n).type || ''));
+    const beh = sharing(m, nums);
     if (beh.length > 1 && !reqIds(cross).includes(id)) add('RM-03', f, null, `${id} в slices ${beh.join(', ')}, в «Пересечения» не описан`);
   }
 
@@ -128,6 +132,10 @@ export function genReadme(m, quiet = false) {
   let md = m.readme;
   if (md == null) {
     const adrs = m.featureAdrs.map((a) => `[${a.num}](../../adr/${path.basename(a.file)})`).join(', ') || 'нет';
+    const reg = registry(m);
+    // Заготовки: какие FR делят slices и сквозной шаг на каждый поведенческий slice — смысл допишет агент.
+    const shared = [...covered].map(([id, nums]) => [id, sharing(m, nums).sort()]).filter(([, nums]) => nums.length > 1);
+    const behaviour = [...m.slices.values()].filter((s) => /поведение/i.test(s.type || '') && [...s.basis].some((id) => id.startsWith('FR')));
     md = [
       `# ${m.spec?.title || m.name} — slices`,
       '',
@@ -136,6 +144,9 @@ export function genReadme(m, quiet = false) {
       'Dev Spec: [../spec.md](../spec.md)',
       '',
       `ADR: ${adrs}`,
+      '',
+      ...(reg ? [`Сервисы: ${reg.list.join(', ')}`, ''] : []),
+      '<!-- Таблицу, «Покрытие Dev Spec» и «Порядок работ» собирает sdd-lint fix: руками не правь. -->',
       '',
       table,
       '',
@@ -146,12 +157,14 @@ export function genReadme(m, quiet = false) {
       orderText,
       '',
       '## Пересечения',
-      '- Что делят соседние slices и где граница.',
+      ...(shared.length ? shared.map(([id, nums]) => `- ${id} — ${nums.join(', ')}: <где граница>`) : ['Нет.']),
       '',
       '## Проверка фичи (после всех slices)',
       '| Шаг | Действие | Ожидание | Требования |',
       '|---|---|---|---|',
-      '| 1 | … | … | FR-… |',
+      ...(behaviour.length
+        ? behaviour.map((s, i) => `| ${i + 1} | <действие> | <ожидание> | ${[...s.basis].filter((id) => id.startsWith('FR')).join(', ')} |`)
+        : ['| 1 | <действие> | <ожидание> | <FR-n> |']),
       '',
     ].join('\n');
   } else {

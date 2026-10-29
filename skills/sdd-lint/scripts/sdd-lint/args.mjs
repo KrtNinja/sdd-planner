@@ -16,9 +16,11 @@ for (let i = 0; i < argv.length; i++) {
 export const CMD_INFO = {
   check: 'все проверки и текущий этап',
   fix: 'после правки: номера, ссылки, README — скриптом, затем проверки',
+  done: 'конец этапа: fix, снимок, «на ревью» и вопрос этапа',
+  plan: 'проверить план нарезки slices/plan.md',
   gate: 'ворота перед этапом',
   approve: 'одобрить spec, slices или принять ADR',
-  gen: 'собрать README, «угадал бы», ссылки',
+  gen: 'собрать README, «угадал бы», ссылки, файлы slices по плану',
   guard: 'сверка после humanizer',
   snapshot: 'снимок перед humanizer',
   trace: 'протокол → FR/NFR',
@@ -35,7 +37,7 @@ export const CMD_INFO = {
 export const CHOICES = {
   gate: { spec: 'можно ли писать Dev Spec', slices: 'можно ли резать slices', adr: 'можно ли писать ADR', decide: 'можно ли проводить решение', build: 'можно ли начинать реализацию' },
   approve: { spec: 'одобрить Dev Spec', slices: 'одобрить slices', adr: 'принять ADR' },
-  gen: { readme: 'slices/README.md: таблица, покрытие, порядок', guessed: '«Где агент угадал бы не так»', links: 'ссылки на строки протокола и spec' },
+  gen: { readme: 'slices/README.md: таблица, покрытие, порядок', guessed: '«Где агент угадал бы не так»', links: 'ссылки на строки протокола и spec', slices: 'файлы slices по согласованному плану' },
   next: { FR: 'номер нового FR', NFR: 'номер нового NFR', AC: 'номер нового AC в slice', slice: 'номер нового slice', adr: 'номер нового ADR' },
   completion: { bash: 'source <(sdd-lint completion bash)', zsh: 'source <(sdd-lint completion zsh)' },
 };
@@ -43,6 +45,8 @@ export const CHOICES = {
 export const SLOTS = {
   check: ['feature'],
   fix: ['feature'],
+  done: ['feature'],
+  plan: ['feature'],
   gate: ['choice', 'feature'],
   approve: ['choice', 'feature', 'adr'],
   gen: ['choice', 'feature'],

@@ -1,6 +1,7 @@
 // Текущий этап фичи и блок «Следующий шаг».
 import { pendingAdrs } from './adr.mjs';
 import { skill, lintCmd } from './config.mjs';
+import { neededAdrs, stubCount } from './cut.mjs';
 import { rel, approved } from './md.mjs';
 import { openBlockers, reviewKey } from './review.mjs';
 
@@ -33,8 +34,10 @@ function adrSteps(m) {
     ];
   });
 }
+// «Р1 — ADR: <тема>» в slices — ADR ещё не заведён: предложить его написать.
+const newAdrSteps = (m) => neededAdrs(m).map((x) => `написать ADR «${x.topic}» (slice ${x.num}): ${skill('sdd-adr', m.name, `"${x.topic}"`)}`);
 export function stageOf(m) {
-  const st = (now, next = []) => ({ now, next: [...next, ...adrSteps(m)] });
+  const st = (now, next = []) => ({ now, next: [...next, ...newAdrSteps(m), ...adrSteps(m)] });
   // Неодобренный spec важнее всего ниже: после /sdd-decide он возвращается «на ревью»,
   // и одобрение slices относилось к другой его версии.
   if (m.slices.size && m.spec && !approved(m.spec.status))
@@ -52,7 +55,10 @@ export function stageOf(m) {
         ? { now: 'Slices одобрены, ADR приняты', next: [`перед merge убрать протокол: ${lintCmd('close', rel(m.dir))}`] }
         : { now: 'Планирование завершено: slices одобрены, ADR приняты, протокол убран', next: [] };
   }
+  const stubs = m.slices.size ? stubCount(m) : 0;
+  if (stubs) return st(`Slices созданы по плану, заготовок «<…>» не заполнено: ${stubs}`, [`заполнить заготовки: ${skill('sdd-slices', m.name)}`]);
   if (m.slices.size) return st('Slices на ревью', handoff(m, 'slices'));
+  if (m.plan && m.spec && approved(m.spec.status)) return st(`План нарезки ждёт согласия (${rel(m.planFile)})`, [`согласовать нарезку: ${skill('sdd-slices', m.name)}`]);
   if (m.spec && approved(m.spec.status)) return st('Dev Spec одобрен', [skill('sdd-slices', m.name)]);
   if (m.spec) return st(`Dev Spec «${m.spec.status || '—'}»`, handoff(m, 'spec'));
   if (m.protocol && /готов/i.test(m.protocol.status || '')) return st('Протокол готов', [skill('sdd-spec', m.name)]);

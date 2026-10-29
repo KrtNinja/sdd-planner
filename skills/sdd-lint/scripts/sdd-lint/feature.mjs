@@ -5,8 +5,10 @@ import path from 'node:path';
 import { parseAdr, checkAdrs } from './adr.mjs';
 import { verifyApprovals, checkApprovals } from './approval.mjs';
 import { checkCodeRefs } from './code-refs.mjs';
+import { checkCut } from './cut.mjs';
 import { checkEditMarks } from './edit-marks.mjs';
 import { read, scan, header } from './md.mjs';
+import { parsePlan, checkPlan } from './plan.mjs';
 import { parseProtocol, checkProtocol } from './protocol.mjs';
 import { checkReadSize } from './read-size.mjs';
 import { parseReview, checkReviews } from './review.mjs';
@@ -20,6 +22,7 @@ export function loadFeature(dir, readFn = read, listFn = null) {
   const specFile = path.join(featureDir, 'spec.md');
   const slicesDir = path.join(featureDir, 'slices');
   const readmeFile = path.join(slicesDir, 'README.md');
+  const planFile = path.join(slicesDir, 'plan.md');
   const adrDir = path.join(featureDir, '..', 'adr');
   const list = listFn || ((d) => (fs.existsSync(d) ? fs.readdirSync(d) : []));
   const slices = new Map();
@@ -53,6 +56,8 @@ export function loadFeature(dir, readFn = read, listFn = null) {
     slices,
     readmeFile,
     readme,
+    planFile,
+    plan: parsePlan(planFile, readFn(planFile)),
     readmeSc: readme != null ? scan(readme) : null,
     slicesStatus: readme != null ? header(readme, 'Статус') : null,
     adrDir,
@@ -74,6 +79,8 @@ export function runChecks(m) {
   checkProtocol(m);
   checkSpec(m);
   checkSlices(m);
+  if (m.slices.size) checkCut(m);
+  checkPlan(m);
   checkAdrs(m);
   checkReviews(m);
   checkEditMarks(m);

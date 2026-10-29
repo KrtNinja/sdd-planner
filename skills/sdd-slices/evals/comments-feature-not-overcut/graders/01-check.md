@@ -4,4 +4,4 @@ focus: trace
 weight: 1
 ---
 
-Ответ содержит таблицу нарезки, в которой не больше 5 slices, считая slice 001 «Контракты».
+В плане docs/comments/slices/plan.md не больше 5 slices, считая 001 «Контракты».

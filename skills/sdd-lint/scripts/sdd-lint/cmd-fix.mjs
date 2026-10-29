@@ -10,6 +10,7 @@ import { loadFeature, featureFiles, runChecks } from './feature.mjs';
 import { findings, report } from './findings.mjs';
 import { linkSpec, linkSlice } from './gen-links.mjs';
 import { gitInfo } from './git.mjs';
+import { fixIdTypos } from './ids.mjs';
 import { read, rel, uniq } from './md.mjs';
 import { needDir } from './pick.mjs';
 import { genGuessed } from './protocol.mjs';
@@ -60,13 +61,26 @@ function numberPlaceholders(m) {
   }
   return done;
 }
-export function cmdFix() {
-  const dir = needDir(pos[0]);
-  const files = (m) => uniq([...featureFiles(m), m.readmeFile].map((f) => path.resolve(f)));
+// Вся механика fix: кириллица в ID, номера, ссылки, README, сброс одобрения правленого; затем проверки
+// и сверка с git. Находки остаются в findings — их печатают fix и done.
+export function fixFeature(dir, { snapshot = false } = {}) {
+  const files = (m) => uniq([...featureFiles(m), m.readmeFile, m.planFile].map((f) => path.resolve(f)));
   let m = loadFeature(dir);
   const before = new Map(files(m).map((f) => [f, read(f)]));
   const notes = [];
-  const numbered = numberPlaceholders(m);
+  const detail = new Map();
+  const note = (file, text) => detail.set(path.resolve(file), [...(detail.get(path.resolve(file)) || []), text]);
+  // Кириллица в ID — до нумерации: «AC-002-В?» станет заготовкой, которую fix пронумерует.
+  for (const file of [...[...m.slices.values()].map((s) => s.file), m.readmeFile, m.planFile]) {
+    const md = read(file);
+    if (md == null) continue;
+    const r = fixIdTypos(md);
+    if (!r.typos.length) continue;
+    fs.writeFileSync(file, r.md);
+    for (const t of r.typos) note(file, `${t.from} → ${t.to}`);
+  }
+  m = loadFeature(dir);
+  for (const x of numberPlaceholders(m)) note(x.split(':')[0], x.split(/:\d+\s+/)[1]);
   m = loadFeature(dir);
   // Порядок — сверху вниз: протокол меняет строки, на которые ссылается spec, spec — строки для slices.
   if (m.protocol && /готов/i.test(m.protocol.status || '')) {
@@ -95,20 +109,20 @@ export function cmdFix() {
   const g = gitInfo(m.dir);
   if (g) diffChecks(dir, g, 'HEAD');
   else notes.push('не git-репозиторий: сверка с git (DF-*) пропущена');
-  if (flags.snapshot) for (const f of featureFiles(m)) saveSnapshot(f);
+  if (snapshot) for (const f of featureFiles(m)) saveSnapshot(f);
 
-  const detail = new Map();
-  for (const x of numbered) {
-    const f = path.resolve(x.split(':')[0]);
-    detail.set(f, [...(detail.get(f) || []), x.split(/:\d+\s+/)[1]]);
-  }
   const changed = files(m)
     .filter((f) => before.get(f) !== read(f))
-    .map((f) => `${rel(f)}${before.get(f) == null ? ' — создан' : ''}${detail.has(f) ? `: ${detail.get(f).join(', ')}` : ''}`);
+    .map((f) => `${rel(f)}${before.get(f) == null ? ' — создан' : read(f) == null ? ' — удалён' : ''}${detail.has(f) ? `: ${detail.get(f).join(', ')}` : ''}`);
+  return { m, changed, notes };
+}
+export const fixedText = (changed) => (changed.length ? `Скрипт поправил:\n${changed.map((x) => `  ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');
 
+export function cmdFix() {
+  const { m, changed, notes } = fixFeature(needDir(pos[0]), { snapshot: flags.snapshot });
   const st = stageOf(m);
   if (!flags.json) {
-    console.log(changed.length ? `Скрипт поправил:\n${changed.map((x) => `  ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');
+    console.log(fixedText(changed));
     for (const n of notes) console.log(n);
     if (findings.length) console.log('');
   }
