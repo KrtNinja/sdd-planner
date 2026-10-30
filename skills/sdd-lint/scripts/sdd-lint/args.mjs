@@ -1,7 +1,7 @@
 // Разбор process.argv и описание команд: варианты, слоты аргументов, флаги.
 
 export const argv = process.argv.slice(2);
-export const flags = { json: false, snapshot: false, yes: false, base: null, slug: null, sources: null, accept: false, rename: null };
+export const flags = { json: false, snapshot: false, yes: false, base: null, slug: null, sources: null, accept: false, rename: null, raw: false };
 export const pos = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
@@ -14,6 +14,8 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === '--slug' || a === '--sources' || a === '--rename') flags[a.slice(2)] = argv[++i] ?? '';
   else if (/^--(slug|sources|rename)=/.test(a)) flags[a.slice(2, a.indexOf('='))] = a.slice(a.indexOf('=') + 1);
   else if (a === '--accept') flags.accept = true;
+  // prompt --raw: скилл без разбора аргументов — для прогона evals без слэш-команд.
+  else if (a === '--raw') flags.raw = true;
   // «@docs/comments/» — так путь дописывает Tab в строке GigaCode.
   else pos.push(a.replace(/^@(?=.)/, ''));
 }

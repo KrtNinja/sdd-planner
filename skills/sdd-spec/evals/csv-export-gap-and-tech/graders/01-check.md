@@ -1,7 +1,9 @@
 ---
-type: llm
-focus: trace
-weight: 1
+type: script
 ---
 
-Файл docs/csv-export/spec.md создан и содержит строку «Статус: на ревью».
+docs/csv-export/spec.md создан со «Статус: на ревью».
+
+```sh
+q file docs/csv-export/spec.md '^Статус: на ревью$'
+```

@@ -1,7 +1,9 @@
 ---
-type: llm
-focus: trace
-weight: 1
+type: script
 ---
 
-В spec.md нет слов RabbitMQ, S3, очередь, BOM и UTF-8: решение строки 8 и 9 протокола описано как наблюдаемое поведение (например, ссылка на готовый файл приходит в колокольчик, кириллица открывается в Excel).
+В spec.md нет технологий из протокола: RabbitMQ, S3, очередь, BOM, UTF-8.
+
+```sh
+q no-file docs/csv-export/spec.md 'RabbitMQ|S3|очеред|BOM|UTF-8'
+```

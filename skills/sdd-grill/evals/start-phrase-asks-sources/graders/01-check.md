@@ -1,7 +1,12 @@
 ---
-type: llm
-focus: trace
-weight: 1
+type: script
 ---
 
-Агент не спрашивал у человека имя папки: придумал его сам (латиница через дефис, например user-settings или user-settings-panel) и передал в `sdd_lint ["start", …, "--slug", …]`.
+Имя папки агент придумал сам — латиницей через дефис — и передал в start --slug; человека о нём не спрашивал.
+
+```sh
+q called sdd_lint start --slug
+q features 1
+q file 'docs/*/brainstorming.md'
+q not-said 'как назвать папку'
+```

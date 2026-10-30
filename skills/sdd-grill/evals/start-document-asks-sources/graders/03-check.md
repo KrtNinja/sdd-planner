@@ -1,7 +1,10 @@
 ---
-type: llm
-focus: trace
-weight: 1
+type: script
 ---
 
-До ответа человека агент не начал grilling и не записал решения из файла задачи в протокол: таблица «Решения» пуста.
+До ответа человека решений в протоколе нет: строки 1 в «Решения» нет, grilling не начат.
+
+```sh
+q no-file docs/user-settings/brainstorming.md '^\| 1 \|'
+q not-said 'Q1'
+```

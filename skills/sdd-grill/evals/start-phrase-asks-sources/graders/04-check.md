@@ -1,7 +1,11 @@
 ---
-type: llm
-focus: trace
-weight: 1
+type: script
 ---
 
-Агент остановился на этом вопросе: нет вопросов grilling (Q1 …), нет docs/<имя>/_work/context.md и spec.md.
+Агент остановился на вопросе: нет контекста, spec.md и вопросов grilling.
+
+```sh
+q no-file 'docs/*/_work/context.md'
+q no-file 'docs/*/spec.md'
+q not-said 'Q1'
+```
