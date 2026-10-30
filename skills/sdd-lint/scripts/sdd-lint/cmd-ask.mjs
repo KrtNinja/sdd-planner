@@ -35,7 +35,9 @@ export function cmdChoose() {
       out = `${e.stdout || ''}${e.stderr || ''}`;
       code = typeof e.status === 'number' ? e.status : 1;
     }
-    console.log(`${out.trimEnd()}\n\nПередай вывод человеку как есть. ${code ? 'Остановись.' : again}`);
+    // after — что делать дальше, когда команда прошла (gen slices: продолжить скилл, а не новый вопрос).
+    const tail = code ? 'Передай вывод человеку как есть. Остановись.' : a.after || `Передай вывод человеку как есть. ${again}`;
+    console.log(`${out.trimEnd()}\n\n${tail}`);
     process.exit(code);
   }
   if (a.subagent) {

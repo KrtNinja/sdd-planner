@@ -1,7 +1,10 @@
 // Вопрос человеку на этапе: варианты с рекомендацией и задания для них (ask / choose).
 import { pendingAdrs } from './adr.mjs';
 import { skill, lintCmd } from './config.mjs';
-import { rel, approved } from './md.mjs';
+import { neededAdrs, stubCount } from './cut.mjs';
+import { findings } from './findings.mjs';
+import { rel, approved, plural } from './md.mjs';
+import { checkPlan, planPreview } from './plan.mjs';
 import { openBlockers, reviewKey } from './review.mjs';
 import { blockersStep, stageOf } from './stage.mjs';
 
@@ -72,9 +75,64 @@ function nextSkillQuestion(m, now, name, label) {
     ],
   };
 }
+// Согласие с планом нарезки: «Да» создаёт файлы скриптом (gen slices), а не руками агента.
+function planQuestion(m) {
+  const dir = rel(m.dir);
+  const saved = findings.splice(0);
+  checkPlan(m);
+  const errs = findings.filter((x) => x.level === 'err').length;
+  findings.splice(0, findings.length, ...saved);
+  const n = m.plan.slices.length;
+  const edit = {
+    id: 'plan:edit',
+    label: 'Поправить нарезку',
+    description: 'напишите, что склеить или разрезать',
+    action: { show: 'Что поправить в нарезке? Напишите, какие slices склеить или разрезать, — поправлю план и покажу снова.' },
+  };
+  if (errs) {
+    return {
+      header: 'План нарезки',
+      question: `В плане нарезки ошибки lint: ${errs}. Исправить?`,
+      options: [{ id: 'plan:continue', label: 'Исправить план здесь', description: skill('sdd-slices', m.name), recommended: true, action: { here: ['prompt', 'sdd-slices', m.name] } }, edit],
+    };
+  }
+  return {
+    header: 'План нарезки',
+    question: `Нарезка на ${n} slices (план выше). Подходит?`,
+    preview: planPreview(m),
+    options: [
+      {
+        id: 'plan:yes',
+        label: 'Да, создать файлы slices',
+        description: `скрипт создаст ${plural(n, 'файл', 'файла', 'файлов')} по плану, затем агент заполнит AC`,
+        recommended: true,
+        action: {
+          lint: ['gen', 'slices', dir],
+          after:
+            'Скажи человеку одной строкой, какие файлы созданы, и продолжай нарезку с шага «Заполни заготовки». ' +
+            `Скилла sdd-slices нет в контексте — вызови sdd_lint с args ${lintArgs(['prompt', 'sdd-slices', m.name])} и выполняй его с этого шага.`,
+        },
+      },
+      edit,
+    ],
+  };
+}
+// ADR, который slice ждёт, но его ещё нет: «Р1 — ADR: <тема>».
+function newAdrQuestions(m) {
+  return neededAdrs(m).map((x) => ({
+    header: 'Нужен ADR',
+    question: `Slice ${x.num} ждёт решения «${x.topic}», ADR ещё нет. Написать?`,
+    options: [
+      { id: `adr-here:${x.num}`, label: 'Написать ADR здесь', description: skill('sdd-adr', m.name, `"${x.topic}"`), recommended: true, action: { here: ['prompt', 'sdd-adr', m.name, x.topic] } },
+      { id: `adr-window:${x.num}`, label: 'В новом окне', description: 'вы запускаете команду сами', action: { show: skill('sdd-adr', m.name, `"${x.topic}"`) } },
+      { id: `adr-later:${x.num}`, label: 'Позже', description: 'ничего не делать', action: { none: true } },
+    ],
+  }));
+}
+// Пока план не согласован или заготовки не заполнены — один вопрос: решение о нарезке важнее ADR, их черёд после.
 export function askOf(m) {
   const st = stageOf(m);
-  const adrQs = () => pendingAdrs(m).map((a) => artifactQuestion(m, 'adr', a.num));
+  const adrQs = () => [...newAdrQuestions(m), ...pendingAdrs(m).map((a) => artifactQuestion(m, 'adr', a.num))];
   let qs = [];
   if (m.slices.size && m.spec && !approved(m.spec.status)) qs = [artifactQuestion(m, 'spec'), ...adrQs()];
   else if (m.slices.size && approved(m.slicesStatus)) {
@@ -90,7 +148,9 @@ export function askOf(m) {
           ],
         },
       ];
-  } else if (m.slices.size) qs = [artifactQuestion(m, 'slices'), ...adrQs()];
+  } else if (m.slices.size && stubCount(m)) qs = [nextSkillQuestion(m, st.now, 'sdd-slices', 'Продолжить заполнение')];
+  else if (m.slices.size) qs = [artifactQuestion(m, 'slices'), ...adrQs()];
+  else if (m.plan && m.spec && approved(m.spec.status)) qs = [planQuestion(m)];
   else if (m.spec && approved(m.spec.status)) qs = [nextSkillQuestion(m, st.now, 'sdd-slices', 'Резать slices'), ...adrQs()];
   else if (m.spec) qs = [artifactQuestion(m, 'spec'), ...adrQs()];
   else if (m.protocol && /готов/i.test(m.protocol.status || '')) qs = [nextSkillQuestion(m, st.now, 'sdd-spec', 'Писать Dev Spec')];
@@ -106,16 +166,19 @@ export function askOf(m) {
 export function askView(m) {
   const { stage, questions } = askOf(m);
   let n = 0;
-  const qs = questions.map((q) => ({
+  // preview (план нарезки) человек читает до вопроса: в инструменте выбора ему не место.
+  const preview = questions.map((q) => q.preview).filter(Boolean).join('\n\n') || null;
+  const qs = questions.map(({ preview: _p, ...q }) => ({
     ...q,
     options: q.options.map(({ action, ...o }) => ({ n: ++n, ...o, label: o.recommended ? `${o.label} (рекомендую)` : o.label })),
   }));
   const text = qs.map((q) => [q.question, ...q.options.map((o) => `${o.n}. ${o.label}${o.description ? ` — ${o.description}` : ''}`)].join('\n')).join('\n\n');
   const dir = rel(m.dir);
   const instruction =
+    (preview ? 'Сначала выведи preview дословно, отдельным сообщением: это план для человека. ' : '') +
     'Задай questions инструментом выбора как есть: текст, порядок, варианты и «(рекомендую)» не меняй, своих вариантов не добавляй. ' +
     'Инструмента выбора нет — выведи text дословно и жди ответа. ' +
     `Выбран вариант — sdd_lint с args ${lintArgs(['choose', dir, '<id>'])}; ответ номером — id варианта с этим n; выбрано несколько — по одному, по порядку. ` +
     'Человек ответил словами: однозначно назвал один вариант — его id, иначе отвечай как в обычном диалоге. Вариант за человека не выбирай.';
-  return { instruction, stage, choose: ['choose', dir, '<id>'], questions: qs, text };
+  return { instruction, stage, ...(preview ? { preview } : {}), choose: ['choose', dir, '<id>'], questions: qs, text };
 }

@@ -3,9 +3,10 @@ import path from 'node:path';
 
 import { unknownNames } from './data.mjs';
 import { add } from './findings.mjs';
+import { latinAc } from './ids.mjs';
 import { CHECKS_RE, reqRefs, BASIS_LINK_RE, specFileHref, staleReqLinks } from './links.mjs';
 import {
-  read, rel, uniq, approved, noneText, scan, sectionText, header, headerLine, reqIds, quotes, word,
+  read, rel, uniq, approved, noneText, scan, sectionText, header, headerLine, reqIds, quotes, word, placeholders,
 } from './md.mjs';
 import { coverage, checkReadme } from './readme.mjs';
 import { underBlocks } from './sources.mjs';
@@ -19,7 +20,10 @@ const AC_STOP_WORDS = [
   ['имя класса', /\b[A-Z][a-z]+[A-Z][A-Za-z]*\b/],
 ];
 
-const AC_LINE = /^\s*(AC-(\d{3})-([BF]?)(\d+))\b(.*)$/;
+// AC-ID и с кириллическими «А», «С», «В»: такой AC не пропадает из проверок, а SL-31 просит поправить букву.
+const AC_LINE = /^\s*([AА][CС]-(\d{3})-([BВF]?)(\d+))\b(.*)$/u;
+// «AC-002-?» — AC без номера: его пронумерует fix.
+const AC_PENDING = /^\s*[AА][CС]-(?:\d{3}-)?[BВF]?\?(?=\s|$)/u;
 export function parseSlice(file, md) {
   const sc = scan(md);
   const num = path.basename(file).slice(0, 3);
@@ -28,16 +32,22 @@ export function parseSlice(file, md) {
   const acs = [];
   const outside = [];
   const multi = [];
+  let pending = 0;
   const checks = underBlocks(sc, CHECKS_RE);
   for (const b of sc.blocks) {
     const idLines = b.lines.filter((l) => AC_LINE.test(l.text));
     if (idLines.length > 1) multi.push({ n: b.start, count: idLines.length });
+    pending += b.lines.filter((l) => AC_PENDING.test(l.text)).length;
     for (const l of idLines) {
-      const [, id, acNum, side, k, rest] = l.text.match(AC_LINE);
+      const [, raw, acNum, rawSide, k, rest] = l.text.match(AC_LINE);
+      const id = latinAc(raw);
+      const side = latinAc(rawSide);
+      const stub = placeholders(b.lines.map((x) => x.text).join('\n')).length + placeholders(checks.get(b.idx)?.text).length > 0;
       acs.push({
         id,
         acNum,
         side,
+        stub,
         k: Number(k),
         n: l.n,
         h2: b.h2,
@@ -51,7 +61,7 @@ export function parseSlice(file, md) {
       });
     }
   }
-  for (const l of sc.lines) if (!l.inCode && AC_LINE.test(l.text)) outside.push({ id: l.text.match(AC_LINE)[1], n: l.n });
+  for (const l of sc.lines) if (!l.inCode && AC_LINE.test(l.text)) outside.push({ id: latinAc(l.text.match(AC_LINE)[1]), n: l.n });
   const used = new Set([...checks.values()].map((x) => x.n));
   const strayChecks = sc.lines.filter((l) => !l.inCode && CHECKS_RE.test(l.text) && !used.has(l.n)).map((l) => l.n);
   return {
@@ -71,6 +81,7 @@ export function parseSlice(file, md) {
     halves: header(md, 'Половины'),
     why: header(md, 'Почему отдельно'),
     acs,
+    pending,
     outside,
     multi,
   };
@@ -98,10 +109,10 @@ export function checkSlices(m) {
     const f = sl.file;
     for (const key of ['Тип', 'Основание', 'Зависимости', 'Половины', 'Результат'])
       if (header(sl.md, key) === null) add('SL-01', f, null, `нет строки «${key}:» в шапке`);
-    const isPrep = /подготов/i.test(sl.type || '');
-    if (!isPrep && sl.num !== firstBehaviour && sl.num !== '001') {
+    // Без причины отдельно стоят только 001 и первый поведенческий slice: «подготовка» тоже режет фичу.
+    if (sl.num !== firstBehaviour && sl.num !== '001') {
       if (sl.why === null) add('SL-02', f, null, 'нет строки «Почему отдельно:»');
-      else if (!/^\**\s*Р[123](?!\d)/u.test(sl.why)) add('SL-02', f, headerLine(sl.md, 'Почему отдельно'), `«Почему отдельно: ${sl.why}» — нет Р1, Р2 или Р3`);
+      else if (!/^\**\s*[РP][123](?!\d)/u.test(sl.why)) add('SL-02', f, headerLine(sl.md, 'Почему отдельно'), `«Почему отдельно: ${sl.why}» — нет Р1, Р2 или Р3`);
     }
 
     for (const o of sl.outside) add('SL-03', f, o.n, `${o.id} вне блока кода`);
@@ -135,6 +146,8 @@ export function checkSlices(m) {
       if (acDefs.has(ac.id)) add('SL-05', f, ac.n, `${ac.id} уже определён в ${rel(acDefs.get(ac.id))}`);
       acDefs.set(ac.id, f);
       if (ac.deleted) continue;
+      // Заготовку ловит SL-37; остальное проверяем, когда в ней появится текст.
+      if (ac.stub) continue;
 
       const side = sideOfHeading(ac.h2);
       if (side !== ac.side) {
@@ -180,9 +193,9 @@ export function checkSlices(m) {
     }
 
     if (/поведение/i.test(sl.type || '')) {
-      if (!sl.acs.length) add('SL-07', f, null, 'slice типа «поведение» без AC');
-      // пока у части AC нет ссылок на FR (SL-16), покрытие по ним не считаем
-      else if (sl.acs.every((a) => a.deleted || a.refs.length))
+      if (!sl.acs.length && !sl.pending) add('SL-07', f, null, 'slice типа «поведение» без AC');
+      // пока у части AC нет ссылок на FR (SL-16) или они — заготовки, покрытие по ним не считаем
+      else if (!sl.pending && sl.acs.every((a) => a.deleted || (a.refs.length && !a.stub)))
         for (const id of sl.basis) {
           if (s?.reqs.get(id)?.deleted) continue;
           if (!checked.has(id)) add('SL-19', f, headerLine(sl.md, 'Основание'), `${id} из «Основание» не проверяет ни один AC`);

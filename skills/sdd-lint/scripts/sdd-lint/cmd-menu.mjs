@@ -31,9 +31,11 @@ export function cmdMenu() {
   const rows = [
     [lintCmd(ex), CMD_INFO.check],
     [lintCmd('fix', ex), CMD_INFO.fix],
+    [lintCmd('done', ex), CMD_INFO.done],
+    [lintCmd('plan', ex), CMD_INFO.plan],
     [lintCmd('approve', 'spec|slices|adr', ex), CMD_INFO.approve],
     [lintCmd('gate', 'spec|slices|adr|decide|build', ex), CMD_INFO.gate],
-    [lintCmd('gen', 'readme|guessed|links', ex), CMD_INFO.gen],
+    [lintCmd('gen', 'readme|guessed|links|slices', ex), CMD_INFO.gen],
     [lintCmd('guard', `${DOCS}/${ex}/spec.md`), CMD_INFO.guard],
     [lintCmd('trace', ex), CMD_INFO.trace],
     [lintCmd('diff', ex), CMD_INFO.diff],

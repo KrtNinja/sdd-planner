@@ -9,7 +9,7 @@ import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 const LINT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'sdd-lint.mjs');
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 
 const TOOL = {
   name: 'sdd_lint',
@@ -17,6 +17,7 @@ const TOOL = {
     'Запускает sdd-lint из корня репозитория с доками. args — аргументы командной строки скрипта ' +
     'по одному элементу: [] — фичи и этапы, ["docs/comments"] — проверка фичи, ' +
     '["fix","docs/comments"] — после правки: номера, ссылки, README скриптом и проверка, ' +
+    '["done","docs/comments"] — конец этапа: fix, «на ревью» и вопрос этапа, ["plan","docs/comments"] — проверка плана нарезки, ' +
     '["gate","spec","docs/comments"], ["approve","slices","docs/comments"], ' +
     '["export","docs/comments"] — требования в JSON для реализации, ["help","gen"]. ' +
     'Возвращает вывод скрипта и код выхода (0 — ок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты).',

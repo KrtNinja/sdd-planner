@@ -2,16 +2,15 @@
 import { pos } from './args.mjs';
 import { gateClosed } from './cmd-check.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
-import { rel, uniq } from './md.mjs';
+import { rel } from './md.mjs';
 import { needDir } from './pick.mjs';
 import { layers } from './readme.mjs';
+import { serviceOfHeading, servicesOf } from './services.mjs';
 import { stageOf } from './stage.mjs';
 
 // Разметку markdown знает только планирование: реализация читает этот JSON, а не файлы slices.
 // Тест ссылается на AC строкой <feature>/<AC-ID> — так AC-002-1 разных фич не смешиваются.
 const AC_ID = 'AC-\\d{3}-[BF]?\\d+';
-
-const serviceOfHeading = (h) => (h || '').replace(/[-–—\s]*половина.*$/i, '').trim().toLowerCase() || null;
 
 function acOf(feature, ac) {
   const first = ac.text.split('\n').find((l) => l.includes(ac.id)) || '';
@@ -26,16 +25,6 @@ function acOf(feature, ac) {
     line: ac.n,
     deleted: ac.deleted,
   };
-}
-
-// «tasks-core + frontend, принимаются вместе», «tasks-core, audit, frontend — у каждого…», «только tasks-core»
-function servicesOf(sl, acs) {
-  const head = (sl.halves || '').split(/,\s*(?=[а-яё])|\s[—–-]\s/i)[0];
-  const named = head
-    .split(/\s*[+,]\s*/)
-    .map((s) => s.replace(/^только\s+/i, '').trim().toLowerCase())
-    .filter((s) => /^[\w.-]+$/.test(s));
-  return uniq([...named, ...acs.map((a) => a.service).filter(Boolean)]);
 }
 
 export function cmdExport() {

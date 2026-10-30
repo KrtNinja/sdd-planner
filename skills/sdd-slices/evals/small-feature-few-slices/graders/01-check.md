@@ -4,4 +4,4 @@ focus: trace
 weight: 1
 ---
 
-Ответ содержит таблицу нарезки, в которой не больше 3 slices.
+В плане docs/csv-export/slices/plan.md не больше 3 slices.

@@ -1,6 +1,8 @@
 // Команды check и gate.
 import { pendingAdrs } from './adr.mjs';
 import { flags, pos } from './args.mjs';
+import { slicesBrief } from './brief.mjs';
+import { neededAdrs } from './cut.mjs';
 import { skill, lintCmd } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
 import { findings, line, report } from './findings.mjs';
@@ -43,7 +45,9 @@ export function gateClosed(m, stage) {
     if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skill('sdd-spec', m.name)}`];
   } else if (stage === 'build') {
     const pending = pendingAdrs(m);
+    const need = neededAdrs(m);
     if (!m.slices.size || !approved(m.slicesStatus)) closed = ['slices не одобрены', `Сначала одобрите slices: ${lintCmd('approve', 'slices', dir)}`];
+    else if (need.length) closed = [`нет ADR: ${need.map((x) => `«${x.topic}» (slice ${x.num})`).join(', ')}`, `Сначала напишите ADR: ${need.map((x) => skill('sdd-adr', m.name, `"${x.topic}"`)).join('; ')}`];
     else if (pending.length) closed = [`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`, `Сначала примите ADR: ${pending.map((a) => lintCmd('approve', 'adr', dir, a.num)).join('; ')}`];
     else if (findings.some((x) => x.level === 'err')) closed = ['есть ошибки lint', `Исправьте ошибки lint, список: ${check}`];
   }
@@ -63,6 +67,8 @@ export function cmdGate() {
     console.log(`ВОРОТА ${stage}: закрыты — ${closed[0]}.\nСкажи человеку: «${closed[1]}» — и остановись.`);
     process.exit(3);
   }
-  console.log(`ВОРОТА ${stage}: открыты.`);
+  // Путь фичи — каноническим: агент подставляет его в следующие вызовы как есть, без разбора аргумента.
+  console.log(`ВОРОТА ${stage}: открыты.\nФича: ${rel(m.dir)}`);
+  if (stage === 'slices') console.log(slicesBrief(m));
   process.exit(0);
 }

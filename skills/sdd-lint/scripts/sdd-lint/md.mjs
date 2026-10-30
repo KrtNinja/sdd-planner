@@ -6,6 +6,8 @@ export const read = (f) => (f && fs.existsSync(f) && fs.statSync(f).isFile() ? f
 export const rel = (f) => (f ? path.relative(process.cwd(), f) || f : '');
 export const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export const uniq = (a) => [...new Set(a)];
+// 1 файл, 3 файла, 5 файлов
+export const plural = (n, one, few, many) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many}`;
 export const isEmptyCell = (s) => !s || /^[—–\-?]*$/.test(s.trim());
 export const approved = (status) => !!status && /одобрен|принят/i.test(status);
 export const noneText = (t) => !t || /^нет(?!\p{L})/iu.test(t.trim());
@@ -79,6 +81,14 @@ export const numbers = (s) => [...(s || '').matchAll(NUM_RE)].map((m) => m[0]);
 export const quotes = (s) => [...(s || '').matchAll(/«([^«»]+)»/g)].map((m) => m[1].replace(/\s+/g, ' ').trim());
 
 export const word = (re) => new RegExp(`(?<![\\p{L}\\d_])(?:${re})(?![\\p{L}\\d_])`, 'iu');
+
+// Заготовки шаблонов: «<условие>», «<FR-n>». «<» сразу перед буквой и без переноса строки;
+// HTML-теги, адреса <https://…>, HTML-комментарии и «тексты» заготовками не считаются.
+const NOT_PLACEHOLDER = /^(\/?(br|b|i|u|s|em|strong|sub|sup|kbd|code|span|div|p|a|details|summary|img|hr|small|mark)\b|https?:|mailto:)/i;
+export const placeholders = (text) =>
+  [...(text || '').replace(/<!--[\s\S]*?-->/g, ' ').replace(/«[^«»]*»/g, ' ').matchAll(/<([\p{L}][^<>\n]{0,60})>/gu)]
+    .map((m) => `<${m[1]}>`)
+    .filter((x) => !NOT_PLACEHOLDER.test(x.slice(1)));
 
 export const stem = (w) => (w.length <= 4 ? w.slice(0, 3) : w.slice(0, -1));
 
