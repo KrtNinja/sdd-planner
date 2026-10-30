@@ -1,6 +1,6 @@
 ---
 name: sdd-close
-description: Закрывает фичу перед merge — убирает леса этапа планирования (brainstorming.md, review/, slices/plan.md) и ссылки spec на протокол. Всё делает скрипт sdd-lint close, агент только вызывает и передаёт вывод. Запускай, когда slices одобрены, ADR приняты и человек готовит PR.
+description: Закрывает фичу перед merge — убирает временные артефакты этапа планирования (brainstorming.md, review/, slices/plan.md) и ссылки spec на протокол. Всё делает скрипт sdd-lint close, агент только вызывает и передаёт вывод. Запускай, когда slices одобрены, ADR приняты и человек готовит PR.
 argument-hint: '<feature>'
 disable-model-invocation: true
 ---

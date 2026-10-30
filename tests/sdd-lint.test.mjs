@@ -156,7 +156,7 @@ caught('CD-05', 'comments/spec.md', 'оставил комментарий.', '�
 caught('CD-05', 'comments/slices/README.md', '# ', 'Порядок задаёт CommentsController.\n\n# ');
 // ADR фиксирует выбор и причины; соглашения о коде — в репозитории сервиса
 caught('CD-05', ADR, 'через outbox в брокер компании', 'через MentionOutboxAdapter в брокер компании');
-test('CD: протокол и ревью — леса, их не проверяем', () => {
+test('CD: протокол и ревью — временные артефакты, их не проверяем', () => {
   const cwd = workspace();
   edit(cwd, 'comments/brainstorming.md', '## Решения', 'Сейчас: src/comments/comment.controller.ts, create(dto), CommentService.\n\n```ts\nconst x = 1;\n```\n\n## Решения');
   fs.mkdirSync(file(cwd, 'comments/review'), { recursive: true });
@@ -187,7 +187,7 @@ test('объём: адреса ссылок, HTML-комментарии и пр
   edit(cwd, 'comments/slices/002-comments.md', '## Границы', `${' \n'.repeat(9000)}\n## Границы`);
   assert.deepEqual(sized(check(cwd)), []);
 });
-test('объём: леса не считаются — следы протокола в spec и сам протокол', () => {
+test('объём: временные артефакты не считаются — следы протокола в spec и сам протокол', () => {
   const cwd = workspace();
   edit(cwd, 'comments/spec.md', '## Открытые вопросы', `## Не про поведение\n\n- ${prose(500)} (из протокола: 1)\n\n## Открытые вопросы`);
   fs.appendFileSync(file(cwd, 'comments/brainstorming.md'), `\n${prose(2000)}\n`);
@@ -285,7 +285,7 @@ test('close: удаляет протокол и следы его в spec, сс�
   assert.match(spec, /Статус: одобрено/);
   const res = check(cwd);
   assert.deepEqual(rules(res), []);
-  assert.match(res.stage, /леса убраны/);
+  assert.match(res.stage, /временные артефакты убраны/);
   const slice = fs.readFileSync(file(cwd, 'comments/slices/002-comments.md'), 'utf8');
   const fr4 = spec.split('\n').findIndex((t) => t.startsWith('FR-4 ')) + 1;
   assert.match(slice, new RegExp(`\\[FR-4\\]\\(\\.\\./spec\\.md#L${fr4}\\)`));
@@ -557,7 +557,7 @@ test('approve slices: ставит «одобрено <дата>» и показ
   const r = run(cwd, 'approve', 'slices', 'docs/comments');
   assert.equal(r.code, 0, r.out);
   assert.match(status(cwd, 'comments/slices/README.md'), new RegExp(`^Статус: одобрено ${today()} · ${FP}$`));
-  assert.match(r.out, /перед merge убрать леса \(docs\/comments\/brainstorming\.md\): \/sdd-close comments/);
+  assert.match(r.out, /перед merge убрать временные артефакты \(docs\/comments\/brainstorming\.md\): \/sdd-close comments/);
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
 });
 // ---------- export: интерфейс для зоны реализации ----------
@@ -915,7 +915,7 @@ test('ask: новый этап — рекомендация «В новом ко
   assert.equal(q.options.find((o) => o.recommended).id, 'here:sdd-grill');
 });
 
-// ---------- close: все леса этапа ----------
+// ---------- close: все временные артефакты этапа ----------
 const oneFinding = (decision, level = 'блокер') => `# Ревью slices — comments
 
 | # | Важность | Где | Что не так | Пункт | Предложение | Решение |
@@ -928,12 +928,12 @@ test('close: удаляет review/ и забытый plan.md вместе с п
   fs.writeFileSync(file(cwd, 'comments/slices/plan.md'), '# План нарезки — Комментарии\n');
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   const st = run(cwd, 'comments').out;
-  assert.match(st, /перед merge убрать леса \(docs\/comments\/brainstorming\.md, docs\/comments\/review\/, docs\/comments\/slices\/plan\.md\): \/sdd-close comments/);
+  assert.match(st, /перед merge убрать временные артефакты \(docs\/comments\/brainstorming\.md, docs\/comments\/review\/, docs\/comments\/slices\/plan\.md\): \/sdd-close comments/);
   const r = run(cwd, 'close', 'comments');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /Удалено: docs\/comments\/brainstorming\.md, docs\/comments\/review\/, docs\/comments\/slices\/plan\.md/);
   for (const f of ['comments/brainstorming.md', 'comments/review', 'comments/slices/plan.md']) assert.ok(!fs.existsSync(file(cwd, f)), f);
-  assert.match(check(cwd).stage, /леса убраны/);
+  assert.match(check(cwd).stage, /временные артефакты убраны/);
   assert.deepEqual(diffRules(cwd), []);
 });
 test('close: блокер ревью без решения — ничего не удаляет', () => {
@@ -954,11 +954,11 @@ test('close: замечание без решения не мешает, но н
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /Замечания ревью без решения ушли в историю git: R1/);
 });
-test('ask: перед merge — вопрос про леса, вариант ведёт на /sdd-close', () => {
+test('ask: перед merge — вопрос про временные артефакты, вариант ведёт на /sdd-close', () => {
   const cwd = workspace();
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   const q = ask(cwd).questions[0];
-  assert.match(q.question, /Убрать леса этапа: docs\/comments\/brainstorming\.md\?/);
+  assert.match(q.question, /Убрать временные артефакты этапа: docs\/comments\/brainstorming\.md\?/);
   assert.equal(q.options[0].description, '/sdd-close comments');
   assert.equal(run(cwd, 'choose', 'docs/comments', 'close').code, 0);
   assert.ok(!fs.existsSync(file(cwd, 'comments/brainstorming.md')));

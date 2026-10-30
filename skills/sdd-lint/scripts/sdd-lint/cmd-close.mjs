@@ -1,4 +1,4 @@
-// Команда close (скилл /sdd-close): перед merge убирает леса этапа — протокол, ревью, план нарезки.
+// Команда close (скилл /sdd-close): перед merge убирает временные артефакты этапа — протокол, ревью, план нарезки.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -11,9 +11,9 @@ import { genLinks } from './gen-links.mjs';
 import { rel, approved, isEmptyCell } from './md.mjs';
 import { needDir } from './pick.mjs';
 import { openBlockers } from './review.mjs';
-import { scaffolding } from './stage.mjs';
+import { tempArtifacts } from './stage.mjs';
 
-// После PR остаются spec, slices и ADR. Протокол, review/ и plan.md — леса: решения из них уже
+// После PR остаются spec, slices и ADR. Протокол, review/ и plan.md — временные артефакты: решения из них уже
 // в FR и AC, история — в git. Ссылки spec на протокол убирает genLinks.
 export function cmdClose() {
   const m = loadFeature(needDir(pos[0]));
@@ -43,7 +43,7 @@ export function cmdClose() {
     console.log(`НЕ ЗАКРЫТО: ${why}. Ничего не удалено.`);
     process.exit(1);
   }
-  const gone = scaffolding(m);
+  const gone = tempArtifacts(m);
   // Замечания без решения не мешают закрытию, но человек должен увидеть, что уходит в историю git.
   const notes = [...m.reviews.values()].flatMap((rv) => rv.rows.filter((r) => !r.blocker && isEmptyCell(r.decision)).map((r) => `${r.id} (${rel(rv.file)})`));
   if (m.protocol) fs.rmSync(m.protocolFile);
@@ -55,7 +55,7 @@ export function cmdClose() {
   runChecks(loadFeature(m.dir));
   const c = report();
   console.log(
-    `\n${gone.length ? `Удалено: ${gone.join(', ')}. ` : 'Лесов не было. '}Фича закрыта: в spec нет ссылок на протокол, ссылки на FR в slices обновлены.` +
+    `\n${gone.length ? `Удалено: ${gone.join(', ')}. ` : 'Временных артефактов не было. '}Фича закрыта: в spec нет ссылок на протокол, ссылки на FR в slices обновлены.` +
       (notes.length ? `\nЗамечания ревью без решения ушли в историю git: ${notes.join(', ')}.` : '') +
       `\nЗакоммитьте вместе с остальными документами. Решения дальше — ${skill('sdd-decide', m.name)}: правит FR и AC напрямую.`,
   );

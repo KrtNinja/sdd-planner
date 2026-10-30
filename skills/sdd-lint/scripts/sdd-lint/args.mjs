@@ -25,7 +25,7 @@ export const CMD_INFO = {
   snapshot: 'снимок перед humanizer',
   trace: 'протокол → FR/NFR',
   diff: 'изменения против git',
-  close: 'перед merge убрать леса: протокол, review/, план (скилл /sdd-close)',
+  close: 'перед merge убрать временные артефакты: протокол, review/, план (скилл /sdd-close)',
   export: 'требования в JSON для зоны реализации',
   next: 'следующий свободный номер',
   ask: 'вопросы этапа с вариантами',
