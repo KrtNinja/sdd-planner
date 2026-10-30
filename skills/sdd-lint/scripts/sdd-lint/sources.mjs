@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { setSection } from './md.mjs';
 
-// Под блоком FR/NFR: «Из протокола: [4](brainstorming.md#L18), [П1](brainstorming.md#L47)».
+// Под блоком FR/NFR: «Из протокола: [4](brainstorming.md#L18), [П1](brainstorming.md#L34)».
 // В «Вне scope», «Открытые вопросы», «Не про поведение» — в любой строке раздела.
 // Ссылки на строку ставит gen links: модель пишет номера, скрипт держит #L актуальными.
 export const SRC_RE = /из протокола:/iu;

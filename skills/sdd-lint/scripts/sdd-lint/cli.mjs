@@ -21,7 +21,7 @@ export const HELP = `sdd-lint — проверки артефактов план
       --snapshot — заодно снять снимок защищённых частей для guard
   sdd-lint fix docs/<feature> [--snapshot] [--json]
       после правки — механику делает скрипт: номера вместо FR-? / NFR-? / AC-NNN-? (B? F?),
-      ссылки (gen links), slices/README.md (gen readme), «угадал бы» (gen guessed);
+      ссылки (gen links), slices/README.md (gen readme);
       затем все проверки и сверка с git (diff). Код 1 — есть ошибки
   sdd-lint done docs/<feature>
       конец этапа одной командой: fix, затем «черновик» → «на ревью», снимок для guard
@@ -51,8 +51,6 @@ export const HELP = `sdd-lint — проверки артефактов план
       «тексты», числа, ID, ссылки «Из протокола:». Сверка со снимком, без снимка — с git
   sdd-lint gen readme docs/<feature>
       таблица slices, «Покрытие Dev Spec» и «Порядок работ» в slices/README.md
-  sdd-lint gen guessed docs/<feature>
-      таблица «Где агент угадал бы не так» в протоколе
   sdd-lint gen slices docs/<feature>
       файлы slices по согласованному плану: шапка из плана, заготовки AC по сервисам,
       README; план удаляется. Запускает вариант «Да» в вопросе о нарезке

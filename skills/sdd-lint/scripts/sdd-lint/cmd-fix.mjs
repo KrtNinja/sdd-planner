@@ -13,7 +13,6 @@ import { gitInfo } from './git.mjs';
 import { fixIdTypos } from './ids.mjs';
 import { read, rel, uniq } from './md.mjs';
 import { needDir } from './pick.mjs';
-import { genGuessed } from './protocol.mjs';
 import { genReadme } from './readme.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 import { moveLegacy } from './work.mjs';
@@ -87,12 +86,7 @@ export function fixFeature(dir, { snapshot = false } = {}) {
   m = loadFeature(dir);
   for (const x of numberPlaceholders(m)) note(x.split(':')[0], x.split(/:\d+\s+/)[1]);
   m = loadFeature(dir);
-  // Порядок — сверху вниз: протокол меняет строки, на которые ссылается spec, spec — строки для slices.
-  if (m.protocol && /готов/i.test(m.protocol.status || '')) {
-    const msg = genGuessed(m, true);
-    if (/Заполни/.test(msg)) notes.push(msg.replace(/^.*?Заполни/, `${rel(m.protocolFile)}: заполни`));
-  }
-  m = loadFeature(dir);
+  // Порядок — сверху вниз: spec ссылается на строки протокола, slices — на строки spec.
   // Ссылки на протокол: без протокола их убирает только close (/sdd-close) — fix их не трогает.
   if (m.spec && m.protocol) linkSpec(m);
   else if (m.spec && hasProtocolTraces(m.spec.md))

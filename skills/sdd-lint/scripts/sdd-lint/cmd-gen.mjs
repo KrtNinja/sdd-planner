@@ -7,7 +7,6 @@ import { loadFeature } from './feature.mjs';
 import { genLinks } from './gen-links.mjs';
 import { rel, uniq } from './md.mjs';
 import { pickChoice, needDir } from './pick.mjs';
-import { genGuessed } from './protocol.mjs';
 import { genReadme } from './readme.mjs';
 import { genSlices } from './scaffold.mjs';
 
@@ -49,12 +48,11 @@ export function cmdTrace() {
 
 export function cmdGen() {
   const what = pos[0];
-  if (!['readme', 'guessed', 'links', 'slices'].includes(what)) pickChoice('gen');
+  if (!['readme', 'links', 'slices'].includes(what)) pickChoice('gen');
   const m = loadFeature(needDir(pos[1], 1));
   if (what === 'slices') genSlices(m);
   else if (what === 'readme') genReadme(m);
-  else if (what === 'links') genLinks(m);
-  else genGuessed(m);
+  else genLinks(m);
 }
 
 export function cmdNext() {
