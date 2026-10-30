@@ -17,7 +17,7 @@ Lint — инструмент MCP `sdd_lint`: `sdd_lint ["help","gen"]` — эт
 1. Выбери команду по просьбе человека:
    - проверить, где фича — `sdd_lint ["docs/<feature>"]`;
    - после правки в доках — `sdd_lint ["fix","docs/<feature>"]`: номера вместо `FR-?` и `AC-NNN-?`,
-     ссылки, README, «угадал бы» и латиницу в ID ставит скрипт, затем проверки и сверка с git;
+     ссылки, README и латиницу в ID ставит скрипт, затем проверки и сверка с git;
    - закончить этап — `sdd_lint ["done","docs/<feature>"]`: fix, статус «на ревью» и вопрос этапа;
    - проверить план нарезки — `sdd_lint ["plan","docs/<feature>"]`;
    - после humanizer — `sdd_lint ["guard","<файл или docs/<feature>>"]`;

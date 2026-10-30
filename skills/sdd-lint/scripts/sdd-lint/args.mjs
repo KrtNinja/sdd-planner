@@ -27,7 +27,7 @@ export const CMD_INFO = {
   plan: 'проверить план нарезки _work/plan.md',
   gate: 'ворота перед этапом',
   approve: 'одобрить spec, slices или принять ADR',
-  gen: 'собрать README, «угадал бы», ссылки, файлы slices по плану',
+  gen: 'собрать README, ссылки, файлы slices по плану',
   guard: 'сверка после humanizer',
   snapshot: 'снимок перед humanizer',
   trace: 'протокол → FR/NFR',
@@ -44,7 +44,7 @@ export const CMD_INFO = {
 export const CHOICES = {
   gate: { spec: 'можно ли писать Dev Spec', slices: 'можно ли резать slices', adr: 'можно ли писать ADR', decide: 'можно ли проводить решение', review: 'что ждёт ревью', build: 'можно ли начинать реализацию' },
   approve: { spec: 'одобрить Dev Spec', slices: 'одобрить slices', adr: 'принять ADR' },
-  gen: { readme: 'slices/README.md: таблица, покрытие, порядок', guessed: '«Где агент угадал бы не так»', links: 'ссылки на строки протокола и spec', slices: 'файлы slices по согласованному плану' },
+  gen: { readme: 'slices/README.md: таблица, покрытие, порядок', links: 'ссылки на строки протокола и spec', slices: 'файлы slices по согласованному плану' },
   next: { FR: 'номер нового FR', NFR: 'номер нового NFR', AC: 'номер нового AC в slice', slice: 'номер нового slice', adr: 'номер нового ADR' },
   research: { context: 'изучить источники в _work/context.md', fact: 'найти один факт', check: 'проверить _work/context.md' },
   completion: { bash: 'source <(sdd-lint completion bash)', zsh: 'source <(sdd-lint completion zsh)' },
