@@ -222,7 +222,7 @@ test('choose plan:yes — файлы по плану с заготовками, 
   assert.ok(!rules(res).some((x) => ['SL-07', 'SL-14', 'SL-16', 'SL-19'].includes(x)), `заготовки не дают шума: ${rules(res).join(', ')}`);
   const a = ask(cwd);
   assert.match(a.stage, /^Slices созданы по плану, заготовок «<…>» не заполнено: \d+$/);
-  assert.deepEqual(ids(a), ['here:sdd-slices', 'window:sdd-slices']);
+  assert.deepEqual(ids(a), ['here:sdd-slices', 'window:sdd-slices']); // продолжение этапа — здесь
 });
 test('gen slices: не создаёт файлы, если в плане ошибки или slices уже есть', () => {
   let cwd = planWorkspace(PLAN.replace('FR-9, FR-10, NFR-3', 'FR-9, FR-10'));

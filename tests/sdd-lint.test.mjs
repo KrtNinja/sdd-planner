@@ -901,3 +901,16 @@ test('sdd-lint работает через симлинк без расшире�
   const r = spawnSync('node', [bin, 'docs/comments'], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, TMPDIR: path.join(cwd, '.tmp') } });
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
+
+test('ask: новый этап — рекомендация «В новом контексте/окне», продолжение — здесь', () => {
+  const cwd = workspace();
+  fs.rmSync(path.join(cwd, 'docs/comments/slices'), { recursive: true, force: true });
+  fs.rmSync(path.join(cwd, 'docs/comments/spec.md'), { force: true });
+  let q = ask(cwd).questions[0];
+  assert.deepEqual(q.options.map((o) => o.id), ['window:sdd-spec', 'here:sdd-spec']);
+  assert.equal(q.options.find((o) => o.recommended).id, 'window:sdd-spec');
+  assert.equal(q.options[0].label, 'В новом контексте/окне (рекомендую)');
+  edit(cwd, 'comments/brainstorming.md', 'Статус: готов', 'Статус: идёт');
+  q = ask(cwd).questions[0];
+  assert.equal(q.options.find((o) => o.recommended).id, 'here:sdd-grill');
+});
