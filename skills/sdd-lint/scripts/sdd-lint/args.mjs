@@ -1,12 +1,13 @@
 // Разбор process.argv и описание команд: варианты, слоты аргументов, флаги.
 
 export const argv = process.argv.slice(2);
-export const flags = { json: false, snapshot: false, base: null };
+export const flags = { json: false, snapshot: false, yes: false, base: null };
 export const pos = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === '--json') flags.json = true;
   else if (a === '--snapshot') flags.snapshot = true;
+  else if (a === '--yes') flags.yes = true;
   else if (a === '--base') flags.base = argv[++i];
   else if (a.startsWith('--base=')) flags.base = a.slice(7);
   // «@docs/comments/» — так путь дописывает Tab в строке GigaCode.
@@ -17,7 +18,7 @@ export const CMD_INFO = {
   check: 'все проверки и текущий этап',
   fix: 'после правки: номера, ссылки, README — скриптом, затем проверки',
   done: 'конец этапа: fix, снимок, «на ревью» и вопрос этапа',
-  plan: 'проверить план нарезки slices/plan.md',
+  plan: 'проверить план нарезки _work/plan.md',
   gate: 'ворота перед этапом',
   approve: 'одобрить spec, slices или принять ADR',
   gen: 'собрать README, «угадал бы», ссылки, файлы slices по плану',
@@ -25,7 +26,7 @@ export const CMD_INFO = {
   snapshot: 'снимок перед humanizer',
   trace: 'протокол → FR/NFR',
   diff: 'изменения против git',
-  close: 'перед merge убрать временные артефакты: протокол, review/, план (скилл /sdd-close)',
+  close: 'перед merge убрать временные артефакты: протокол и _work/ — после подтверждения (скилл /sdd-close)',
   export: 'требования в JSON для зоны реализации',
   next: 'следующий свободный номер',
   ask: 'вопросы этапа с вариантами',
@@ -63,6 +64,6 @@ export const SLOTS = {
   help: ['command'],
   completion: ['choice'],
 };
-export const FLAGS = { check: ['--json', '--snapshot'], fix: ['--json', '--snapshot'], diff: ['--json', '--base'], guard: ['--json', '--base'] };
+export const FLAGS = { check: ['--json', '--snapshot'], fix: ['--json', '--snapshot'], diff: ['--json', '--base'], guard: ['--json', '--base'], close: ['--json', '--yes'] };
 export const COMMANDS = Object.keys(CMD_INFO);
 export const cmd = argv[0] === '__complete' ? '__complete' : COMMANDS.includes(pos[0]) ? pos.shift() : 'check';

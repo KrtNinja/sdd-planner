@@ -3,12 +3,14 @@ import { execFileSync } from 'node:child_process';
 
 import { pos } from './args.mjs';
 import { lintArgs, askOf, askView } from './ask.mjs';
+import { closeOptions } from './close.mjs';
 import { targetFiles } from './cmd-guard.mjs';
 import { SELF, skillPrompt } from './cmd-prompt.mjs';
 import { loadFeature } from './feature.mjs';
 import { rel } from './md.mjs';
 import { needDir } from './pick.mjs';
 import { saveSnapshot } from './snapshot.mjs';
+import { tempArtifacts } from './stage.mjs';
 
 export function cmdAsk() {
   const m = loadFeature(needDir(pos[0]));
@@ -18,7 +20,8 @@ export function cmdAsk() {
 export function cmdChoose() {
   const m = loadFeature(needDir(pos[0]));
   const id = pos[1];
-  const all = askOf(m).questions.flatMap((q) => q.options);
+  // Подтверждение close задаёт сам close, поэтому его варианты в askOf нет: добавляем, пока есть что удалять.
+  const all = [...askOf(m).questions.flatMap((q) => q.options), ...(tempArtifacts(m).length ? closeOptions(m) : [])];
   const opt = all.find((o) => o.id === id);
   const again = `Следующий вопрос: sdd_lint с args ${lintArgs(['ask', rel(m.dir)])}.`;
   if (!opt) {

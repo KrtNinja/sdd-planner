@@ -2,7 +2,7 @@
 import { add } from './findings.mjs';
 
 // Связь «требование → код» идёт из кода (AC-ID в названии теста), доки на код не ссылаются.
-// brainstorming.md и review/ — временные артефакты этапа, их не проверяем: в протоколе аналитик пишет что угодно.
+// brainstorming.md и _work/ — временные артефакты этапа, их не проверяем: в протоколе аналитик пишет что угодно.
 
 const CODE_EXT = 'ts|tsx|js|jsx|mjs|cjs|py|java|kt|kts|go|cs|rs|rb|php|vue|svelte|swift|scala|sql|proto|graphql|gql|ya?ml|json|toml|xml|properties|gradle|sh';
 const SRC_DIRS = 'src|lib|libs|apps?|packages|internal|cmd|pkg|tests?|__tests__|specs?|domain|application|infrastructure|infra|adapters|ports|components|modules|contracts|migrations|config';

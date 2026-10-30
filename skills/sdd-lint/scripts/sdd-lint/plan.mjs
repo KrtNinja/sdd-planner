@@ -1,4 +1,4 @@
-// План нарезки slices/plan.md: разбор, проверки PL-*, превью для человека в вопросе этапа.
+// План нарезки _work/plan.md: разбор, проверки PL-*, превью для человека в вопросе этапа.
 import { adrNums, adrTopic, reason, stubLines } from './cut.mjs';
 import { add } from './findings.mjs';
 import { rel, uniq, approved, scan, reqIds } from './md.mjs';

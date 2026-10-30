@@ -5,6 +5,7 @@ import path from 'node:path';
 import { parseAdr, checkAdrs } from './adr.mjs';
 import { verifyApprovals, checkApprovals } from './approval.mjs';
 import { checkCodeRefs } from './code-refs.mjs';
+import { WORK_DIR } from './config.mjs';
 import { checkCut } from './cut.mjs';
 import { checkEditMarks } from './edit-marks.mjs';
 import { read, scan, header } from './md.mjs';
@@ -14,6 +15,7 @@ import { checkReadSize } from './read-size.mjs';
 import { parseReview, checkReviews } from './review.mjs';
 import { parseSlice, checkSlices } from './slices.mjs';
 import { parseSpec, checkSpec } from './spec.mjs';
+import { checkWork } from './work.mjs';
 
 export function loadFeature(dir, readFn = read, listFn = null) {
   const featureDir = path.resolve(dir);
@@ -22,7 +24,8 @@ export function loadFeature(dir, readFn = read, listFn = null) {
   const specFile = path.join(featureDir, 'spec.md');
   const slicesDir = path.join(featureDir, 'slices');
   const readmeFile = path.join(slicesDir, 'README.md');
-  const planFile = path.join(slicesDir, 'plan.md');
+  const workDir = path.join(featureDir, WORK_DIR);
+  const planFile = path.join(workDir, 'plan.md');
   const adrDir = path.join(featureDir, '..', 'adr');
   const list = listFn || ((d) => (fs.existsSync(d) ? fs.readdirSync(d) : []));
   const slices = new Map();
@@ -38,7 +41,7 @@ export function loadFeature(dir, readFn = read, listFn = null) {
     if (md != null) adrs.push(parseAdr(file, md));
   }
   const readme = readFn(readmeFile);
-  const reviewDir = path.join(featureDir, 'review');
+  const reviewDir = path.join(workDir, 'review');
   const reviews = new Map();
   for (const f of list(reviewDir).filter((x) => /\.md$/.test(x)).sort()) {
     const file = path.join(reviewDir, f);
@@ -46,6 +49,7 @@ export function loadFeature(dir, readFn = read, listFn = null) {
     if (md != null) reviews.set(f.replace(/\.md$/, ''), parseReview(file, md));
   }
   const m = {
+    workDir,
     reviewDir,
     reviews,
     dir: featureDir,
@@ -83,6 +87,7 @@ export function runChecks(m) {
   checkPlan(m);
   checkAdrs(m);
   checkReviews(m);
+  checkWork(m);
   checkEditMarks(m);
   checkCodeRefs(m);
   checkReadSize(m);
