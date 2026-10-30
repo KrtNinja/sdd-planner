@@ -1,6 +1,6 @@
 {
   "name": "sdd-planner",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "SDD, зона «Планирование»: brainstorming → Dev Spec → slices → ADR; на выходе — одобренные требования для разработчиков и агентов",
   "contextFileName": "rules/AGENTS.planning.md",
   "mcpServers": {
