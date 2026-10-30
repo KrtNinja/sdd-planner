@@ -8,7 +8,7 @@ import { pos } from './args.mjs';
 import { skill, lintCmd } from './config.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { findings, add, report } from './findings.mjs';
-import { read, rel, approved, header } from './md.mjs';
+import { read, rel, approved, header, today } from './md.mjs';
 import { pickChoice, needDir } from './pick.mjs';
 import { openBlockers, reviewKey } from './review.mjs';
 import { snapPath, protectedParts, diffParts } from './snapshot.mjs';
@@ -66,8 +66,7 @@ export function cmdApprove() {
     console.log(`${rel(target)}: уже «${cur}».`);
     process.exit(0);
   }
-  const t = new Date();
-  const date = [t.getDate(), t.getMonth() + 1].map((x) => String(x).padStart(2, '0')).join('.') + `.${t.getFullYear()}`;
+  const date = today();
   const fp = fingerprint(approvalMds(m, what, target));
   const next = md.replace(/^Статус:.*$/m, `Статус: ${word} ${date} · ${fp}`);
 

@@ -2,6 +2,9 @@
 import { add } from './findings.mjs';
 import { isEmptyCell, scan, inSection, header, tables, col } from './md.mjs';
 
+export const DROPPED_RE = /^Снято на ревью/;
+export const DROPPED_TITLE = 'Снято на ревью';
+
 export function parseProtocol(file, md) {
   if (md == null) return null;
   const sc = scan(md);
@@ -35,10 +38,18 @@ export function parseProtocol(file, md) {
       post.push({ id, dec: cd >= 0 ? r.cells[cd] ?? '' : '', n: r.n, raw: r.cells.join(' | ') });
     });
   }
+  // Находки ревью, которые человек снял: повторное ревью их не поднимает (раздел пишет sdd-lint triage).
+  const droppedT = tables(inSection(sc, DROPPED_RE))[0];
+  const dropped = droppedT
+    ? droppedT.rows.map((r) => {
+        const c = (re) => (r.cells[col(droppedT, re)] ?? '').trim();
+        return { when: c(/^Когда/i), review: c(/^Ревью/i), where: c(/^Где/i), what: c(/^Что не так/i), status: c(/^Статус/i), n: r.n };
+      })
+    : [];
   const outScope = inSection(sc, /^Вне scope/)
     .filter((l) => !l.inCode && /^\s*[-*]\s+\S/.test(l.text))
     .map((l) => ({ text: l.text.trim(), n: l.n }));
-  return { file, md, sc, status: header(md, 'Статус'), rows, post, outScope };
+  return { file, md, sc, status: header(md, 'Статус'), rows, post, dropped, outScope };
 }
 
 export function checkProtocol(m) {

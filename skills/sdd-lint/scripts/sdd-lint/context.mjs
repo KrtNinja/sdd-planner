@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { lintArgs } from './ask.mjs';
+import { lintArgs } from './question.mjs';
 import { SKILLS_DIR } from './cmd-prompt.mjs';
 import { add, findings, line } from './findings.mjs';
 import { REPO, outside } from './input.mjs';

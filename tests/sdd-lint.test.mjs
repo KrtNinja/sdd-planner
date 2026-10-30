@@ -662,7 +662,7 @@ test('ревью: открытый блокер — RV-01 и шаг «закры
   assert.equal(res.code, 0);
   assert.deepEqual(rules(res).filter((r) => r.startsWith('RV')), ['RV-01']);
   const out = run(cwd, 'docs/comments').out;
-  assert.match(out, /закрыть блокеры ревью R2 \(docs\/comments\/_work\/review\/slices\.md\): решение — \/sdd-decide comments R2 "<решение>"/);
+  assert.match(out, /закрыть блокеры ревью R2 \(docs\/comments\/_work\/review\/slices\.md\): по одному — вопрос этапа \(node scripts\/sdd-lint\.mjs ask docs\/comments\); решение — \/sdd-decide comments R2 "<решение>"/);
   assert.match(out, /ревью уже было: docs\/comments\/_work\/review\/slices\.md/);
 });
 test('ревью: approve не проходит, пока у блокера пустое «Решение»', () => {
@@ -768,20 +768,21 @@ test('ask: вопрос этапа с вариантами без действи
   assert.equal(a.questions[0].options.find((o) => o.recommended).id, 'review-here:slices');
   assert.ok(a.questions.every((q) => q.options.every((o) => !('action' in o))));
 });
-test('ask: после ревью без блокеров рекомендуется одобрить, с блокером — закрыть его', () => {
+test('ask: после ревью — финал «Одобрить», «Убрать AI стиль»; повтор ревью — если решение что-то поменяло', () => {
   const cwd = workspace();
   const rv = path.join(cwd, 'docs/comments/_work/review');
   fs.mkdirSync(rv, { recursive: true });
   const table = (decision) => `# Ревью slices — comments\n\nИтог: блокеров 1, замечаний 0\n\n| # | Важность | Где | Что не так | Пункт | Предложение | Решение |\n|---|---|---|---|---|---|---|\n| R1 | блокер | slices/002-comments.md | … | 3 | … | ${decision} |\n`;
-  fs.writeFileSync(path.join(rv, 'slices.md'), table('исправлено'));
+  fs.writeFileSync(path.join(rv, 'slices.md'), table('отклонено: не исправлять'));
   let a = ask(cwd);
-  assert.equal(a.questions[0].options.find((o) => o.recommended).id, 'approve:slices');
-  assert.equal(a.questions[0].options[0].label, 'Повторить ревью здесь');
-  fs.writeFileSync(path.join(rv, 'slices.md'), table(''));
+  assert.deepEqual(ids(a).slice(0, 2), ['approve:slices', 'humanize:slices']);
+  assert.equal(a.questions[0].options[0].label, 'Одобрить (рекомендую)');
+  assert.equal(a.questions[0].options[1].label, 'Убрать AI стиль из slices');
+  assert.match(a.questions[0].question, /ревью разобрано/);
+  assert.ok(!ids(a).includes('review-here:slices'));
+  fs.writeFileSync(path.join(rv, 'slices.md'), table('П2'));
   a = ask(cwd);
-  assert.ok(ids(a).includes('blockers:slices') && !ids(a).includes('approve:slices'));
-  const r = run(cwd, 'choose', 'docs/comments', 'blockers:slices');
-  assert.match(r.out, /Передай человеку дословно и остановись:\n\nзакрыть блокеры ревью R1/);
+  assert.equal(a.questions[0].options.find((o) => o.id === 'review-here:slices').label, 'Повторить ревью в сабагенте');
 });
 test('ask: инструкция в выводе, варианты с номерами, рекомендация в label, text — для агента без инструмента выбора', () => {
   const a = ask(workspace());
@@ -790,9 +791,9 @@ test('ask: инструкция в выводе, варианты с номер�
   assert.match(a.instruction, /sdd_lint с args \["choose","docs\/comments","<id>"\]/);
   const opts = a.questions.flatMap((q) => q.options);
   assert.deepEqual(opts.map((o) => o.n), [1, 2, 3, 4]);
-  assert.equal(opts[0].label, 'Ревью здесь, в сабагенте (рекомендую)');
+  assert.equal(opts[0].label, 'Ревью в сабагенте (рекомендую)');
   assert.ok(opts.slice(1).every((o) => !o.label.includes('рекомендую')));
-  assert.match(a.text, /^Slices «на ревью»\. Что дальше\?\n1\. Ревью здесь, в сабагенте \(рекомендую\) — /);
+  assert.match(a.text, /^Slices «на ревью»\. Что дальше\?\n1\. Ревью в сабагенте \(рекомендую\) — /);
   assert.match(a.text, /\n4\. Одобрить — /);
 });
 test('choose: ревью — задача сабагенту без пересказа скилла, без сабагентов — команда человеку', () => {

@@ -1,9 +1,10 @@
 // Аргументы этапа после фичи — их разбирает скрипт, а не модель: тема ADR, находка ревью для decide,
 // режим ревью; затронутые требованием slices и AC (trace FR-n).
-import { lintArgs } from './ask.mjs';
 import { neededAdrs } from './cut.mjs';
-import { pickText, reviewTargets } from './guide.mjs';
+import { reviewTargets } from './guide.mjs';
+import { reviewKey, undecided } from './review.mjs';
 import { rel, reqIds, uniq } from './md.mjs';
+import { lintArgs, pickText, taskFor } from './question.mjs';
 
 const call = (...args) => `sdd_lint ${lintArgs(args)}`;
 const AC_ID = /\bAC-\d{3}-[BF]?\d+\b/g;
@@ -35,7 +36,7 @@ export function adrTopicStep(m, topic) {
     text: [
       'Тема не указана, и slices не ждут ADR. Кандидатов найдёт сабагент — в это окно придут только они. Его задача целиком:',
       '',
-      `Вызови инструмент sdd_lint с args ${lintArgs(['research', 'fact', d, question])} и выполни то, что он вернёт.`,
+      taskFor(['research', 'fact', d, question]),
       '',
       'Сабагентов нет — тот же вызов сам. Пришли кандидаты — покажи их человеку списком и спроси, какую тему берём;',
       `ответ — ${call('gate', 'adr', d, '<тема>')}. Кандидатов нет — скажи человеку, что ADR не нужен, и остановись.`,
@@ -70,7 +71,7 @@ export function findingStep(m, arg) {
       `  Где: ${r.where || '—'}`,
       `  Что не так: ${r.what || '—'}`,
       `  Предложение: ${r.proposal || '—'}`,
-      r.decision ? `  Решение уже есть: «${r.decision}» — спроси человека, менять ли его.` : '  Решение: пусто — впишешь в шаге «Источник».',
+      undecided(r) ? '  Решение: пусто — впишешь в шаге «Источник».' : `  Решение уже есть: «${r.decision}» — спроси человека, менять ли его.`,
       ...(ids.length ? ['', impact(m, ids)] : []),
     ].join('\n'),
   };
@@ -103,7 +104,17 @@ export function reviewStep(m, arg, num) {
     }
     n = n.padStart(4, '0');
   }
-  return { text: `Режим: ${mode}${mode === 'adr' ? ` ${n}` : ''}`, mode, num: mode === 'adr' ? n : null };
+  const adrNum = mode === 'adr' ? n : null;
+  return { text: [`Режим: ${mode}${adrNum ? ` ${adrNum}` : ''}`, droppedText(m, reviewKey(mode, adrNum))].filter(Boolean).join('\n'), mode, num: adrNum };
+}
+// Находки, которые человек снял на прошлых ревью этого артефакта («Снято на ревью» в протоколе): ревьюер их не поднимает.
+function droppedText(m, key) {
+  const rows = (m.protocol?.dropped || []).filter((x) => x.review.split(/\s+/)[0] === key);
+  if (!rows.length) return null;
+  return [
+    'Сняты человеком на прошлых ревью — не поднимай их снова, даже если увидишь то же самое:',
+    ...rows.map((x) => `- ${x.where && x.where !== '—' ? `${x.where}: ` : ''}${x.what} (${x.review}, ${x.when})`),
+  ].join('\n');
 }
 
 // Что держится на требовании: строки протокола, slices, где оно в «Основание», и AC, которые его проверяют.
