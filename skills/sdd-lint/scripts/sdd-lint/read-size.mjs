@@ -8,7 +8,7 @@ import { stripProtocol } from './sources.mjs';
 // таблиц) и следов протокола в spec. Текст внутри блоков кода (FR, AC) считается.
 // Протокол и ревью — временные артефакты этапа, их не меряем.
 const READ_LIMIT = 10000;
-function visibleLength(md) {
+export function visibleLength(md) {
   let inCode = false;
   const out = [];
   for (const t of (md || '').replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '').split('\n')) {

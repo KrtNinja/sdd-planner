@@ -11,6 +11,7 @@ import { rel } from './md.mjs';
 import { needDir } from './pick.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 import { tempArtifacts } from './stage.mjs';
+import { startQuestion } from './start.mjs';
 
 export function cmdAsk() {
   const m = loadFeature(needDir(pos[0]));
@@ -21,7 +22,8 @@ export function cmdChoose() {
   const m = loadFeature(needDir(pos[0]));
   const id = pos[1];
   // Подтверждение close задаёт сам close, поэтому его варианты в askOf нет: добавляем, пока есть что удалять.
-  const all = [...askOf(m).questions.flatMap((q) => q.options), ...(tempArtifacts(m).length ? closeOptions(m) : [])];
+  // Вопросы старта /sdd-grill (источники) задаёт сам start — их варианты тоже здесь, пока вопрос актуален.
+  const all = [...askOf(m).questions.flatMap((q) => q.options), ...(tempArtifacts(m).length ? closeOptions(m) : []), ...(startQuestion(m)?.options || [])];
   const opt = all.find((o) => o.id === id);
   const again = `Следующий вопрос: sdd_lint с args ${lintArgs(['ask', rel(m.dir)])}.`;
   if (!opt) {
@@ -49,6 +51,8 @@ export function cmdChoose() {
     console.log(`Запусти сабагента. Его задача целиком, ничего не добавляй и не пересказывай:\n\n${a.subagent}\n\nОтвет сабагента передай человеку как есть. ${again}${none}`);
   } else if (a.here) console.log(skillPrompt(a.here[1], a.here.slice(2)));
   else if (a.show) console.log(`Передай человеку дословно и остановись:\n\n${a.show}`);
+  // wait — вопрос с ответом своими словами: ответ уходит в скрипт, а не в рассуждения агента.
+  else if (a.wait) console.log(`Передай человеку дословно и жди ответа:\n\n${a.wait}\n\nОтвет человека передай дословно: sdd_lint с args ${lintArgs(a.then)}.`);
   else console.log('Ничего не делай, остановись.');
   process.exit(0);
 }

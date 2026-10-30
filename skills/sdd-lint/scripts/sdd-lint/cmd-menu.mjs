@@ -16,7 +16,7 @@ export function cmdMenu() {
   const known = listFeatures();
   const out = ['sdd-lint — проверки планирования SDD', ''];
   if (!isDir(DOCS)) out.push(`Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
-  else if (!known.length) out.push(`В ${DOCS}/ пока нет фич. Новая начинается с ${skill('sdd-grill', '<feature>')}.`);
+  else if (!known.length) out.push(`В ${DOCS}/ пока нет фич. Новая начинается с ${skill('sdd-grill')} — он спросит задачу.`);
   else {
     out.push(`Фичи в ${DOCS}/:`);
     const w = Math.max(...known.map((f) => f.length));

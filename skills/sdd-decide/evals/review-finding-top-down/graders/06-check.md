@@ -1,7 +1,9 @@
 ---
-type: llm
-focus: trace
-weight: 1
+type: script
 ---
 
-Агент запускал sdd-lint после правок, и последний запуск lint по docs/comments завершился без ошибок («Ошибок: 0»).
+После правок sdd-lint по docs/comments проходит без ошибок.
+
+```sh
+q lint docs/comments
+```

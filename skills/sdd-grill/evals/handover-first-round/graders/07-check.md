@@ -1,7 +1,10 @@
 ---
-type: llm
-focus: trace
-weight: 1
+type: script
 ---
 
-После раунда агент останавливается и ждёт ответов: spec.md не создан, статус протокола не «готов».
+После раунда агент остановился и ждёт ответов: spec.md нет, протокол не «готов».
+
+```sh
+q no-file docs/task-handover/spec.md
+q no-file docs/task-handover/brainstorming.md '^Статус: готов'
+```

@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { pos } from './args.mjs';
+import { flags, pos } from './args.mjs';
 import { lintCmd } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { read, uniq } from './md.mjs';
@@ -12,7 +12,7 @@ import { DOCS, isDir, pickFeature, needDir } from './pick.mjs';
 // Агент получает его через MCP и не читает файлы расширения вне проекта; disable-model-invocation
 // не снимается — скилл попадает к агенту только через вариант, который выбрал человек.
 export const SELF = fs.realpathSync(process.argv[1]);
-const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
+export const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
 export const promptSkills = () => (isDir(SKILLS_DIR) ? fs.readdirSync(SKILLS_DIR).filter((x) => /^sdd-[a-z]+$/.test(x) && x !== 'sdd-lint' && fs.existsSync(path.join(SKILLS_DIR, x, 'SKILL.md'))) : []);
 // Аргументы с пробелами — в кавычках: у /sdd-decide вопрос и решение не должны слиться в одну строку.
 const shownArgs = (args) => args.map((a) => (/\s/.test(a) || a === '' ? `"${a.replace(/"/g, '\\"')}"` : a)).join(' ');
@@ -57,7 +57,7 @@ export function cmdPrompt() {
     process.exit(2);
   }
   const args = pos.slice(1);
-  if (args.length) {
+  if (args.length && !flags.raw) {
     const m = loadFeature(needDir(args[0], 1));
     args[0] = m.name;
     if (name === 'sdd-review') {
@@ -76,7 +76,7 @@ export function cmdPrompt() {
         args[2] = num;
       }
     }
-  } else if (name !== 'sdd-grill') pickFeature('Укажи фичу', 1);
+  } else if (name !== 'sdd-grill' && !flags.raw) pickFeature('Укажи фичу', 1);
   console.log(skillPrompt(name, args));
   process.exit(0);
 }

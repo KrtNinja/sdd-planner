@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: start-document-asks-sources
+expected_outcome: |
+  Задача пришла файлом docs/inbox/user-settings.md. Имя папки берётся из имени файла скриптом — агент его не придумывает: создан docs/user-settings/brainstorming.md с «Запрос: файл docs/inbox/user-settings.md» и заголовком из файла. Источников нет — агент задаёт вопрос о документации и останавливается; файл задачи целиком в основном окне не пересказывает.
+context:
+  scaffold_script: place-files.sh

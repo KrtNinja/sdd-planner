@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 import { flags, pos } from './args.mjs';
 import { questionsView } from './ask.mjs';
+import { chooseFeature } from './guide.mjs';
 import { closeSummary, closeQuestion, closePreview } from './close.mjs';
 import { skill, lintCmd } from './config.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
@@ -17,7 +18,16 @@ import { legacyPaths } from './work.mjs';
 // После PR остаются spec, slices и ADR. Протокол и _work/ — временные артефакты: решения из них уже
 // в FR и AC, история — в git. Ссылки spec на протокол убирает genLinks.
 export function cmdClose() {
-  const m = loadFeature(needDir(pos[0]));
+  let target = pos[0];
+  if (!target) {
+    const c = chooseFeature('close', (f) => ['close', f, ...(flags.json ? ['--json'] : [])]);
+    if (!c.dir) {
+      console.log(c.text);
+      process.exit(2);
+    }
+    target = c.dir;
+  }
+  const m = loadFeature(needDir(target));
   const dir = rel(m.dir);
   if (!tempArtifacts(m).length) {
     console.log(`Временных артефактов нет: ${dir} уже закрыта.`);

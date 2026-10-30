@@ -47,6 +47,16 @@ export const header = (md, key) => {
   const m = (md || '').match(new RegExp(`^${key}:\\s*(.*)$`, 'm'));
   return m ? m[1].trim() : null;
 };
+// Строка шапки «Ключ: значение»: заменить или вставить после первой из after (иначе под заголовком).
+export function setHeader(md, key, value, after = []) {
+  const re = new RegExp(`^${key}:.*$`, 'm');
+  if (re.test(md)) return md.replace(re, () => `${key}: ${value}`);
+  const ls = md.split('\n');
+  const i = after.map((k) => ls.findIndex((t) => t.startsWith(`${k}:`))).find((x) => x >= 0);
+  ls.splice(i === undefined ? 1 : i + 1, 0, '', `${key}: ${value}`);
+  return ls.join('\n');
+}
+export const dropHeader = (md, key) => md.replace(new RegExp(`^${key}:.*\\n?`, 'm'), '');
 export const headerLine = (md, key) => {
   const i = (md || '').split(/\r?\n/).findIndex((t) => new RegExp(`^${key}:`).test(t));
   return i < 0 ? null : i + 1;
