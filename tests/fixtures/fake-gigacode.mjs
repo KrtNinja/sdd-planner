@@ -14,6 +14,10 @@ if (a[0] === 'extensions') process.exit(console.log('sdd-planner (0.9.0)') ?? 0)
 const val = (f) => a[a.indexOf(f) + 1];
 const prompt = val('-p');
 const model = val('-m');
+if (model === 'broken') {
+  console.error('Invalid values:\n  Argument: approval-mode, Given: "yolo", Choices: "plan", "default", "auto-edit"');
+  process.exit(1);
+}
 if (process.env.FAKE_LOG) fs.appendFileSync(process.env.FAKE_LOG, `${JSON.stringify(a.filter((x) => x !== prompt))}\n`);
 const ev = [];
 const say = (text) => ev.push({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }] } });
@@ -34,8 +38,9 @@ else if (model === 'bad') {
   const raw = prompt.slice(11);
   lint(['start', raw]);
   const out = lint(['start', raw, '--slug', 'user-settings']);
-  const j = JSON.parse(out.slice(out.indexOf('{')));
-  say(`${j.preview}\n\n${j.text}`);
+  // Источники названы в вызове — вопроса нет, start печатает текст, а не JSON.
+  const i = out.indexOf('{');
+  say(i >= 0 ? (({ preview, text }) => `${preview}\n\n${text}`)(JSON.parse(out.slice(i))) : out);
 } else say(`ответ на «${prompt}»`);
 ev.push({ type: 'result', subtype: 'success', is_error: false, result: 'done' });
 for (const e of ev) console.log(JSON.stringify(e));

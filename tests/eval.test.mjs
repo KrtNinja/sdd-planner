@@ -70,3 +70,18 @@ test('eval list: script-критерии у кейсов старта grill', ()
   const r = run(env(), 'list');
   assert.match(r.out, /grill\/start-empty-asks-task {2}\(1 ход\.\)\n {2}01 script/);
 });
+test('eval: CLI не запустился — «сбой CLI» вместо пройденных критериев, ошибка целиком и одной строкой', () => {
+  const r = run(env(), '--cases', 'grill/start-empty-asks-task,grill/start-phrase-asks-sources', '--models', 'broken', '--no-judge');
+  assert.equal(r.code, 1);
+  assert.match(r.out, /grill\/start-empty-asks-task +⚠ сбой CLI/);
+  assert.match(r.out, /CLI не запустился в 2 из 2 прогонов: код 1 — Invalid values: \/ Argument: approval-mode, Given: "yolo"/);
+  assert.doesNotMatch(r.out, /Не прошло:/);
+});
+test('eval doctor: пробный запуск упал — команда и ошибка CLI', () => {
+  const e = env();
+  const cfg = JSON.parse(fs.readFileSync(e.vars.SDD_EVAL_CONFIG, 'utf8'));
+  fs.writeFileSync(e.vars.SDD_EVAL_CONFIG, JSON.stringify({ ...cfg, models: ['broken'] }));
+  const r = run(e, 'doctor');
+  assert.match(r.out, /✗ пробный запуск на broken упал, код 1 — Invalid values: \/ Argument: approval-mode/);
+  assert.match(r.out, /команда: .* -p \/sdd-lint/);
+});

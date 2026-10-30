@@ -38,6 +38,8 @@ function config() {
   c.judge = argv.includes('--no-judge') ? null : opt('judge') || c.judge || c.models?.[0] || null;
   return c;
 }
+// Ошибка CLI целиком, а не первой строкой: «Invalid values:» без следующих строк ничего не объясняет.
+const cliError = (r) => `код ${r.code}${r.err.trim() ? ` — ${r.err.trim().split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 4).join(' / ').slice(0, 300)}` : ''}`;
 const fill = (args, vars) => args.map((a) => a.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? ''));
 // cli — команда или массив [команда, …первые аргументы] (например, ["node", "/путь/gigacode.js"]).
 function cli(c, args, cwd, timeoutS) {
@@ -99,18 +101,21 @@ function runOne(c, kase, model, out) {
   const transcript = path.join(out, 'transcript.jsonl');
   const vars = { model, timeout: String(kase.timeout), turns: String(Number(opt('turns')) || kase.maxTurns) };
   let crash = null;
+  let broken = null;
   kase.turns.forEach((t, i) => {
-    if (crash) return;
+    if (crash || broken) return;
     const args = [...fill(c.args, { ...vars, prompt: promptOf(c, t) }), ...(i ? c.continueArgs || [] : [])];
     const r = cli(c, args, work, kase.timeout);
     fs.appendFileSync(transcript, r.out);
     if (r.err.trim()) fs.appendFileSync(path.join(out, 'stderr.txt'), r.err);
     // 53/55 — исчерпан лимит ходов или времени: агент не остановился сам — это провал кейса, а не сбой.
-    if (typeof r.code !== 'number' || ![0, 53, 55].includes(r.code)) crash = `CLI: код ${r.code}${r.err.trim() ? ` — ${r.err.trim().split('\n')[0].slice(0, 120)}` : ''}`;
+    // Сам CLI не запустился (неверный флаг, модель) — критерии на пустом прогоне не проверяем: «прошло» было бы ложью.
+    if (typeof r.code !== 'number' || ![0, 53, 55].includes(r.code)) broken = cliError(r);
     else if (r.code) crash = `агент не остановился: ${r.code === 53 ? 'лимит ходов' : 'лимит времени'}`;
   });
   const raw = fs.existsSync(transcript) ? fs.readFileSync(transcript, 'utf8') : '';
   fs.writeFileSync(path.join(out, 'trace.md'), `# ${kase.name} · ${model}\n\n${digest(raw)}\n`);
+  if (broken) return { kase, model, broken, crash: null, results: [], out };
   const results = kase.graders.map((g) => {
     if (g.type === 'script') {
       // q <проверка> … — функция-обёртка над eval-check.mjs; первая непрошедшая строка останавливает грейдер.
@@ -135,13 +140,15 @@ function judge(c, g, out) {
   const r = cli(c, fill(c.judgeArgs || c.args, { prompt, model: c.judge, timeout: '300', turns: '10' }), dir, 300);
   const text = parseTranscript(r.out).texts.join('\n');
   const m = text.match(/\b(PASS|FAIL)\b\s*\n?\s*(.*)/);
-  return m ? { ok: m[1] === 'PASS', why: m[2].trim() } : { ok: false, why: `судья не ответил PASS/FAIL (код ${r.code})` };
+  if (r.code !== 0) return { ok: false, why: `судья: CLI ${cliError(r)}` };
+  return m ? { ok: m[1] === 'PASS', why: m[2].trim() } : { ok: false, why: 'судья не ответил PASS/FAIL' };
 }
 
 function report(runs, stamp, out, judgeModel) {
   const models = [...new Set(runs.map((r) => r.model))];
   const names = [...new Set(runs.map((r) => r.kase.name))];
   const cell = (r) => {
+    if (r.broken) return '⚠ сбой CLI';
     const s = r.results.filter((x) => x.type === 'script');
     const l = r.results.filter((x) => x.type === 'llm' && x.ok !== null);
     const bad = r.crash || s.some((x) => !x.ok) || l.some((x) => !x.ok);
@@ -154,6 +161,17 @@ function report(runs, stamp, out, judgeModel) {
     `${'кейс'.padEnd(w)}  ${models.map((m) => m.padEnd(14)).join('  ')}`,
     ...names.map((n) => `${n.padEnd(w)}  ${models.map((m) => cell(runs.find((r) => r.kase.name === n && r.model === m)).padEnd(14)).join('  ')}`),
   ];
+  // Одна и та же ошибка CLI во всех прогонах — одной строкой: это настройка, а не поведение моделей.
+  const broken = runs.filter((r) => r.broken);
+  const same = broken.length > 1 && broken.every((r) => r.broken === broken[0].broken);
+  if (broken.length)
+    lines.push(
+      '',
+      ...(same
+        ? [`CLI не запустился в ${broken.length} из ${runs.length} прогонов: ${broken[0].broken}`]
+        : broken.map((r) => `CLI не запустился: ${r.kase.name} · ${r.model} — ${r.broken}`)),
+      `Это настройка, а не модели: node tools/eval.mjs doctor, затем поправь args в tools/eval.local.json.`,
+    );
   const fails = runs.flatMap((r) => [
     ...(r.crash ? [`${r.kase.name} · ${r.model} — ${r.crash}`] : []),
     ...r.results.filter((x) => x.ok === false).map((x) => `${r.kase.name} · ${r.model} · ${x.id}${x.type === 'llm' ? ' (llm)' : ''}: ${x.why || x.text.split('\n')[0].slice(0, 100)}`),
@@ -188,7 +206,7 @@ function run() {
   const text = report(runs, stamp, out, c.judge);
   fs.writeFileSync(path.join(out, 'report.md'), `${text}\n`);
   console.log(text);
-  process.exit(runs.some((r) => r.crash || r.results.some((x) => x.ok === false)) ? 1 : 0);
+  process.exit(runs.some((r) => r.broken || r.crash || r.results.some((x) => x.ok === false)) ? 1 : 0);
 }
 
 // ---------- doctor: умеет ли сборка то, что нужно прогону ----------
@@ -215,8 +233,17 @@ function doctor() {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-eval-doctor-'));
   fs.mkdirSync(path.join(work, 'docs'));
   spawnSync('git', ['init', '-q'], { cwd: work });
-  const smoke = (prompt) => parseTranscript(cli(c, fill(c.args, { prompt, model, timeout: '180', turns: '6' }), work, 180).out);
+  let failed = null;
+  const smoke = (prompt) => {
+    const r = cli(c, fill(c.args, { prompt, model, timeout: '180', turns: '6' }), work, 180);
+    if (r.code !== 0 && !failed) failed = cliError(r);
+    return parseTranscript(r.out);
+  };
   const a = smoke('/sdd-lint');
+  if (failed && !a.tools.length) {
+    console.log(`  команда: ${[].concat(c.cli).join(' ')} ${fill(c.args, { prompt: '/sdd-lint', model, timeout: '180', turns: '6' }).join(' ')}`);
+    return ok(false, '', `пробный запуск на ${model} упал, ${failed}. Поправь args (или имя модели) в tools/eval.local.json и повтори doctor`);
+  }
   if (a.tools.some((t) => t.name.includes('sdd_lint'))) return ok(true, `на ${model}: слэш-команда скилла и MCP sdd_lint работают — можно запускать: node tools/eval.mjs`);
   const b = smoke('Вызови инструмент sdd_lint с args [] и покажи вывод.');
   if (b.tools.some((t) => t.name.includes('sdd_lint')))
