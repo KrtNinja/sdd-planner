@@ -5,7 +5,7 @@ import path from 'node:path';
 import { ownApprovals, approveCmd } from './approval.mjs';
 import { flags, pos } from './args.mjs';
 import { diffChecks } from './cmd-diff.mjs';
-import { lintCmd } from './config.mjs';
+import { skill } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
 import { findings, report } from './findings.mjs';
 import { linkSpec, linkSlice } from './gen-links.mjs';
@@ -88,10 +88,10 @@ export function fixFeature(dir, { snapshot = false } = {}) {
     if (/Заполни/.test(msg)) notes.push(msg.replace(/^.*?Заполни/, `${rel(m.protocolFile)}: заполни`));
   }
   m = loadFeature(dir);
-  // Ссылки на протокол: без протокола их убирает только close — fix их не трогает.
+  // Ссылки на протокол: без протокола их убирает только close (/sdd-close) — fix их не трогает.
   if (m.spec && m.protocol) linkSpec(m);
   else if (m.spec && hasProtocolTraces(m.spec.md))
-    notes.push(`${rel(m.protocolFile)} нет, а spec ссылается на протокол: ссылки не тронуты. Если фича закрывается — ${lintCmd('close', rel(m.dir))}`);
+    notes.push(`${rel(m.protocolFile)} нет, а spec ссылается на протокол: ссылки не тронуты. Если фича закрывается — ${skill('sdd-close', m.name)}`);
   m = loadFeature(dir);
   if (m.spec) for (const sl of m.slices.values()) linkSlice(sl, m.spec);
   m = loadFeature(dir);

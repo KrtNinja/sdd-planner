@@ -25,8 +25,8 @@ Lint — инструмент MCP `sdd_lint`: `sdd_lint ["help","gen"]` — эт
    - изменения против git — `sdd_lint ["diff","docs/<feature>"]`;
    - ссылки на строки — «Из протокола:» в spec, «Основание:» и «Проверяет:» в slices — поставить
      или обновить, старые форматы перенести — `sdd_lint ["gen","links","docs/<feature>"]`;
-   - перед merge убрать протокол и ссылки на него — `sdd_lint ["close","docs/<feature>"]`. Только
-     по прямой просьбе человека, как approve;
+   - закрыть фичу перед merge — это скилл `/sdd-close <feature>`; здесь `sdd_lint ["close","docs/<feature>"]`
+     только по прямой просьбе человека, как approve;
    - откуда какое требование — `sdd_lint ["trace","docs/<feature>"]`: решение протокола → FR/NFR;
    - требования для зоны реализации — `sdd_lint ["export","docs/<feature>"]`: JSON со slices,
      сервисами и ссылками `<feature>/<AC-ID>` для тестов; код 3 — ворота build закрыты, причина в JSON;

@@ -47,8 +47,9 @@ export const HELP = `sdd-lint — проверки артефактов план
       в README → строка FR в spec.md; «Основание:» → spec.md одной ссылкой. Устаревшие обновляет, старые форматы
       («Трассировка», «[FR-n]» в строке AC) переносит
   sdd-lint close docs/<feature>
-      перед merge: spec и slices одобрены, ошибок нет → удаляет brainstorming.md
-      и всё, что в spec на него ссылается, обновляет ссылки на FR
+      перед merge (скилл /sdd-close): spec и slices одобрены, ADR приняты, блокеров ревью
+      и ошибок нет → удаляет brainstorming.md, review/ и slices/plan.md, убирает из spec
+      ссылки на протокол, обновляет ссылки на FR
   sdd-lint export docs/<feature>
       требования в JSON для зоны реализации: slices, сервисы, AC со ссылкой
       <feature>/<AC-ID> для названий тестов, статус ворот build. Код 3 — ворота build закрыты

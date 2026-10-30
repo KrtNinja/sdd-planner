@@ -1,7 +1,7 @@
 // Команда diff: проверки DF-* по git.
 import { flags, pos } from './args.mjs';
 import { usage } from './cli.mjs';
-import { lintCmd } from './config.mjs';
+import { skill } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { add, report } from './findings.mjs';
 import { gitInfo, gitShow, gitList } from './git.mjs';
@@ -37,7 +37,7 @@ export function diffChecks(dir, g, ref) {
     const scope = new Set(cur.protocol.outScope.map((x) => norm(x.text)));
     for (const x of base.protocol.outScope) if (!scope.has(norm(x.text))) add('DF-01', cur.protocolFile, null, `«Вне scope»: пункт изменён или удалён: «${x.text.slice(0, 60)}»`);
   } else if (base.protocol && !cur.protocol && !(cur.spec && approved(cur.spec.status) && !hasProtocolTraces(cur.spec.md)))
-    add('DF-01', cur.protocolFile, null, `протокол удалён до закрытия фичи: удаляет его ${lintCmd('close', rel(cur.dir))}`);
+    add('DF-01', cur.protocolFile, null, `протокол удалён до закрытия фичи: удаляет его ${skill('sdd-close', cur.name)}`);
 
   // ID не пропадают
   if (base.spec) for (const id of base.spec.reqs.keys()) if (!cur.spec?.reqs.has(id)) add('DF-02', cur.specFile, null, `${id} пропал`);

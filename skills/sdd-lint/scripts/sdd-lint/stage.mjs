@@ -5,6 +5,15 @@ import { neededAdrs, stubCount } from './cut.mjs';
 import { rel, approved } from './md.mjs';
 import { openBlockers, reviewKey } from './review.mjs';
 
+// Временные артефакты этапа планирования: нужны, пока требования пишутся, в merge не идут. Убирает их /sdd-close.
+export function tempArtifacts(m) {
+  return [
+    m.protocol ? rel(m.protocolFile) : null,
+    m.reviews.size ? `${rel(m.reviewDir)}/` : null,
+    m.plan ? rel(m.planFile) : null,
+  ].filter(Boolean);
+}
+
 function handoff(m, what) {
   const dir = rel(m.dir);
   const target = what === 'spec' ? rel(m.specFile) : `${dir}/slices/`;
@@ -51,9 +60,9 @@ export function stageOf(m) {
     const pending = pendingAdrs(m);
     return pending.length
       ? { now: `Slices одобрены. Перед реализацией примите ADR: ${pending.map((a) => a.num).join(', ')}`, next: adrSteps(m) }
-      : m.protocol
-        ? { now: 'Slices одобрены, ADR приняты', next: [`перед merge убрать протокол: ${lintCmd('close', rel(m.dir))}`] }
-        : { now: 'Планирование завершено: slices одобрены, ADR приняты, протокол убран', next: [] };
+      : tempArtifacts(m).length
+        ? { now: 'Slices одобрены, ADR приняты', next: [`перед merge убрать временные артефакты (${tempArtifacts(m).join(', ')}): ${skill('sdd-close', m.name)}`] }
+        : { now: 'Планирование завершено: slices одобрены, ADR приняты, временные артефакты убраны', next: [] };
   }
   const stubs = m.slices.size ? stubCount(m) : 0;
   if (stubs) return st(`Slices созданы по плану, заготовок «<…>» не заполнено: ${stubs}`, [`заполнить заготовки: ${skill('sdd-slices', m.name)}`]);

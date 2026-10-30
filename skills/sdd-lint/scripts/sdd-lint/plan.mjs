@@ -5,7 +5,7 @@ import { rel, uniq, approved, scan, reqIds } from './md.mjs';
 import { layers } from './readme.mjs';
 import { registry, parseHalves, halvesProblem } from './services.mjs';
 
-// План — леса этапа slices: агент пишет его, человек согласует, gen slices создаёт по нему файлы и удаляет его.
+// План — временный артефакт этапа slices: агент пишет его, человек согласует, gen slices создаёт по нему файлы и удаляет его.
 const KEYS = ['Основание', 'Зависимости', 'Половины', 'Результат', 'Почему отдельно'];
 // «## 002-comments — Комментарии в задаче», «## 002 — Комментарии в задаче», «## 002 Комментарии в задаче»
 const HEAD = /^##\s+(\d{3})(?:-(\S+))?(?:\s+(?:[—–-]\s+)?(.+?))?\s*$/u;

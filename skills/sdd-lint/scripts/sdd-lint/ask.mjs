@@ -6,7 +6,7 @@ import { findings } from './findings.mjs';
 import { rel, approved, plural } from './md.mjs';
 import { checkPlan, planPreview } from './plan.mjs';
 import { openBlockers, reviewKey } from './review.mjs';
-import { blockersStep, stageOf } from './stage.mjs';
+import { blockersStep, tempArtifacts, stageOf } from './stage.mjs';
 
 // Что спросить в конце этапа и что сделать по ответу — данные скрипта, а не текст для модели.
 // Агент задаёт вопросы из ask инструментом выбора и передаёт id варианта в choose.
@@ -136,13 +136,13 @@ export function askOf(m) {
   if (m.slices.size && m.spec && !approved(m.spec.status)) qs = [artifactQuestion(m, 'spec'), ...adrQs()];
   else if (m.slices.size && approved(m.slicesStatus)) {
     qs = adrQs();
-    if (!qs.length && m.protocol)
+    if (!qs.length && tempArtifacts(m).length)
       qs = [
         {
           header: 'Перед merge',
-          question: `${st.now}. Убрать протокол brainstorming?`,
+          question: `${st.now}. Убрать временные артефакты этапа: ${tempArtifacts(m).join(', ')}?`,
           options: [
-            { id: 'close', label: 'Убрать протокол', description: lintCmd('close', rel(m.dir)), recommended: true, action: { lint: ['close', rel(m.dir)] } },
+            { id: 'close', label: 'Убрать временные артефакты', description: skill('sdd-close', m.name), recommended: true, action: { lint: ['close', rel(m.dir)] } },
             { id: 'later', label: 'Позже', description: 'ничего не делать', action: { none: true } },
           ],
         },
