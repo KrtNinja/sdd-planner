@@ -34,7 +34,7 @@ function artifactQuestion(m, what, num) {
   };
   const reviewWindow = {
     id: `review-window:${key}`,
-    label: 'Ревью в новом окне',
+    label: 'Ревью в новом контексте/окне',
     description: 'вы запускаете команду сами',
     action: { show: skill('sdd-review', m.name, ...rest) },
   };
@@ -65,15 +65,14 @@ function artifactQuestion(m, what, num) {
   rec.recommended = true;
   return { header: name, question: `${name} «${status || '—'}». Что дальше?`, options };
 }
-function nextSkillQuestion(m, now, name, label) {
-  return {
-    header: 'Следующий этап',
-    question: `${now}. ${label}?`,
-    options: [
-      { id: `here:${name}`, label: 'Здесь, в этом окне', description: skill(name, m.name), recommended: true, action: { here: ['prompt', name, m.name] } },
-      { id: `window:${name}`, label: 'В новом окне', description: 'вы запускаете команду сами', action: { show: skill(name, m.name) } },
-    ],
-  };
+// Новый этап — рекомендуем новый контекст: flash-модели и заполненное окно тянут хвост
+// прошлого этапа. Продолжение того же этапа (cont) — здесь: контекст ещё нужен.
+function nextSkillQuestion(m, now, name, label, cont = false) {
+  const here = { id: `here:${name}`, label: 'Здесь, в этом окне', description: skill(name, m.name), action: { here: ['prompt', name, m.name] } };
+  const fresh = { id: `window:${name}`, label: 'В новом контексте/окне', description: `${skill(name, m.name)} — запускаете сами, чистый контекст`, action: { show: skill(name, m.name) } };
+  const options = cont ? [here, fresh] : [fresh, here];
+  options[0].recommended = true;
+  return { header: 'Следующий этап', question: `${now}. ${label}?`, options };
 }
 // Согласие с планом нарезки: «Да» создаёт файлы скриптом (gen slices), а не руками агента.
 function planQuestion(m) {
@@ -124,7 +123,7 @@ function newAdrQuestions(m) {
     question: `Slice ${x.num} ждёт решения «${x.topic}», ADR ещё нет. Написать?`,
     options: [
       { id: `adr-here:${x.num}`, label: 'Написать ADR здесь', description: skill('sdd-adr', m.name, `"${x.topic}"`), recommended: true, action: { here: ['prompt', 'sdd-adr', m.name, x.topic] } },
-      { id: `adr-window:${x.num}`, label: 'В новом окне', description: 'вы запускаете команду сами', action: { show: skill('sdd-adr', m.name, `"${x.topic}"`) } },
+      { id: `adr-window:${x.num}`, label: 'В новом контексте/окне', description: 'вы запускаете команду сами', action: { show: skill('sdd-adr', m.name, `"${x.topic}"`) } },
       { id: `adr-later:${x.num}`, label: 'Позже', description: 'ничего не делать', action: { none: true } },
     ],
   }));
@@ -148,13 +147,13 @@ export function askOf(m) {
           ],
         },
       ];
-  } else if (m.slices.size && stubCount(m)) qs = [nextSkillQuestion(m, st.now, 'sdd-slices', 'Продолжить заполнение')];
+  } else if (m.slices.size && stubCount(m)) qs = [nextSkillQuestion(m, st.now, 'sdd-slices', 'Продолжить заполнение', true)];
   else if (m.slices.size) qs = [artifactQuestion(m, 'slices'), ...adrQs()];
   else if (m.plan && m.spec && approved(m.spec.status)) qs = [planQuestion(m)];
   else if (m.spec && approved(m.spec.status)) qs = [nextSkillQuestion(m, st.now, 'sdd-slices', 'Резать slices'), ...adrQs()];
   else if (m.spec) qs = [artifactQuestion(m, 'spec'), ...adrQs()];
   else if (m.protocol && /готов/i.test(m.protocol.status || '')) qs = [nextSkillQuestion(m, st.now, 'sdd-spec', 'Писать Dev Spec')];
-  else if (m.protocol) qs = [nextSkillQuestion(m, st.now, 'sdd-grill', 'Продолжить brainstorming')];
+  else if (m.protocol) qs = [nextSkillQuestion(m, st.now, 'sdd-grill', 'Продолжить brainstorming', true)];
   else qs = [nextSkillQuestion(m, st.now, 'sdd-grill', 'Начать brainstorming')];
   // Инструменты выбора берут до 4 вопросов за раз; остальные ADR — следующим вопросом.
   return { stage: st.now, questions: qs.slice(0, 4) };
