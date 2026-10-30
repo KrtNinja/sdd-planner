@@ -4,6 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { pos } from './args.mjs';
 import { lintArgs, askOf, askView } from './ask.mjs';
 import { closeOptions } from './close.mjs';
+import { sourcesOptions } from './cmd-sources.mjs';
+import { sourcesPending } from './inputs.mjs';
 import { targetFiles } from './cmd-guard.mjs';
 import { SELF, skillPrompt } from './cmd-prompt.mjs';
 import { loadFeature } from './feature.mjs';
@@ -21,7 +23,8 @@ export function cmdChoose() {
   const m = loadFeature(needDir(pos[0]));
   const id = pos[1];
   // Подтверждение close задаёт сам close, поэтому его варианты в askOf нет: добавляем, пока есть что удалять.
-  const all = [...askOf(m).questions.flatMap((q) => q.options), ...(tempArtifacts(m).length ? closeOptions(m) : [])];
+  // Вопрос об источниках задаёт sources в начале brainstorming — его варианты живут, пока «Источники:» пусто.
+  const all = [...askOf(m).questions.flatMap((q) => q.options), ...(tempArtifacts(m).length ? closeOptions(m) : []), ...(sourcesPending(m) ? sourcesOptions(m) : [])];
   const opt = all.find((o) => o.id === id);
   const again = `Следующий вопрос: sdd_lint с args ${lintArgs(['ask', rel(m.dir)])}.`;
   if (!opt) {
@@ -48,6 +51,7 @@ export function cmdChoose() {
     const none = a.fallback ? `\n\nСабагентов у тебя нет — задание сам не выполняй: передай человеку дословно «${a.fallback}» и остановись.` : '';
     console.log(`Запусти сабагента. Его задача целиком, ничего не добавляй и не пересказывай:\n\n${a.subagent}\n\nОтвет сабагента передай человеку как есть. ${again}${none}`);
   } else if (a.here) console.log(skillPrompt(a.here[1], a.here.slice(2)));
+  else if (a.show && a.after) console.log(`Передай человеку дословно и жди ответа:\n\n${a.show}\n\nКогда человек ответит: ${a.after}`);
   else if (a.show) console.log(`Передай человеку дословно и остановись:\n\n${a.show}`);
   else console.log('Ничего не делай, остановись.');
   process.exit(0);

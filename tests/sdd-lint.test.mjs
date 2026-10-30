@@ -1036,3 +1036,115 @@ test('close: старые review/ и slices/plan.md убирает вместе 
   assert.match(r.out, /Удалено: docs\/comments\/brainstorming\.md, docs\/comments\/review\/, docs\/comments\/slices\/plan\.md/);
   for (const f of ['comments/review', 'comments/slices/plan.md']) assert.ok(!fs.existsSync(file(cwd, f)), f);
 });
+
+// ---------- источники: что человек передал к запросу ----------
+// Протокол только что создан из шаблона скилла: «Источники:» — заготовка, решений нет.
+const TEMPLATE = fs.readFileSync(path.join(root, 'skills/sdd-grill/assets/brainstorming.md'), 'utf8');
+function grillWorkspace(md = TEMPLATE) {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-lint-grill-'));
+  fs.mkdirSync(path.join(cwd, 'docs/handover'), { recursive: true });
+  fs.writeFileSync(path.join(cwd, 'docs/handover/brainstorming.md'), md.replace('<фраза как пришла>', 'Хочу передавать задачу коллеге'));
+  return cwd;
+}
+const protocolOf = (cwd) => fs.readFileSync(path.join(cwd, 'docs/handover/brainstorming.md'), 'utf8');
+const sourcesLineOf = (cwd) => (protocolOf(cwd).match(/^Источники:.*$/m) || [null])[0];
+const withRow = (md) => md.replace('|---|---|---|---|---|\n', '|---|---|---|---|---|\n| 1 | Продукт и UI | Кто передаёт | Только исполнитель | да |\n');
+function handoverCheck(cwd) {
+  const r = run(cwd, 'check', 'docs/handover', '--json');
+  return { code: r.code, ...JSON.parse(r.out) };
+}
+
+test('sources: без источников — вопрос «Есть что передать, чтобы было проще?»; фраза запроса — не источник', () => {
+  const cwd = grillWorkspace();
+  const r = run(cwd, 'sources', 'docs/handover', 'Хочу передавать задачу коллеге: зовём через @anna, фронт/бэк');
+  assert.equal(r.code, 0, r.out);
+  const v = JSON.parse(r.out);
+  const q = v.questions[0];
+  assert.equal(q.question, 'Есть что передать, чтобы было проще?');
+  assert.deepEqual(q.options.map((o) => o.id), ['sources:send', 'sources:none']);
+  assert.equal(q.options[0].label, 'Да, пришлю (рекомендую)');
+  assert.match(v.text, /^Есть что передать, чтобы было проще\?\n1\. Да, пришлю \(рекомендую\)/);
+  assert.match(v.instruction, /sdd_lint с args \["sources","docs\/handover","<ответ дословно>"\]/);
+  assert.match(v.instruction, /docs\/handover\/_work\/sources\.md/);
+  assert.equal(sourcesLineOf(cwd), 'Источники: <заполняет sdd_lint sources>');
+});
+test('sources: ссылки и @пути — в «Источники:», без повторов; нет файла и файл вне репозитория — не записаны, с причиной', () => {
+  const cwd = grillWorkspace();
+  fs.mkdirSync(path.join(cwd, 'requests'));
+  fs.writeFileSync(path.join(cwd, 'requests/handover.md'), 'Записка продакта\n');
+  fs.writeFileSync(path.join(cwd, 'requests/ТЗ передача.md'), 'ТЗ\n');
+  const outside = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-outside-')), 'tz.pdf');
+  fs.writeFileSync(outside, 'pdf');
+  const r = run(cwd, 'sources', '@docs/handover/', 'задача [TASK-12](https://jira.example/browse/TASK-12), записка @requests/handover.md.', '@docs/mokup.png', outside);
+  assert.equal(r.code, 0, r.out);
+  assert.equal(sourcesLineOf(cwd), 'Источники: https://jira.example/browse/TASK-12, requests/handover.md');
+  assert.match(r.out, /https:\/\/jira\.example\/browse\/TASK-12 — ссылка \(новый\)/);
+  assert.match(r.out, /@docs\/mokup\.png — нет такого файла/);
+  assert.match(r.out, /tz\.pdf — файл вне репозитория: положите его в docs\/handover\/_work\//);
+  assert.match(r.out, /Требование из источника — решение человека/);
+  // Повтор и новый файл с пробелом в имени: старое не дублируется, новое дописывается в конец.
+  run(cwd, 'sources', 'handover', 'requests/ТЗ передача.md', 'https://jira.example/browse/TASK-12', 'нет');
+  assert.equal(sourcesLineOf(cwd), 'Источники: https://jira.example/browse/TASK-12, requests/handover.md, requests/ТЗ передача.md');
+  assert.deepEqual(rules(handoverCheck(cwd)), []);
+});
+test('choose: sources:none пишет «нет», sources:send — просьба человеку и что делать с ответом', () => {
+  const cwd = grillWorkspace();
+  const send = run(cwd, 'choose', 'docs/handover', 'sources:send');
+  assert.equal(send.code, 0);
+  assert.match(send.out, /^Передай человеку дословно и жди ответа:\n\nПришлите одним сообщением всё, что есть по фиче/);
+  assert.match(send.out, /Когда человек ответит: Ответ человека передай целиком: sdd_lint с args \["sources","docs\/handover","<ответ дословно>"\]/);
+  const none = run(cwd, 'choose', 'docs/handover', 'sources:none');
+  assert.equal(none.code, 0, none.out);
+  assert.match(none.out, /Источники: нет — записал в docs\/handover\/brainstorming\.md\.[\s\S]*Продолжай скилл sdd-grill со следующего шага\./);
+  assert.equal(sourcesLineOf(cwd), 'Источники: нет');
+  // Вопрос закрыт — его вариантов больше нет.
+  assert.equal(run(cwd, 'choose', 'docs/handover', 'sources:none').code, 2);
+  assert.match(run(cwd, 'sources', 'docs/handover').out, /^Источники: нет — уже в docs\/handover\/brainstorming\.md\./);
+});
+test('sources: в старом протоколе без строки — вставляет её после «Запрос:»', () => {
+  const cwd = grillWorkspace(TEMPLATE.replace('Источники: <заполняет sdd_lint sources>\n\n', ''));
+  assert.equal(sourcesLineOf(cwd), null);
+  run(cwd, 'sources', 'docs/handover', 'нет');
+  assert.match(protocolOf(cwd), /^Запрос: «Хочу передавать задачу коллеге»\n\nИсточники: нет\n\nСервисы:/m);
+});
+test('PR-06: раунды без вопроса об источниках — ошибка, пока протокол не готов', () => {
+  const cwd = grillWorkspace(withRow(TEMPLATE));
+  let res = handoverCheck(cwd);
+  assert.equal(res.code, 1);
+  assert.deepEqual(rules(res), ['PR-06']);
+  assert.match(res.findings[0].msg, /в «Решения» 1 строка, а «Источники:» не заполнены/);
+  assert.match(res.hints['PR-06'], /sdd-lint sources docs\/<feature>/);
+  // Без строки в протоколе — тоже.
+  fs.writeFileSync(path.join(cwd, 'docs/handover/brainstorming.md'), protocolOf(cwd).replace(/^Источники:.*\n\n/m, ''));
+  assert.match(handoverCheck(cwd).findings[0].msg, /строки «Источники:» нет/);
+  run(cwd, 'sources', 'docs/handover', 'нет');
+  assert.deepEqual(rules(handoverCheck(cwd)), []);
+  // Протокол готов — спрашивать поздно, проверка молчит.
+  const ready = grillWorkspace(withRow(TEMPLATE).replace('Статус: идёт', 'Статус: готов'));
+  assert.ok(!rules(handoverCheck(ready)).includes('PR-06'));
+});
+test('PR-07: в «Источники:» — только ссылки и файлы репозитория', () => {
+  const cwd = grillWorkspace(TEMPLATE.replace('<заполняет sdd_lint sources>', 'https://jira.example/browse/TASK-12, docs/handover/brainstorming.md, ТЗ от Пети, docs/moved.png'));
+  const res = handoverCheck(cwd);
+  assert.deepEqual(res.findings.filter((f) => f.rule === 'PR-07').map((f) => f.msg), ['«ТЗ от Пети» — не ссылка и не файл в репозитории', '«docs/moved.png» — не ссылка и не файл в репозитории']);
+  assert.equal(res.findings.find((f) => f.rule === 'PR-07').level, 'warn');
+});
+test('sources: протокол готов — источники не дописывает; протокола нет — подсказка', () => {
+  const cwd = grillWorkspace(TEMPLATE.replace('Статус: идёт', 'Статус: готов'));
+  const r = run(cwd, 'sources', 'docs/handover', 'https://jira.example/browse/TASK-12');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /Протокол готов — источники больше не записываю\.\nНовое требование из материала — решение: \/sdd-decide handover/);
+  assert.equal(sourcesLineOf(cwd), 'Источники: <заполняет sdd_lint sources>');
+  fs.rmSync(path.join(cwd, 'docs/handover/brainstorming.md'));
+  const none = run(cwd, 'sources', 'docs/handover');
+  assert.equal(none.code, 2);
+  assert.match(none.out, /сначала создай протокол из шаблона скилла sdd-grill/);
+});
+test('Tab: sources после фичи дополняет пути к любым файлам', () => {
+  const cwd = grillWorkspace();
+  fs.mkdirSync(path.join(cwd, 'requests'));
+  fs.writeFileSync(path.join(cwd, 'requests/mockup.png'), 'png');
+  const c = (...w) => lines(run(cwd, '__complete', ...w).out);
+  assert.deepEqual(c('sources', 'handover', 'requests/'), ['requests/mockup.png']);
+  assert.deepEqual(c('sources', 'handover', 'https://x', 'requests/m'), ['requests/mockup.png']);
+});

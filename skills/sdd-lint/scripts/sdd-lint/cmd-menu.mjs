@@ -77,14 +77,14 @@ export function complete(words) {
   const emit = (v, d = '') => {
     if (v.startsWith(cur) && !out.some((x) => x.split('\t')[0] === v)) out.push(d ? `${v}\t${d}` : v);
   };
-  const paths = (dirsOnly) => {
+  const paths = (dirsOnly, anyFile = false) => {
     const dirPart = cur.includes('/') ? cur.slice(0, cur.lastIndexOf('/') + 1) : '';
     const base = cur.slice(dirPart.length);
     if (!isDir(dirPart || '.')) return;
     for (const e of fs.readdirSync(dirPart || '.').sort()) {
       if (e.startsWith('.') && !base.startsWith('.')) continue;
       if (isDir(path.join(dirPart || '.', e))) emit(`${dirPart}${e}/`);
-      else if (!dirsOnly && e.endsWith('.md')) emit(`${dirPart}${e}`);
+      else if (!dirsOnly && (anyFile || e.endsWith('.md'))) emit(`${dirPart}${e}`);
     }
   };
   const features = (dirsOnly) => {
@@ -117,12 +117,15 @@ export function complete(words) {
     for (const k of COMMANDS.filter((k) => k !== 'check')) emit(k, CMD_INFO[k]);
     return out;
   }
-  const slot = (SLOTS[c] || [])[args.length];
+  const slots = SLOTS[c] || [];
+  // «source...» — слот повторяется: источников после фичи может быть сколько угодно.
+  const slot = slots[args.length] ?? (slots.at(-1)?.endsWith('...') && args.length ? slots.at(-1) : undefined);
   const feature = () => resolveFeature(args[1]);
   if (slot === 'choice') Object.entries(CHOICES[c]).forEach(([k, d]) => emit(k, d));
   else if (slot === 'command') COMMANDS.forEach((k) => emit(k, CMD_INFO[k]));
   else if (slot === 'feature') features(true);
   else if (slot === 'target') features(false);
+  else if (slot === 'source...') paths(false, true);
   else if (slot === 'adr' && args[0] === 'adr' && feature())
     loadFeature(feature()).featureAdrs.forEach((a) => emit(a.num, a.status || ''));
   else if (slot === 'slice' && /^ac$/i.test(args[0]) && feature())

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: sources-question
+expected_outcome: |
+  Человек принёс фичу одной фразой, без ссылок и файлов. Агент создаёт docs/task-handover/brainstorming.md, вызывает sdd_lint sources, и раз источников нет — задаёт вопрос из вывода скрипта «Есть что передать, чтобы было проще?» с вариантами «Да, пришлю (рекомендую)» и «Нет, начнём с фразы». Раунд grilling не начинает, вариант за человека не выбирает и ждёт ответа.
+context:
+  scaffold_script: place-files.sh

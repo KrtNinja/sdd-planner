@@ -19,6 +19,7 @@ import { cmdExport } from './sdd-lint/cmd-export.mjs';
 import { cmdFix } from './sdd-lint/cmd-fix.mjs';
 import { cmdTrace, cmdGen, cmdNext } from './sdd-lint/cmd-gen.mjs';
 import { cmdSnapshot, cmdGuard } from './sdd-lint/cmd-guard.mjs';
+import { cmdSources } from './sdd-lint/cmd-sources.mjs';
 import { cmdMenu, checkTypo, complete, cmdCompletion } from './sdd-lint/cmd-menu.mjs';
 import { cmdPrompt } from './sdd-lint/cmd-prompt.mjs';
 import { lintCmd } from './sdd-lint/config.mjs';
@@ -36,4 +37,4 @@ if (cmd === '__complete') {
 if (cmd === 'check' && !argv.length) cmdMenu();
 if (cmd === 'check') checkTypo();
 
-({ completion: cmdCompletion, check: cmdCheck, fix: cmdFix, done: cmdDone, plan: cmdPlan, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, export: cmdExport, next: cmdNext, ask: cmdAsk, choose: cmdChoose, prompt: cmdPrompt })[cmd]();
+({ completion: cmdCompletion, check: cmdCheck, fix: cmdFix, done: cmdDone, plan: cmdPlan, gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace, close: cmdClose, export: cmdExport, next: cmdNext, ask: cmdAsk, choose: cmdChoose, prompt: cmdPrompt, sources: cmdSources })[cmd]();

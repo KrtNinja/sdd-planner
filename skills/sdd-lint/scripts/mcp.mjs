@@ -18,6 +18,7 @@ const TOOL = {
     'по одному элементу: [] — фичи и этапы, ["docs/comments"] — проверка фичи, ' +
     '["fix","docs/comments"] — после правки: номера, ссылки, README скриптом и проверка, ' +
     '["done","docs/comments"] — конец этапа: fix, «на ревью» и вопрос этапа, ["plan","docs/comments"] — проверка плана нарезки, ' +
+    '["sources","docs/comments","https://…","@docs/…"] — источники для brainstorming или вопрос о них, ' +
     '["gate","spec","docs/comments"], ["approve","slices","docs/comments"], ' +
     '["export","docs/comments"] — требования в JSON для реализации, ["help","gen"]. ' +
     'Возвращает вывод скрипта и код выхода (0 — ок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты).',

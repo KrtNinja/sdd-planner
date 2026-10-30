@@ -3,7 +3,8 @@ import fs from 'node:fs';
 
 import { usage } from './cli.mjs';
 import { add } from './findings.mjs';
-import { rel, isEmptyCell, scan, isH2, inSection, hasSection, header, tables, col, replaceSection } from './md.mjs';
+import { protocolReady, protocolSources, sourceProblem, sourcesLine } from './inputs.mjs';
+import { plural, rel, isEmptyCell, scan, isH2, inSection, hasSection, header, tables, col, replaceSection } from './md.mjs';
 
 export function parseProtocol(file, md) {
   if (md == null) return null;
@@ -58,7 +59,13 @@ export function checkProtocol(m) {
   p.rows.forEach((r, k) => {
     if (r.id !== String(k + 1)) add('PR-02', p.file, r.n, `строка ${k + 1} таблицы «Решения» имеет номер «${r.id}», ожидался ${k + 1}`);
   });
-  if (!/готов/i.test(p.status || '')) return;
+  // Источники: вопрос о них — до первого раунда (sdd-grill). После «готов» спрашивать поздно, проверка молчит.
+  const src = protocolSources(p);
+  const at = sourcesLine(p);
+  if (src == null && p.rows.length && !protocolReady(p))
+    add('PR-06', p.file, at || 1, `в «Решения» ${plural(p.rows.length, 'строка', 'строки', 'строк')}, а ${at ? '«Источники:» не заполнены' : 'строки «Источники:» нет'} — человека не спросили, что он может передать`);
+  if (Array.isArray(src)) for (const s of src) if (sourceProblem(s)) add('PR-07', p.file, at, `«${s}» — ${sourceProblem(s)}`);
+  if (!protocolReady(p)) return;
   for (const r of p.rows) if (isEmptyCell(r.dec)) add('PR-03', p.file, r.n, `статус «готов», а у строки #${r.id} нет решения`);
   const expected = guessedRows(p).map((r) => r.id);
   const ct = p.guessedT;
