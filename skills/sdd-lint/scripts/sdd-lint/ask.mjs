@@ -12,7 +12,8 @@ import { blockersStep, tempArtifacts, stageOf } from './stage.mjs';
 // Агент задаёт вопросы из ask инструментом выбора и передаёт id варианта в choose.
 // Действие: lint — выполняет choose; subagent — задача сабагенту (fallback — команда человеку,
 // если сабагентов нет; snapshot — снимок, который choose снимает сам до задачи);
-// here — скилл в этом окне; show — команда, которую человек запускает сам; none — ничего.
+// here — скилл в этом окне; show — команда, которую человек запускает сам; wait — вопрос, ответ на который
+// агент передаёт в скрипт (then); none — ничего.
 export const lintArgs = (args) => JSON.stringify(args);
 export const CLOSE_AFTER = 'Это ещё не удаление: выполни instruction из вывода — выведи preview и задай вопрос подтверждения.';
 const fetchTask = (args, tail) => `Вызови инструмент sdd_lint с args ${lintArgs(args)} и выполни то, что он вернёт.${tail ? ` ${tail}` : ''}`;
@@ -185,7 +186,7 @@ export function questionsView(dir, stage, questions) {
   }));
   const text = qs.map((q) => [q.question, ...q.options.map((o) => `${o.n}. ${o.label}${o.description ? ` — ${o.description}` : ''}`)].join('\n')).join('\n\n');
   const instruction =
-    (preview ? 'Сначала выведи preview дословно, отдельным сообщением: это план для человека. ' : '') +
+    (preview ? 'Сначала выведи preview дословно, отдельным сообщением: это для человека. ' : '') +
     'Задай questions инструментом выбора как есть: текст, порядок, варианты и «(рекомендую)» не меняй, своих вариантов не добавляй. ' +
     'Инструмента выбора нет — выведи text дословно и жди ответа. ' +
     `Выбран вариант — sdd_lint с args ${lintArgs(['choose', dir, '<id>'])}; ответ номером — id варианта с этим n; выбрано несколько — по одному, по порядку. ` +

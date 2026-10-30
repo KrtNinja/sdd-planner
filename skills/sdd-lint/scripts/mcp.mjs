@@ -9,13 +9,15 @@ import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 const LINT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'sdd-lint.mjs');
-const VERSION = '0.5.0';
+const VERSION = '0.6.0';
 
 const TOOL = {
   name: 'sdd_lint',
   description:
     'Запускает sdd-lint из корня репозитория с доками. args — аргументы командной строки скрипта ' +
     'по одному элементу: [] — фичи и этапы, ["docs/comments"] — проверка фичи, ' +
+    '["start","<что человек написал после /sdd-grill>"] — старт brainstorming по шагам, ' +
+    '["research","fact","docs/comments","<вопрос>"] — задание сабагенту найти факт, ' +
     '["fix","docs/comments"] — после правки: номера, ссылки, README скриптом и проверка, ' +
     '["done","docs/comments"] — конец этапа: fix, «на ревью» и вопрос этапа, ["plan","docs/comments"] — проверка плана нарезки, ' +
     '["gate","spec","docs/comments"], ["approve","slices","docs/comments"], ' +

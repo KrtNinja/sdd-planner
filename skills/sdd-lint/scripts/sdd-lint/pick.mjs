@@ -33,7 +33,7 @@ const callPrefix = (n) => [cmd === 'check' ? null : cmd, ...pos.slice(0, n)].fil
 export function pickFeature(why, n) {
   const known = listFeatures();
   if (!known.length) {
-    console.error(isDir(DOCS) ? `${why}. В ${DOCS}/ пока нет фич. Новая начинается с ${skill('sdd-grill', '<feature>')}.` : `${why}. Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
+    console.error(isDir(DOCS) ? `${why}. В ${DOCS}/ пока нет фич. Новая начинается с ${skill('sdd-grill')} — он спросит задачу.` : `${why}. Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
     process.exit(2);
   }
   const lines = known.map((f) => `  ${lintCmd(...callPrefix(n), f)}`);

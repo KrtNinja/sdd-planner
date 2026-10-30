@@ -12,7 +12,7 @@ import { DOCS, isDir, pickFeature, needDir } from './pick.mjs';
 // Агент получает его через MCP и не читает файлы расширения вне проекта; disable-model-invocation
 // не снимается — скилл попадает к агенту только через вариант, который выбрал человек.
 export const SELF = fs.realpathSync(process.argv[1]);
-const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
+export const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
 export const promptSkills = () => (isDir(SKILLS_DIR) ? fs.readdirSync(SKILLS_DIR).filter((x) => /^sdd-[a-z]+$/.test(x) && x !== 'sdd-lint' && fs.existsSync(path.join(SKILLS_DIR, x, 'SKILL.md'))) : []);
 // Аргументы с пробелами — в кавычках: у /sdd-decide вопрос и решение не должны слиться в одну строку.
 const shownArgs = (args) => args.map((a) => (/\s/.test(a) || a === '' ? `"${a.replace(/"/g, '\\"')}"` : a)).join(' ');
