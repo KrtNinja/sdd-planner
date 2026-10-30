@@ -42,7 +42,7 @@ export const CMD_INFO = {
   completion: 'Tab-дополнение для bash / zsh',
 };
 export const CHOICES = {
-  gate: { spec: 'можно ли писать Dev Spec', slices: 'можно ли резать slices', adr: 'можно ли писать ADR', decide: 'можно ли проводить решение', build: 'можно ли начинать реализацию' },
+  gate: { spec: 'можно ли писать Dev Spec', slices: 'можно ли резать slices', adr: 'можно ли писать ADR', decide: 'можно ли проводить решение', review: 'что ждёт ревью', build: 'можно ли начинать реализацию' },
   approve: { spec: 'одобрить Dev Spec', slices: 'одобрить slices', adr: 'принять ADR' },
   gen: { readme: 'slices/README.md: таблица, покрытие, порядок', guessed: '«Где агент угадал бы не так»', links: 'ссылки на строки протокола и spec', slices: 'файлы slices по согласованному плану' },
   next: { FR: 'номер нового FR', NFR: 'номер нового NFR', AC: 'номер нового AC в slice', slice: 'номер нового slice', adr: 'номер нового ADR' },

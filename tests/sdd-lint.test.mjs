@@ -754,9 +754,10 @@ test('не хватает варианта или фичи: варианты г�
   assert.equal(r.code, 2);
   assert.match(r.out, /approve — выбери вариант/);
   assert.match(r.out, /approve slices comments\s+— одобрить slices/);
+  // gate без фичи выбирает сам (tests/guide.test.mjs); подходящих нет — этапы фич.
   r = run(cwd, 'gate', 'spec');
   assert.equal(r.code, 2);
-  assert.match(r.out, /Укажи фичу\. Фичи в docs\/:\n.*gate spec comments/);
+  assert.match(r.out, /Фич, где можно писать Dev Spec, нет\.\nФичи и этапы:\n- comments — /);
 });
 test('опечатка в команде: «Может, approve?»', () => {
   const r = run(workspace(), 'aprove', 'slices', 'comments');

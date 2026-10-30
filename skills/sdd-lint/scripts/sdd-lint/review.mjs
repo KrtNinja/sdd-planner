@@ -7,11 +7,15 @@ export function parseReview(file, md) {
   const sc = scan(md);
   const t = tables(sc.lines.filter((l) => !l.inCode)).find((x) => col(x, '#') >= 0 && col(x, /^Решени/i) >= 0);
   if (!t) return { file, md, table: false, rows: [] };
-  const [ci, cv, cd] = ['#', /^Важност/i, /^Решени/i].map((m) => col(t, m));
+  const [ci, cv, cd, cw, cx, cp] = ['#', /^Важност/i, /^Решени/i, /^Где/i, /^Что не так/i, /^Предложени/i].map((m) => col(t, m));
+  const cell = (r, i) => (i >= 0 ? (r.cells[i] || '').trim() : '');
   const rows = t.rows.map((r) => ({
-    id: (r.cells[ci] || '').trim(),
-    blocker: /блокер/i.test(r.cells[cv] || ''),
-    decision: (r.cells[cd] || '').trim(),
+    id: cell(r, ci),
+    blocker: /блокер/i.test(cell(r, cv)),
+    decision: cell(r, cd),
+    where: cell(r, cw),
+    what: cell(r, cx),
+    proposal: cell(r, cp),
     n: r.n,
   }));
   return { file, md, table: true, rows };

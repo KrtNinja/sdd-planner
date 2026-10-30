@@ -2,6 +2,7 @@
 import { pos } from './args.mjs';
 import { usage } from './cli.mjs';
 import { lintCmd } from './config.mjs';
+import { impact } from './gate-extra.mjs';
 import { loadFeature } from './feature.mjs';
 import { genLinks } from './gen-links.mjs';
 import { rel, uniq } from './md.mjs';
@@ -13,6 +14,12 @@ import { genSlices } from './scaffold.mjs';
 // Протокол → куда ушла каждая строка: для ревью смысла трассировки.
 export function cmdTrace() {
   const m = loadFeature(needDir(pos[0]));
+  // trace <фича> FR-3 AC-002-B1: что держится на требовании — без поиска моделью по файлам.
+  const ids = pos.slice(1).filter((x) => /^(N?FR-\d+|AC-\d{3}-[BF]?\d+)$/.test(x));
+  if (ids.length) {
+    console.log(impact(m, ids));
+    process.exit(0);
+  }
   const s = m.spec;
   const p = m.protocol;
   if (!s || !p) usage('Нужны brainstorming.md и spec.md');

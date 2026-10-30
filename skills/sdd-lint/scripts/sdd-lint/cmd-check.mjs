@@ -8,6 +8,8 @@ import { loadFeature, featureFiles, runChecks } from './feature.mjs';
 import { findings, line, report } from './findings.mjs';
 import { rel, approved } from './md.mjs';
 import { pickChoice, needDir } from './pick.mjs';
+import { adrTopicStep, findingStep, reviewStep } from './gate-extra.mjs';
+import { chooseFeature, closedText, helloLine } from './guide.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 import { stageOf, stageText } from './stage.mjs';
 
@@ -41,7 +43,7 @@ export function gateClosed(m, stage) {
     if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skill('sdd-spec', m.name)}`];
     else if (!approved(m.spec.status)) closed = [`статус spec «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCmd('approve', 'spec', dir)}`];
     else if (errorsIn([m.protocolFile, m.specFile]).length) closed = ['ошибки в протоколе или spec', `В spec ошибки lint — исправьте и одобрите заново, список: ${check}`];
-  } else if (stage === 'adr' || stage === 'decide') {
+  } else if (stage === 'adr' || stage === 'decide' || stage === 'review') {
     if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skill('sdd-spec', m.name)}`];
   } else if (stage === 'build') {
     const pending = pendingAdrs(m);
@@ -56,19 +58,41 @@ export function gateClosed(m, stage) {
 
 export function cmdGate() {
   const stage = pos[0];
-  const gates = ['spec', 'slices', 'adr', 'decide', 'build'];
+  const gates = ['spec', 'slices', 'adr', 'decide', 'review', 'build'];
   if (!gates.includes(stage)) pickChoice('gate');
-  const m = loadFeature(needDir(pos[1], 1));
+  let target = pos[1];
+  let note = null;
+  // Фичу не назвали — выбирает скрипт: одна подходит — она, несколько — вопрос человеку.
+  if (!target && stage !== 'build') {
+    const c = chooseFeature(stage, (f) => ['gate', stage, f, ...pos.slice(2)]);
+    if (!c.dir) {
+      console.log(c.text);
+      process.exit(2);
+    }
+    [target, note] = [c.dir, c.note];
+  }
+  const m = loadFeature(needDir(target, 1));
   runChecks(m);
   const closed = gateClosed(m, stage);
   if (closed) {
     const relevant = stage === 'build' ? findings : errorsIn([m.protocolFile, m.specFile]);
     for (const x of relevant.filter((y) => y.level === 'err')) console.log(line(x));
-    console.log(`ВОРОТА ${stage}: закрыты — ${closed[0]}.\nСкажи человеку: «${closed[1]}» — и остановись.`);
+    // build читает зона реализации (export) — ей вопрос этапа не нужен.
+    console.log(stage === 'build' ? `ВОРОТА ${stage}: закрыты — ${closed[0]}.\nСкажи человеку: «${closed[1]}» — и остановись.` : closedText(m, stage, closed));
     process.exit(3);
   }
+  // Что после фичи, разбирает скрипт: тема ADR, находка ревью, режим ревью.
+  const extra =
+    stage === 'adr'
+      ? adrTopicStep(m, pos.slice(2).join(' ').trim())
+      : stage === 'decide' && /^(\w+:)?R\d+$/i.test(pos[2] || '')
+        ? findingStep(m, pos[2])
+        : stage === 'review'
+          ? reviewStep(m, pos[2], pos[3])
+          : null;
   // Путь фичи — каноническим: агент подставляет его в следующие вызовы как есть, без разбора аргумента.
-  console.log(`ВОРОТА ${stage}: открыты.\nФича: ${rel(m.dir)}`);
-  if (stage === 'slices') console.log(slicesBrief(m));
+  const out = [note, `ВОРОТА ${stage}: открыты.`, `Фича: ${rel(m.dir)}`, extra?.text, extra?.stop ? null : helloLine(m, stage)];
+  if (stage === 'slices') out.push(slicesBrief(m));
+  console.log(out.filter(Boolean).join('\n'));
   process.exit(0);
 }

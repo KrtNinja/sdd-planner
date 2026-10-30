@@ -209,7 +209,8 @@ test('research context: заготовка с шапкой от скрипта, 
   const cwd = researched();
   const r = run(cwd, 'research', 'context', 'docs/handover');
   assert.equal(r.code, 0);
-  assert.match(r.out, /^# Исследование для brainstorming: docs\/handover/);
+  assert.match(r.out, /^# Исследование источников: docs\/handover/);
+  assert.match(r.out, /сейчас этап «brainstorming»/);
   assert.match(r.out, /^- репозиторий — текущая папка целиком$/m);
   assert.match(r.out, /sdd_lint \["research","check","docs\/handover"\]/);
   assert.match(r.out, /Нельзя: рекомендации и оценки/);
@@ -303,7 +304,8 @@ test('не открылась папка вне проекта — подска�
 test('research fact: задание с вопросом, ответ — строкой в «Ответы на вопросы»; «не нашёл» без источника — не ошибка', () => {
   const cwd = researched();
   const r = run(cwd, 'research', 'fact', 'docs/handover', 'Сколько исполнителей у задачи?');
-  assert.match(r.out, /^# Факт для brainstorming: docs\/handover/);
+  assert.match(r.out, /^# Вопрос по источникам: docs\/handover/);
+  assert.match(r.out, /ведёт этап «brainstorming»/);
   assert.match(r.out, /«Сколько исполнителей у задачи\?»/);
   assert.match(r.out, /в конец раздела «Ответы на вопросы»/);
   fillContext(cwd, 'handover', { 'Ответы на вопросы': ['- В: Сколько исполнителей? → один — `services/tasks-core/README.md:4`', '- В: Есть ли SLA? → не нашёл: README сервисов'] });
@@ -359,6 +361,6 @@ test('скилл sdd-grill: первый шаг — start, задания саб
   assert.match(md, /argument-hint: '\[задача словами \| @файл с задачей \| <feature>\]'/);
   // Шаблоны заданий сабагенту отдаёт research — prompt скилла их не приносит в окно.
   const p = run(repo(), 'prompt', 'sdd-grill');
-  assert.doesNotMatch(p.out, /# Исследование для brainstorming/);
+  assert.doesNotMatch(p.out, /# Исследование источников/);
   assert.match(p.out, /Файл скилла references\/questions\.md:/);
 });

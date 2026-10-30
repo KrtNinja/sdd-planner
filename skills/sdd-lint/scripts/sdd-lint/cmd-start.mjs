@@ -1,10 +1,12 @@
-// Команды start (скилл /sdd-grill: задача, папка, источники по шагам) и research (задания сабагенту, проверка контекста).
+// Команды start (скилл /sdd-grill: задача, папка, источники по шагам) и research (задания сабагенту на любом этапе, проверка контекста).
 import { flags, pos } from './args.mjs';
 import { usage } from './cli.mjs';
 import { contextFindings, factTask, loadContext, markContext, researchTask, syncContext } from './context.mjs';
 import { loadFeature } from './feature.mjs';
 import { findings, report } from './findings.mjs';
-import { rel } from './md.mjs';
+import { stageName } from './guide.mjs';
+import { REPO, inventory } from './input.mjs';
+import { header, rel } from './md.mjs';
 import { needDir, pickChoice } from './pick.mjs';
 import { acceptContext, addSources, renameFeature, researchList, sourcesOf, startFrom, taskOf } from './start.mjs';
 
@@ -19,21 +21,35 @@ export function cmdStart() {
   process.exit(0);
 }
 
+// Источники и задача фичи для заданий сабагенту: из протокола, после /sdd-close — из контекста;
+// ничего нет — то, что в папке. Исследование нужно на любом этапе, не только в brainstorming.
+function researchInput(m) {
+  const ctx = loadContext(m);
+  const fromCtx = ctx?.sources ? ctx.sources.split(/\s*;\s*/).filter(Boolean) : null;
+  if (m.protocol) {
+    const task = taskOf(m.protocol);
+    const fallback = inventory(m.name).empty ? [] : [REPO];
+    return { task, list: researchList(task, sourcesOf(m.protocol) || fromCtx || fallback) };
+  }
+  const title = m.spec ? (m.spec.md.match(/^#\s+(.+?)(?:\s+—\s+Dev Spec)?\s*$/m) || [])[1] : null;
+  const line = header(ctx?.md, 'Задача') || (title ? `«${title}»` : m.name);
+  return { task: { line }, list: fromCtx || (inventory(m.name).empty ? [] : [REPO]) };
+}
+
 export function cmdResearch() {
   const what = pos[0];
   if (!['context', 'fact', 'check'].includes(what)) pickChoice('research');
   const m = loadFeature(needDir(pos[1], 1));
-  if (!m.protocol) usage(`Нет ${rel(m.protocolFile)}: исследование идёт внутри /sdd-grill`);
-  const task = taskOf(m.protocol);
-  const list = researchList(task, sourcesOf(m.protocol) || []);
+  const { task, list } = researchInput(m);
+  const stage = stageName(m);
   if (what === 'context') {
-    console.log(list.length ? researchTask(m, list, task.line) : 'Источников нет — изучать нечего. Последним сообщением напиши: «Источников нет».');
+    console.log(list.length ? researchTask(m, list, task.line, stage) : 'Источников нет — изучать нечего. Последним сообщением напиши: «Источников нет».');
     process.exit(0);
   }
   if (what === 'fact') {
     const q = pos.slice(2).join(' ').trim();
     if (!q) usage('Укажи вопрос: research fact docs/<feature> "<вопрос>"');
-    console.log(factTask(m, list, task.line, q));
+    console.log(factTask(m, list, task.line, q, stage));
     process.exit(0);
   }
   const { ctx } = syncContext(m, list.join('; '), task.line);
