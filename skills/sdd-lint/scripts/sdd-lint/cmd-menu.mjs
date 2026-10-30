@@ -44,7 +44,7 @@ export function cmdMenu() {
   ];
   const w = Math.max(...rows.map(([c]) => c.length));
   out.push('', 'Команды:', ...rows.map(([c, d]) => `  ${c.padEnd(w)}  ${d}`));
-  out.push('', `Закрыть фичу перед merge — ${skill('sdd-close', ex)}: убирает протокол, review/ и план нарезки.`);
+  out.push('', `Закрыть фичу перед merge — ${skill('sdd-close', ex)}: убирает протокол и _work/ (ревью, план нарезки) — после подтверждения.`);
   out.push('', `Справка по команде: ${lintCmd('help', '<команда>')}. Путь к фиче дописывает Tab после @: @${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`);
   console.log(out.join('\n'));
   process.exit(0);

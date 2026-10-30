@@ -81,6 +81,8 @@ export function genSlices(m) {
 
   const plan = m.plan;
   const made = [];
+  // План лежит в _work/, папки slices/ до этой минуты может не быть.
+  fs.mkdirSync(m.slicesDir, { recursive: true });
   for (const s of plan.slices) {
     const file = path.join(m.slicesDir, `${s.num}-${s.slug}.md`);
     fs.writeFileSync(file, sliceText(m, plan, s));

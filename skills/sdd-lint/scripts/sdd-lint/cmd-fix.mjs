@@ -16,6 +16,7 @@ import { needDir } from './pick.mjs';
 import { genGuessed } from './protocol.mjs';
 import { genReadme } from './readme.mjs';
 import { saveSnapshot } from './snapshot.mjs';
+import { moveLegacy } from './work.mjs';
 import { hasProtocolTraces } from './sources.mjs';
 import { stageOf, stageText } from './stage.mjs';
 
@@ -66,8 +67,12 @@ function numberPlaceholders(m) {
 export function fixFeature(dir, { snapshot = false } = {}) {
   const files = (m) => uniq([...featureFiles(m), m.readmeFile, m.planFile].map((f) => path.resolve(f)));
   let m = loadFeature(dir);
-  const before = new Map(files(m).map((f) => [f, read(f)]));
   const notes = [];
+  // Старые review/ и slices/plan.md — в _work/ до всего остального: дальше fix работает уже с новыми путями.
+  const moved = moveLegacy(m);
+  if (moved.length) notes.push(`Временные артефакты перенесены в ${rel(m.workDir)}/: ${moved.join('; ')}`);
+  m = loadFeature(dir);
+  const before = new Map(files(m).map((f) => [f, read(f)]));
   const detail = new Map();
   const note = (file, text) => detail.set(path.resolve(file), [...(detail.get(path.resolve(file)) || []), text]);
   // Кириллица в ID — до нумерации: «AC-002-В?» станет заготовкой, которую fix пронумерует.

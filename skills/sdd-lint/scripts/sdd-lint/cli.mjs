@@ -21,7 +21,7 @@ export const HELP = `sdd-lint — проверки артефактов план
       ворота перед этапом. Код 3 — этап начинать нельзя. Открыты — путь фичи,
       для slices ещё требования, сервисы, ADR и с какого шага продолжать
   sdd-lint plan docs/<feature>
-      план нарезки slices/plan.md: покрытие FR/NFR, причины Р1–Р3, зависимости,
+      план нарезки _work/plan.md: покрытие FR/NFR, причины Р1–Р3, зависимости,
       сервисы из протокола, кандидаты на склейку. Код 1 — ошибки в плане
   sdd-lint approve <spec|slices> docs/<feature>
   sdd-lint approve adr docs/<feature> [NNNN]
@@ -46,10 +46,12 @@ export const HELP = `sdd-lint — проверки артефактов план
       ссылки: «Из протокола:» в spec → строка протокола; «Проверяет:» в slices и «Покрытие»
       в README → строка FR в spec.md; «Основание:» → spec.md одной ссылкой. Устаревшие обновляет, старые форматы
       («Трассировка», «[FR-n]» в строке AC) переносит
-  sdd-lint close docs/<feature>
-      перед merge (скилл /sdd-close): spec и slices одобрены, ADR приняты, блокеров ревью
-      и ошибок нет → удаляет brainstorming.md, review/ и slices/plan.md, убирает из spec
-      ссылки на протокол, обновляет ссылки на FR
+  sdd-lint close docs/<feature> [--json] [--yes]
+      перед merge (скилл /sdd-close). Без --yes ничего не удаляет: печатает, что удалит
+      (brainstorming.md, всё в _work/), и последствия — незакоммиченное, блокеры ревью без
+      решения, неодобренные spec и slices, ошибки lint; --json — то же вопросом для
+      инструмента выбора. С --yes удаляет, убирает из spec ссылки на протокол, обновляет
+      ссылки на FR
   sdd-lint export docs/<feature>
       требования в JSON для зоны реализации: slices, сервисы, AC со ссылкой
       <feature>/<AC-ID> для названий тестов, статус ворот build. Код 3 — ворота build закрыты

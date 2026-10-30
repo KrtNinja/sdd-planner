@@ -8,3 +8,7 @@ export const skill = (name, ...args) => [`${SKILL_PREFIX}${name}`, ...args].join
 export const lintCmd = (...args) => [LINT_CMD, ...args].join(' ');
 // «/sdd-decide» в текстах правил → команда в форме этого агента.
 export const cmds = (text) => text.replace(/(?<![\w/])\/(sdd-[a-z]+|humanizer)\b/g, (_, n) => skill(n));
+
+// Папка временных артефактов фичи: ревью, план нарезки, черновики агента. Коммитится вместе с фичей,
+// целиком удаляется в close. Не «memory»: так в GigaCode называется /memory и save_memory (GIGACODE.md).
+export const WORK_DIR = '_work';

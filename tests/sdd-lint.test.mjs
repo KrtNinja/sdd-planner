@@ -159,8 +159,8 @@ caught('CD-05', ADR, 'через outbox в брокер компании', 'че
 test('CD: протокол и ревью — временные артефакты, их не проверяем', () => {
   const cwd = workspace();
   edit(cwd, 'comments/brainstorming.md', '## Решения', 'Сейчас: src/comments/comment.controller.ts, create(dto), CommentService.\n\n```ts\nconst x = 1;\n```\n\n## Решения');
-  fs.mkdirSync(file(cwd, 'comments/review'), { recursive: true });
-  fs.writeFileSync(file(cwd, 'comments/review/slices.md'), '# Ревью slices\n\nСм. src/comments.ts#L42, deleteComment(id).\n');
+  fs.mkdirSync(file(cwd, 'comments/_work/review'), { recursive: true });
+  fs.writeFileSync(file(cwd, 'comments/_work/review/slices.md'), '# Ревью slices\n\nСм. src/comments.ts#L42, deleteComment(id).\n');
   assert.deepEqual(rules(check(cwd)).filter((r) => r.startsWith('CD')), []);
 });
 test('CD: внешние контракты, имена продуктов, схемы и маршруты API — не код', () => {
@@ -266,18 +266,24 @@ test('AP-02: номера строк в ссылках и пробелы в ко
   assert.ok(!rules(check(cwd)).includes('AP-02'));
 });
 
-test('close: не закрывает, пока slices не одобрены', () => {
+test('close без --yes ничего не удаляет: что уйдёт, последствия и команда подтверждения', () => {
   const cwd = workspace();
   const r = run(cwd, 'close', 'docs/comments');
-  assert.equal(r.code, 1);
-  assert.match(r.out, /НЕ ЗАКРЫТО: slices не одобрены/);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /^Закрытие docs\/comments: пока ничего не удалено\./);
+  assert.match(r.out, /Удалится:\n  docs\/comments\/brainstorming\.md\n  docs\/comments\/spec\.md: уберутся ссылки на протокол/);
+  assert.match(r.out, /Последствия:\n  - Планирование не закончено \(slices не одобрены\)/);
+  assert.match(r.out, /Не git-репозиторий: удалённое не восстановить/);
+  assert.match(r.out, /Подтвердить: node scripts\/sdd-lint\.mjs close docs\/comments --yes$/m);
   assert.ok(fs.existsSync(file(cwd, 'comments/brainstorming.md')));
 });
 
 test('close: удаляет протокол и следы его в spec, ссылки на FR остаются верными', () => {
   const cwd = gitWorkspace();
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
-  const r = run(cwd, 'close', 'docs/comments');
+  // Всё одобрено и закоммичено — последствий нет, только список удаляемого.
+  assert.doesNotMatch(run(cwd, 'close', 'docs/comments').out, /Последствия/);
+  const r = run(cwd, 'close', 'docs/comments', '--yes');
   assert.equal(r.code, 0, r.out);
   assert.ok(!fs.existsSync(file(cwd, 'comments/brainstorming.md')));
   const spec = fs.readFileSync(file(cwd, 'comments/spec.md'), 'utf8');
@@ -684,8 +690,8 @@ const REVIEW = `# Ревью slices — Комментарии
 | R2 | блокер | slices/003-mention-notifications.md | не решено, что с уведомлением, если комментарий удалили до доставки | 3 | уведомление не приходит |  |
 `;
 function withReview(cwd, md = REVIEW, name = 'slices.md') {
-  fs.mkdirSync(file(cwd, 'comments/review'), { recursive: true });
-  fs.writeFileSync(file(cwd, `comments/review/${name}`), md);
+  fs.mkdirSync(file(cwd, 'comments/_work/review'), { recursive: true });
+  fs.writeFileSync(file(cwd, `comments/_work/review/${name}`), md);
 }
 test('ревью: открытый блокер — RV-01 и шаг «закрыть блокеры» с готовой командой', () => {
   const cwd = workspace();
@@ -694,8 +700,8 @@ test('ревью: открытый блокер — RV-01 и шаг «закры
   assert.equal(res.code, 0);
   assert.deepEqual(rules(res).filter((r) => r.startsWith('RV')), ['RV-01']);
   const out = run(cwd, 'docs/comments').out;
-  assert.match(out, /закрыть блокеры ревью R2 \(docs\/comments\/review\/slices\.md\): решение — \/sdd-decide comments R2 "<решение>"/);
-  assert.match(out, /ревью уже было: docs\/comments\/review\/slices\.md/);
+  assert.match(out, /закрыть блокеры ревью R2 \(docs\/comments\/_work\/review\/slices\.md\): решение — \/sdd-decide comments R2 "<решение>"/);
+  assert.match(out, /ревью уже было: docs\/comments\/_work\/review\/slices\.md/);
 });
 test('ревью: approve не проходит, пока у блокера пустое «Решение»', () => {
   const cwd = workspace();
@@ -704,7 +710,7 @@ test('ревью: approve не проходит, пока у блокера пу
   assert.equal(r.code, 1);
   assert.match(r.out, /RV-01.*R2: блокер без решения/);
   assert.equal(status(cwd, 'comments/slices/README.md'), 'Статус: на ревью');
-  edit(cwd, 'comments/review/slices.md', '| уведомление не приходит |  |', '| уведомление не приходит | П2 |');
+  edit(cwd, 'comments/_work/review/slices.md', '| уведомление не приходит |  |', '| уведомление не приходит | П2 |');
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
 });
 test('ревью: файл не по шаблону — RV-02', () => {
@@ -801,7 +807,7 @@ test('ask: вопрос этапа с вариантами без действи
 });
 test('ask: после ревью без блокеров рекомендуется одобрить, с блокером — закрыть его', () => {
   const cwd = workspace();
-  const rv = path.join(cwd, 'docs/comments/review');
+  const rv = path.join(cwd, 'docs/comments/_work/review');
   fs.mkdirSync(rv, { recursive: true });
   const table = (decision) => `# Ревью slices — comments\n\nИтог: блокеров 1, замечаний 0\n\n| # | Важность | Где | Что не так | Пункт | Предложение | Решение |\n|---|---|---|---|---|---|---|\n| R1 | блокер | slices/002-comments.md | … | 3 | … | ${decision} |\n`;
   fs.writeFileSync(path.join(rv, 'slices.md'), table('исправлено'));
@@ -922,37 +928,55 @@ const oneFinding = (decision, level = 'блокер') => `# Ревью slices �
 |---|---|---|---|---|---|---|
 | R1 | ${level} | slices/002-comments.md | что-то | 3 | поправить | ${decision} |
 `;
-test('close: удаляет review/ и забытый plan.md вместе с протоколом', () => {
+test('close: удаляет _work/ целиком вместе с протоколом; незакоммиченное — в последствиях', () => {
   const cwd = gitWorkspace();
   withReview(cwd, oneFinding('исправлено'));
-  fs.writeFileSync(file(cwd, 'comments/slices/plan.md'), '# План нарезки — Комментарии\n');
+  fs.writeFileSync(file(cwd, 'comments/_work/plan.md'), '# План нарезки — Комментарии\n');
+  fs.writeFileSync(file(cwd, 'comments/_work/notes.txt'), 'черновик агента\n');
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   const st = run(cwd, 'comments').out;
-  assert.match(st, /перед merge убрать временные артефакты \(docs\/comments\/brainstorming\.md, docs\/comments\/review\/, docs\/comments\/slices\/plan\.md\): \/sdd-close comments/);
-  const r = run(cwd, 'close', 'comments');
+  assert.match(st, /перед merge убрать временные артефакты \(docs\/comments\/brainstorming\.md, docs\/comments\/_work\/\): \/sdd-close comments/);
+  const p = run(cwd, 'close', 'comments');
+  assert.match(p.out, /  docs\/comments\/_work\/notes\.txt\n  docs\/comments\/_work\/plan\.md\n  docs\/comments\/_work\/review\/slices\.md/);
+  assert.match(p.out, /Не закоммичено: docs\/comments\/_work\/notes\.txt, docs\/comments\/_work\/plan\.md, docs\/comments\/_work\/review\/slices\.md — удалится без следа/);
+  assert.ok(fs.existsSync(file(cwd, 'comments/_work/plan.md')));
+  const r = run(cwd, 'close', 'comments', '--yes');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /Удалено: docs\/comments\/brainstorming\.md, docs\/comments\/review\/, docs\/comments\/slices\/plan\.md/);
-  for (const f of ['comments/brainstorming.md', 'comments/review', 'comments/slices/plan.md']) assert.ok(!fs.existsSync(file(cwd, f)), f);
+  assert.match(r.out, /Удалено: docs\/comments\/brainstorming\.md, docs\/comments\/_work\//);
+  assert.match(r.out, /Закрыто с последствиями:\n  - Не закоммичено/);
+  for (const f of ['comments/brainstorming.md', 'comments/_work']) assert.ok(!fs.existsSync(file(cwd, f)), f);
   assert.match(check(cwd).stage, /временные артефакты убраны/);
   assert.deepEqual(diffRules(cwd), []);
 });
-test('close: блокер ревью без решения — ничего не удаляет', () => {
-  const cwd = workspace();
+test('close: блокер ревью без решения — в последствиях, рекомендуем «Не удалять»', () => {
+  const cwd = gitWorkspace();
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   withReview(cwd, oneFinding(''));
-  const r = run(cwd, 'close', 'comments');
-  assert.equal(r.code, 1, r.out);
-  assert.match(r.out, /НЕ ЗАКРЫТО: блокеры ревью без решения: R1 \(docs\/comments\/review\/slices\.md\).*Ничего не удалено/);
+  const r = run(cwd, 'close', 'comments', '--json');
+  assert.equal(r.code, 0, r.out);
+  const v = JSON.parse(r.out);
+  assert.match(v.preview, /Блокеры ревью без решения: R1 \(docs\/comments\/_work\/review\/slices\.md\) — в FR и AC их нет/);
+  assert.match(v.instruction, /Сначала выведи preview дословно/);
+  assert.deepEqual(v.questions[0].options.map((o) => [o.id, o.label]), [
+    ['close:no', 'Не удалять (рекомендую)'],
+    ['close:yes', 'Удалить'],
+  ]);
+  assert.match(v.preview, /после удаления пропадут совсем: файл ревью не закоммичен/);
   assert.ok(fs.existsSync(file(cwd, 'comments/brainstorming.md')));
-  assert.ok(fs.existsSync(file(cwd, 'comments/review/slices.md')));
+  assert.ok(fs.existsSync(file(cwd, 'comments/_work/review/slices.md')));
+  assert.equal(run(cwd, 'choose', 'docs/comments', 'close:no').code, 0);
+  assert.ok(fs.existsSync(file(cwd, 'comments/_work/review/slices.md')));
 });
 test('close: замечание без решения не мешает, но названо в выводе', () => {
-  const cwd = workspace();
+  const cwd = gitWorkspace();
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   withReview(cwd, oneFinding('', 'замечание'));
-  const r = run(cwd, 'close', 'comments');
+  execFileSync('git', ['add', '.'], { cwd });
+  execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'review'], { cwd });
+  assert.match(run(cwd, 'close', 'comments').out, /Замечания ревью без решения: R1 \(docs\/comments\/_work\/review\/slices\.md\) — уйдут в историю git/);
+  const r = run(cwd, 'close', 'comments', '--yes');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /Замечания ревью без решения ушли в историю git: R1/);
+  assert.match(r.out, /Закрыто с последствиями:[\s\S]*Замечания ревью без решения: R1/);
 });
 test('ask: перед merge — вопрос про временные артефакты, вариант ведёт на /sdd-close', () => {
   const cwd = workspace();
@@ -960,6 +984,55 @@ test('ask: перед merge — вопрос про временные арте�
   const q = ask(cwd).questions[0];
   assert.match(q.question, /Убрать временные артефакты этапа: docs\/comments\/brainstorming\.md\?/);
   assert.equal(q.options[0].description, '/sdd-close comments');
-  assert.equal(run(cwd, 'choose', 'docs/comments', 'close').code, 0);
+  // Первый ответ — ещё не удаление: close показывает удаляемое и задаёт второй вопрос.
+  const first = run(cwd, 'choose', 'docs/comments', 'close');
+  assert.equal(first.code, 0, first.out);
+  assert.match(first.out, /"id": "close:yes"/);
+  assert.match(first.out, /Это ещё не удаление/);
+  assert.ok(fs.existsSync(file(cwd, 'comments/brainstorming.md')));
+  assert.equal(run(cwd, 'choose', 'docs/comments', 'close:yes').code, 0);
   assert.ok(!fs.existsSync(file(cwd, 'comments/brainstorming.md')));
+  assert.match(run(cwd, 'close', 'comments').out, /Временных артефактов нет/);
+});
+
+// ---------- _work/: папка временных артефактов ----------
+
+test('WK-01: _work/ под .gitignore — ошибка, ревью не попадёт в коммит', () => {
+  const cwd = gitWorkspace();
+  fs.writeFileSync(path.join(cwd, '.gitignore'), '_work/\n');
+  assert.ok(rules(check(cwd)).includes('WK-01'));
+  fs.writeFileSync(path.join(cwd, '.gitignore'), 'tmp/\n');
+  assert.ok(!rules(check(cwd)).includes('WK-01'));
+});
+test('WK-02: постоянный документ ссылается внутрь _work/', () => {
+  const cwd = workspace();
+  fs.appendFileSync(file(cwd, 'comments/spec.md'), '\nСм. [ревью](_work/review/spec.md).\n');
+  const res = check(cwd);
+  assert.ok(res.findings.some((f) => f.rule === 'WK-02' && f.file === 'docs/comments/spec.md'), JSON.stringify(res.findings));
+});
+test('WK-03 и fix: старые review/ и slices/plan.md переезжают в _work/ через git mv', () => {
+  const cwd = workspace();
+  fs.mkdirSync(file(cwd, 'comments/review'), { recursive: true });
+  fs.writeFileSync(file(cwd, 'comments/review/slices.md'), oneFinding('исправлено'));
+  const g = (...a) => execFileSync('git', a, { cwd, encoding: 'utf8' });
+  g('init', '-q');
+  g('add', '.');
+  g('-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'base');
+  assert.ok(check(cwd).findings.some((f) => f.rule === 'WK-03' && f.file === 'docs/comments/review'));
+  const r = run(cwd, 'fix', 'docs/comments');
+  assert.match(r.out, /Временные артефакты перенесены в docs\/comments\/_work\/: docs\/comments\/review → docs\/comments\/_work\/review/);
+  assert.ok(fs.existsSync(file(cwd, 'comments/_work/review/slices.md')));
+  assert.ok(!fs.existsSync(file(cwd, 'comments/review')));
+  assert.ok(!rules(check(cwd)).includes('WK-03'));
+  assert.match(g('status', '--porcelain'), /^R  docs\/comments\/review\/slices\.md -> docs\/comments\/_work\/review\/slices\.md$/m);
+});
+test('close: старые review/ и slices/plan.md убирает вместе с _work/', () => {
+  const cwd = workspace();
+  assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
+  fs.mkdirSync(file(cwd, 'comments/review'), { recursive: true });
+  fs.writeFileSync(file(cwd, 'comments/review/spec.md'), oneFinding('исправлено'));
+  fs.writeFileSync(file(cwd, 'comments/slices/plan.md'), '# План нарезки — Комментарии\n');
+  const r = run(cwd, 'close', 'comments', '--yes');
+  assert.match(r.out, /Удалено: docs\/comments\/brainstorming\.md, docs\/comments\/review\/, docs\/comments\/slices\/plan\.md/);
+  for (const f of ['comments/review', 'comments/slices/plan.md']) assert.ok(!fs.existsSync(file(cwd, f)), f);
 });

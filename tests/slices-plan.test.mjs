@@ -138,8 +138,8 @@ function planWorkspace(plan = PLAN) {
   fs.rmSync(file(cwd, 'comments/slices'), { recursive: true });
   edit(cwd, 'adr/0001-mention-notifications.md', /^Статус:.*$/m.exec(read(cwd, 'adr/0001-mention-notifications.md'))[0], 'Статус: предложено');
   if (plan) {
-    fs.mkdirSync(file(cwd, 'comments/slices'), { recursive: true });
-    fs.writeFileSync(file(cwd, 'comments/slices/plan.md'), plan);
+    fs.mkdirSync(file(cwd, 'comments/_work'), { recursive: true });
+    fs.writeFileSync(file(cwd, 'comments/_work/plan.md'), plan);
   }
   return cwd;
 }
@@ -154,7 +154,7 @@ test('gate slices: путь фичи из любого вида аргумент
   assert.match(r.out, /^ {2}FR-10 {2}Уведомление может прийти с задержкой/m);
   assert.match(r.out, /^Сервисы: frontend, tasks-core, notify-service/m);
   assert.match(r.out, /ADR фичи \(прочитай\): docs\/adr\/0001-mention-notifications\.md «предложено»/);
-  assert.match(r.out, /^Сейчас: плана нет — начни с него: docs\/comments\/slices\/plan\.md\.$/m);
+  assert.match(r.out, /^Сейчас: плана нет — начни с него: docs\/comments\/_work\/plan\.md\.$/m);
 });
 test('plan: чистый план — без ошибок, латинская P в причине не ошибка', () => {
   const r = run(planWorkspace(), 'plan', 'docs/comments');
@@ -189,7 +189,7 @@ test('plan: Р1 по принятому ADR, требование в двух sl
 });
 test('ask: план — человеку списком до вопроса, «Да» рекомендовано, других вопросов нет', () => {
   const a = ask(planWorkspace());
-  assert.equal(a.stage, 'План нарезки ждёт согласия (docs/comments/slices/plan.md)');
+  assert.equal(a.stage, 'План нарезки ждёт согласия (docs/comments/_work/plan.md)');
   assert.match(a.instruction, /^Сначала выведи preview дословно/);
   assert.match(a.preview, /^- 003 Уведомления об упоминаниях — поведение, после 001, 002$/m);
   assert.match(a.preview, /Основание: FR-1…FR-7, NFR-1, NFR-2/);
@@ -205,7 +205,7 @@ test('choose plan:yes — файлы по плану с заготовками, 
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /Созданы по плану в docs\/comments\/slices\/: 001-contracts\.md, 002-comments\.md, 003-mention-notifications\.md/);
   assert.match(r.out, /продолжай нарезку с шага «Заполни заготовки»/);
-  assert.ok(!fs.existsSync(file(cwd, 'comments/slices/plan.md')));
+  assert.ok(!fs.existsSync(file(cwd, 'comments/_work/plan.md')));
   const s3 = read(cwd, S003);
   assert.match(s3, /^Половины: tasks-core \+ notify-service \+ frontend, принимаются вместе$/m);
   assert.match(s3, /^Почему отдельно: Р1 — ждёт ADR-0001$/m);
@@ -232,7 +232,8 @@ test('gen slices: не создаёт файлы, если в плане оши�
   assert.ok(!fs.existsSync(file(cwd, 'comments/slices/002-comments.md')));
   assert.deepEqual(ids(ask(cwd)), ['plan:continue', 'plan:edit']);
   cwd = workspace();
-  fs.writeFileSync(file(cwd, 'comments/slices/plan.md'), PLAN);
+  fs.mkdirSync(file(cwd, 'comments/_work'), { recursive: true });
+  fs.writeFileSync(file(cwd, 'comments/_work/plan.md'), PLAN);
   r = run(cwd, 'gen', 'slices', 'docs/comments');
   assert.equal(r.code, 1);
   assert.match(r.out, /уже есть файлы slices/);
@@ -294,7 +295,7 @@ test('MCP: ответ сервера всегда с кодом выхода —
   const input = ['{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}', '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"sdd_lint","arguments":{"args":["plan","comments"]}}}'].join('\n');
   const out = execFileSync('node', [path.join(root, 'skills/sdd-lint/scripts/mcp.mjs')], { cwd, input, encoding: 'utf8', env: { ...process.env, TMPDIR: path.join(cwd, '.tmp') } });
   const res = out.trim().split('\n').map((l) => JSON.parse(l)).find((x) => x.id === 2);
-  assert.match(res.result.content[0].text, /Плана нет: запиши docs\/comments\/slices\/plan\.md[\s\S]*\[код выхода: 2\]$/);
+  assert.match(res.result.content[0].text, /Плана нет: запиши docs\/comments\/_work\/plan\.md[\s\S]*\[код выхода: 2\]$/);
 });
 test('prompt: в шапке — вопрос из правил и абсолютный путь к скрипту для вариантов 2 и 3', () => {
   const r = run(workspace(), 'prompt', 'sdd-slices', 'comments');

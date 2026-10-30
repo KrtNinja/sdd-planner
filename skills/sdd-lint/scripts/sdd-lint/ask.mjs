@@ -14,6 +14,7 @@ import { blockersStep, tempArtifacts, stageOf } from './stage.mjs';
 // если сабагентов нет; snapshot — снимок, который choose снимает сам до задачи);
 // here — скилл в этом окне; show — команда, которую человек запускает сам; none — ничего.
 export const lintArgs = (args) => JSON.stringify(args);
+export const CLOSE_AFTER = 'Это ещё не удаление: выполни instruction из вывода — выведи preview и задай вопрос подтверждения.';
 const fetchTask = (args, tail) => `Вызови инструмент sdd_lint с args ${lintArgs(args)} и выполни то, что он вернёт.${tail ? ` ${tail}` : ''}`;
 function artifactQuestion(m, what, num) {
   const key = what === 'adr' ? reviewKey('adr', num) : what;
@@ -29,7 +30,7 @@ function artifactQuestion(m, what, num) {
   const reviewHere = {
     id: `review-here:${key}`,
     label: rv ? 'Повторить ревью здесь' : 'Ревью здесь, в сабагенте',
-    description: `свежий контекст, находки — в ${dir}/review/${key}.md`,
+    description: `свежий контекст, находки — в ${dir}/_work/review/${key}.md`,
     action: { subagent: fetchTask(['prompt', 'sdd-review', m.name, ...rest]), fallback: skill('sdd-review', m.name, ...rest) },
   };
   const reviewWindow = {
@@ -142,7 +143,14 @@ export function askOf(m) {
           header: 'Перед merge',
           question: `${st.now}. Убрать временные артефакты этапа: ${tempArtifacts(m).join(', ')}?`,
           options: [
-            { id: 'close', label: 'Убрать временные артефакты', description: skill('sdd-close', m.name), recommended: true, action: { lint: ['close', rel(m.dir)] } },
+            {
+              id: 'close',
+              label: 'Убрать временные артефакты',
+              description: skill('sdd-close', m.name),
+              recommended: true,
+              // close без --yes ничего не удаляет: показывает, что уйдёт и чем это грозит, и задаёт второй вопрос.
+              action: { lint: ['close', rel(m.dir), '--json'], after: CLOSE_AFTER },
+            },
             { id: 'later', label: 'Позже', description: 'ничего не делать', action: { none: true } },
           ],
         },
@@ -164,6 +172,10 @@ export function askOf(m) {
 // а не из контекста агента. text — тот же вопрос списком для агента без инструмента выбора.
 export function askView(m) {
   const { stage, questions } = askOf(m);
+  return questionsView(rel(m.dir), stage, questions);
+}
+// Вопросы в форме для инструмента выбора — общая для ask и подтверждения close.
+export function questionsView(dir, stage, questions) {
   let n = 0;
   // preview (план нарезки) человек читает до вопроса: в инструменте выбора ему не место.
   const preview = questions.map((q) => q.preview).filter(Boolean).join('\n\n') || null;
@@ -172,7 +184,6 @@ export function askView(m) {
     options: q.options.map(({ action, ...o }) => ({ n: ++n, ...o, label: o.recommended ? `${o.label} (рекомендую)` : o.label })),
   }));
   const text = qs.map((q) => [q.question, ...q.options.map((o) => `${o.n}. ${o.label}${o.description ? ` — ${o.description}` : ''}`)].join('\n')).join('\n\n');
-  const dir = rel(m.dir);
   const instruction =
     (preview ? 'Сначала выведи preview дословно, отдельным сообщением: это план для человека. ' : '') +
     'Задай questions инструментом выбора как есть: текст, порядок, варианты и «(рекомендую)» не меняй, своих вариантов не добавляй. ' +
