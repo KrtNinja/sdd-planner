@@ -1,7 +1,0 @@
-{
-  "cli": "gigacode",
-  "args": ["-p", "{prompt}", "-o", "stream-json", "--approval-mode", "yolo", "-m", "{model}", "--max-wall-time", "{timeout}s", "--max-session-turns", "{turns}"],
-  "continueArgs": ["--continue"],
-  "models": ["qwen3.8-flash-next", "glm-5.3-flash", "deepseek-v4.1-flash"],
-  "skills": "slash"
-}

@@ -1,6 +1,0 @@
-schema_version: "1.1"
-name: csv-export-gap-and-tech
-expected_outcome: |
-  Агент пишет docs/csv-export/spec.md со статусом «на ревью»: FR с примерами на персонажах, без технологий (RabbitMQ, S3, очередь, BOM, UTF-8 не названы), лимит строк вынесен в «Открытые вопросы» без придуманного числа, у каждого FR/NFR строка «Из протокола:» со ссылками на строки протокола, все 10 строк протокола куда-то указаны.
-context:
-  scaffold_script: place-files.sh

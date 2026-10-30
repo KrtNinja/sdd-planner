@@ -302,22 +302,6 @@ test('prompt: в шапке — вопрос из правил и абсолют
   assert.match(r.out, /Нет его или не отвечает — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `\/[^`]+sdd-lint\.mjs`/);
   assert.match(r.out, /Файл скилла assets\/plan\.md:/);
 });
-test('evals: place-files.sh поднимает MCP-сервер lint, как GigaCode', () => {
-  const cases = fs
-    .readdirSync(path.join(root, 'skills'))
-    .flatMap((s) => {
-      const d = path.join(root, 'skills', s, 'evals');
-      return fs.existsSync(d) ? fs.readdirSync(d).map((c) => path.join(d, c)) : [];
-    })
-    .filter((d) => fs.existsSync(path.join(d, 'place-files.sh')));
-  for (const c of cases) {
-    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-eval-'));
-    execFileSync('bash', [path.join(c, 'place-files.sh')], { cwd, stdio: 'pipe' });
-    const srv = JSON.parse(fs.readFileSync(path.join(cwd, '.mcp.json'), 'utf8')).mcpServers['sdd-lint'];
-    assert.ok(fs.existsSync(srv.args[0]), `${path.relative(root, c)}: ${srv.args[0]}`);
-    assert.match(fs.readFileSync(path.join(c, 'prompt.md'), 'utf8'), /mcp__sdd-lint__sdd_lint/);
-  }
-});
 test('Р1 — ADR: <тема>: вопрос «Нужен ADR», ворота build закрыты, пока ADR не затрагивает slice', () => {
   const cwd = workspace();
   edit(cwd, S003, 'Р1 — ждёт ADR-0001 и подключения notify-service к доставке событий', 'Р1 — ADR: дедупликация уведомлений');

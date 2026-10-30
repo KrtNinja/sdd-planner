@@ -1,6 +1,0 @@
-schema_version: "1.1"
-name: review-finding-top-down
-expected_outcome: |
-  Агент проводит решение по находке R2 сверху вниз: строка П2 в «Решения после brainstorming», правило и пример в Dev Spec, П2 в «Из протокола:» под этим FR, статус spec «на ревью», AC в slice 003 с «Проверяет:» на этот FR, без пометок «добавлен после» и «Изменён после», «П2» в колонке «Решение» у R2. Находки R1 и R3 не трогает, lint без ошибок, в конце — список изменений и вопрос этапа из sdd-lint (done или ask).
-context:
-  scaffold_script: place-files.sh

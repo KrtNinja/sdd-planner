@@ -642,29 +642,6 @@ test('approve adr: единственный ждущий ADR принимает�
   assert.match(status(cwd, 'adr/0001-mention-notifications.md'), new RegExp(`^Статус: принято ${today()} · 9aebc0$`));
 });
 
-// ---------- evals ----------
-// Рабочая папка eval собирается из текущих правил, а не из копий.
-test('evals: place-files.sh кладёт текущие правила', () => {
-  const cases = fs
-    .readdirSync(path.join(root, 'skills'))
-    .flatMap((s) => {
-      const d = path.join(root, 'skills', s, 'evals');
-      return fs.existsSync(d) ? fs.readdirSync(d).map((c) => path.join(d, c)) : [];
-    })
-    .filter((d) => fs.existsSync(path.join(d, 'place-files.sh')));
-  assert.ok(cases.length > 0, 'нет ни одного eval с place-files.sh');
-  const rulesText = fs.readFileSync(path.join(root, 'rules/AGENTS.planning.md'), 'utf8');
-  for (const c of cases) {
-    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-eval-'));
-    execFileSync('bash', [path.join(c, 'place-files.sh')], { cwd, stdio: 'pipe' });
-    const name = path.relative(root, c);
-    assert.equal(fs.readFileSync(path.join(cwd, 'AGENTS.md'), 'utf8'), `# AGENTS.md\n\n${rulesText}`, `${name}: AGENTS.md не совпадает с правилами`);
-    assert.ok(fs.existsSync(path.join(cwd, 'docs')), `${name}: нет docs/`);
-  }
-});
-
-// ---------- манифест расширения ----------
-// GigaCode ставит пул по манифесту: правила и lint должны лежать там, куда он указывает.
 test('манифест: sdd-planner, файл правил и MCP-сервер lint на месте', () => {
   const m = JSON.parse(fs.readFileSync(path.join(root, 'gigacode-extension.json'), 'utf8'));
   assert.equal(m.name, 'sdd-planner');
