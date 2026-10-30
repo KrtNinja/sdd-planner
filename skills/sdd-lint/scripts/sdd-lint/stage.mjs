@@ -28,7 +28,7 @@ function handoff(m, what) {
   const rv = m.reviews.get(what);
   const open = openBlockers(rv);
   return [
-    `по желанию убрать следы ИИ из прозы: ${human}, затем ${guard}`,
+    `по желанию убрать AI стиль: ${human}, затем ${guard}`,
     rv ? `ревью уже было: ${rel(rv.file)}; повторить в чистом контексте — ${skill('sdd-review', m.name, what)}` : `ревью в чистом контексте: ${skill('sdd-review', m.name, what)}`,
     ...(open.length ? [blockersStep(m, rv, open)] : []),
     `одобрить: ${lintCmd('approve', what, dir)}`,
@@ -36,7 +36,7 @@ function handoff(m, what) {
 }
 export function blockersStep(m, rv, open) {
   const ids = open.map((r) => r.id);
-  return `закрыть блокеры ревью ${ids.join(', ')} (${rel(rv.file)}): решение — ${skill('sdd-decide', m.name, ids[0], '"<решение>"')}, правка — исправьте файл и впишите «исправлено» в колонку «Решение»`;
+  return `закрыть блокеры ревью ${ids.join(', ')} (${rel(rv.file)}): по одному — вопрос этапа (${lintCmd('ask', rel(m.dir))}); решение — ${skill('sdd-decide', m.name, ids[0], '"<решение>"')}, правка — исправьте файл и впишите «исправлено» в колонку «Решение»`;
 }
 function adrSteps(m) {
   return pendingAdrs(m).flatMap((a) => {

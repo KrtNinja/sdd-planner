@@ -1,72 +1,23 @@
 // Вопрос человеку на этапе: варианты с рекомендацией и задания для них (ask / choose).
 import { pendingAdrs } from './adr.mjs';
-import { skill, lintCmd } from './config.mjs';
+import { skill } from './config.mjs';
 import { neededAdrs, stubCount } from './cut.mjs';
 import { findings } from './findings.mjs';
 import { rel, approved, plural } from './md.mjs';
 import { checkPlan, planPreview } from './plan.mjs';
-import { openBlockers, reviewKey } from './review.mjs';
-import { blockersStep, tempArtifacts, stageOf } from './stage.mjs';
+import { lintArgs, questionsView } from './question.mjs';
+import { artifactQuestion } from './review-walk.mjs';
+import { tempArtifacts, stageOf } from './stage.mjs';
 
 // Что спросить в конце этапа и что сделать по ответу — данные скрипта, а не текст для модели.
 // Агент задаёт вопросы из ask инструментом выбора и передаёт id варианта в choose.
-// Действие: lint — выполняет choose; subagent — задача сабагенту (fallback — команда человеку,
-// если сабагентов нет; snapshot — снимок, который choose снимает сам до задачи);
-// here — скилл в этом окне; show — команда, которую человек запускает сам; wait — вопрос, ответ на который
-// агент передаёт в скрипт (then); none — ничего.
-export const lintArgs = (args) => JSON.stringify(args);
+// Действие: lint — выполняет choose (after — что дальше, retry — при коде 2 переспросить);
+// subagent — задача сабагенту (без сабагентов: here — тот же скилл здесь, fallback — команда человеку;
+// snapshot — снимок, который choose снимает сам до задачи; next — вызов после сабагента, по умолчанию ask);
+// here — скилл в этом окне; show — команда, которую человек запускает сам; wait — вопрос, на который
+// человек отвечает словами: агент передаёт ответ в then, choose исполняет answer(ответ); none — ничего.
+// Варианты разбора ревью и одобрения — в review-walk.mjs.
 export const CLOSE_AFTER = 'Это ещё не удаление: выполни instruction из вывода — выведи preview и задай вопрос подтверждения.';
-const fetchTask = (args, tail) => `Вызови инструмент sdd_lint с args ${lintArgs(args)} и выполни то, что он вернёт.${tail ? ` ${tail}` : ''}`;
-function artifactQuestion(m, what, num) {
-  const key = what === 'adr' ? reviewKey('adr', num) : what;
-  const a = what === 'adr' ? m.featureAdrs.find((x) => x.num === num) : null;
-  const dir = rel(m.dir);
-  const rv = m.reviews.get(key);
-  const open = openBlockers(rv);
-  const target = what === 'spec' ? rel(m.specFile) : what === 'slices' ? dir : rel(a.file);
-  const files = what === 'slices' ? `каждому файлу в ${dir}/slices/` : target;
-  const name = what === 'spec' ? 'Dev Spec' : what === 'slices' ? 'Slices' : `ADR ${num}`;
-  const status = what === 'spec' ? m.spec.status : what === 'slices' ? m.slicesStatus : a.status;
-  const rest = [what, num].filter(Boolean);
-  const reviewHere = {
-    id: `review-here:${key}`,
-    label: rv ? 'Повторить ревью здесь' : 'Ревью здесь, в сабагенте',
-    description: `свежий контекст, находки — в ${dir}/_work/review/${key}.md`,
-    action: { subagent: fetchTask(['prompt', 'sdd-review', m.name, ...rest]), fallback: skill('sdd-review', m.name, ...rest) },
-  };
-  const reviewWindow = {
-    id: `review-window:${key}`,
-    label: 'Ревью в новом контексте/окне',
-    description: 'вы запускаете команду сами',
-    action: { show: skill('sdd-review', m.name, ...rest) },
-  };
-  const humanize = {
-    id: `humanize:${key}`,
-    label: 'Убрать следы ИИ из прозы',
-    description: 'humanizer в сабагенте, затем guard',
-    action: {
-      snapshot: target,
-      subagent:
-        `Загрузи скилл humanizer и примени его к ${files}: ` +
-        'меняй только прозу вне блоков кода; ID, строки шапки, заголовки, таблицы, тексты в «ёлочках», числа и сроки не трогай. ' +
-        `Затем вызови sdd_lint с args ${lintArgs(['guard', target])}; при ошибках верни защищённые части как были и повтори guard. ` +
-        'Последним сообщением — итог guard.',
-      fallback: `${what === 'slices' ? `${skill('humanizer')} по каждому файлу в ${dir}/slices/` : skill('humanizer', target)}, затем ${lintCmd('guard', target)}`,
-    },
-  };
-  const finish = open.length
-    ? { id: `blockers:${key}`, label: `Закрыть блокеры ${open.map((r) => r.id).join(', ')}`, description: 'решение даёте вы', action: { show: blockersStep(m, rv, open) } }
-    : {
-        id: `approve:${key}`,
-        label: what === 'adr' ? 'Принять' : 'Одобрить',
-        description: lintCmd('approve', ...(what === 'adr' ? ['adr', dir, num] : [what, dir])),
-        action: { lint: what === 'adr' ? ['approve', 'adr', dir, num] : ['approve', what, dir] },
-      };
-  const options = [reviewHere, reviewWindow, humanize, finish];
-  const rec = open.length ? finish : rv ? finish : reviewHere;
-  rec.recommended = true;
-  return { header: name, question: `${name} «${status || '—'}». Что дальше?`, options };
-}
 // Новый этап — рекомендуем новый контекст: flash-модели и заполненное окно тянут хвост
 // прошлого этапа. Продолжение того же этапа (cont) — здесь: контекст ещё нужен.
 function nextSkillQuestion(m, now, name, label, cont = false) {
@@ -164,6 +115,9 @@ export function askOf(m) {
   else if (m.protocol && /готов/i.test(m.protocol.status || '')) qs = [nextSkillQuestion(m, st.now, 'sdd-spec', 'Писать Dev Spec')];
   else if (m.protocol) qs = [nextSkillQuestion(m, st.now, 'sdd-grill', 'Продолжить brainstorming', true)];
   else qs = [nextSkillQuestion(m, st.now, 'sdd-grill', 'Начать brainstorming')];
+  // Разбор находок и открытых вопросов идёт по одному пункту: соседние вопросы этапа — после него.
+  const walk = qs.find((q) => q.walk);
+  if (walk) qs = [walk];
   // Инструменты выбора берут до 4 вопросов за раз; остальные ADR — следующим вопросом.
   return { stage: st.now, questions: qs.slice(0, 4) };
 }
@@ -174,22 +128,4 @@ export function askOf(m) {
 export function askView(m) {
   const { stage, questions } = askOf(m);
   return questionsView(rel(m.dir), stage, questions);
-}
-// Вопросы в форме для инструмента выбора — общая для ask и подтверждения close.
-export function questionsView(dir, stage, questions) {
-  let n = 0;
-  // preview (план нарезки) человек читает до вопроса: в инструменте выбора ему не место.
-  const preview = questions.map((q) => q.preview).filter(Boolean).join('\n\n') || null;
-  const qs = questions.map(({ preview: _p, ...q }) => ({
-    ...q,
-    options: q.options.map(({ action, ...o }) => ({ n: ++n, ...o, label: o.recommended ? `${o.label} (рекомендую)` : o.label })),
-  }));
-  const text = qs.map((q) => [q.question, ...q.options.map((o) => `${o.n}. ${o.label}${o.description ? ` — ${o.description}` : ''}`)].join('\n')).join('\n\n');
-  const instruction =
-    (preview ? 'Сначала выведи preview дословно, отдельным сообщением: это для человека. ' : '') +
-    'Задай questions инструментом выбора как есть: текст, порядок, варианты и «(рекомендую)» не меняй, своих вариантов не добавляй. ' +
-    'Инструмента выбора нет — выведи text дословно и жди ответа. ' +
-    `Выбран вариант — sdd_lint с args ${lintArgs(['choose', dir, '<id>'])}; ответ номером — id варианта с этим n; выбрано несколько — по одному, по порядку. ` +
-    'Человек ответил словами: однозначно назвал один вариант — его id, иначе отвечай как в обычном диалоге. Вариант за человека не выбирай.';
-  return { instruction, stage, ...(preview ? { preview } : {}), choose: ['choose', dir, '<id>'], questions: qs, text };
 }

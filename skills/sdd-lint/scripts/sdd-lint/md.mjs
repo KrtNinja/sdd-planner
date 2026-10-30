@@ -10,6 +10,8 @@ export const uniq = (a) => [...new Set(a)];
 export const plural = (n, one, few, many) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many}`;
 export const isEmptyCell = (s) => !s || /^[—–\-?]*$/.test(s.trim());
 export const approved = (status) => !!status && /одобрен|принят/i.test(status);
+// Дата в документах: ДД.ММ.ГГГГ.
+export const today = (t = new Date()) => [t.getDate(), t.getMonth() + 1].map((x) => String(x).padStart(2, '0')).join('.') + `.${t.getFullYear()}`;
 export const noneText = (t) => !t || /^нет(?!\p{L})/iu.test(t.trim());
 
 // Делит markdown на строки: внутри ли блока кода, номер блока, текущий раздел второго уровня.

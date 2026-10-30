@@ -7,8 +7,8 @@ import { lintCmd } from './config.mjs';
 import { runChecks } from './feature.mjs';
 import { findings } from './findings.mjs';
 import { git, gitInfo } from './git.mjs';
-import { rel, approved, isEmptyCell } from './md.mjs';
-import { openBlockers } from './review.mjs';
+import { rel, approved } from './md.mjs';
+import { openBlockers, undecided } from './review.mjs';
 import { hasProtocolTraces } from './sources.mjs';
 import { legacyPaths, workFiles } from './work.mjs';
 
@@ -76,7 +76,7 @@ export function closeSummary(m) {
   const blockers = reviews.flatMap((rv) => openBlockers(rv).map((r) => ({ id: `${r.id} (${rel(rv.file)})`, file: rel(rv.file) })));
   if (blockers.length)
     risks.push(`Блокеры ревью без решения: ${listed(blockers.map((x) => x.id))} — в FR и AC их нет, после удаления ${lost(blockers) || 'останутся только в истории git'}.`);
-  const notes = reviews.flatMap((rv) => rv.rows.filter((r) => !r.blocker && isEmptyCell(r.decision)).map((r) => ({ id: `${r.id} (${rel(rv.file)})`, file: rel(rv.file) })));
+  const notes = reviews.flatMap((rv) => rv.rows.filter((r) => !r.blocker && undecided(r)).map((r) => ({ id: `${r.id} (${rel(rv.file)})`, file: rel(rv.file) })));
   if (notes.length) risks.push(`Замечания ревью без решения: ${listed(notes.map((x) => x.id))} — ${lost(notes) || 'уйдут в историю git'}.`);
   if (dirty === null && files.length) risks.push('Не git-репозиторий: удалённое не восстановить.');
   else if (dirty?.length) risks.push(`Не закоммичено: ${listed(dirty)} — удалится без следа, в истории git этого не будет.`);

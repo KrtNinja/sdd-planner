@@ -3,12 +3,13 @@
 import path from 'node:path';
 
 import { pendingAdrs } from './adr.mjs';
-import { askView, lintArgs } from './ask.mjs';
+import { askView } from './ask.mjs';
 import { skill } from './config.mjs';
 import { neededAdrs } from './cut.mjs';
 import { loadFeature } from './feature.mjs';
 import { approved, rel } from './md.mjs';
 import { DOCS, listFeatures } from './pick.mjs';
+import { pickText } from './question.mjs';
 import { stageOf, tempArtifacts } from './stage.mjs';
 
 const ready = (m) => !!m.protocol && /готов/i.test(m.protocol.status || '');
@@ -41,19 +42,6 @@ export function stageName(m) {
   return 'передача в реализацию';
 }
 
-// Вопрос с вариантами, ответ на который агент передаёт в sdd_lint с args then (<id> — id варианта).
-export function pickView(q, then) {
-  let n = 0;
-  const options = q.options.map(({ action: _a, ...o }) => ({ n: ++n, ...o, label: o.recommended ? `${o.label} (рекомендую)` : o.label }));
-  const text = [q.question, ...options.map((o) => `${o.n}. ${o.label}${o.description ? ` — ${o.description}` : ''}`)].join('\n');
-  const instruction =
-    'Задай questions инструментом выбора как есть: текст, порядок, варианты и «(рекомендую)» не меняй, своих не добавляй. ' +
-    'Инструмента выбора нет — выведи text дословно и жди ответа. ' +
-    `Выбран вариант — sdd_lint с args ${lintArgs(then)}: вместо <id> — id варианта (ответ номером — id варианта с этим n); дальше — по скиллу. ` +
-    'Человек ответил своими словами — передай их вместо <id>. Вариант за человека не выбирай.';
-  return { instruction, questions: [{ ...q, options }], text };
-}
-export const pickText = (lead, q, then) => [lead, JSON.stringify(pickView(q, then), null, 2)].join('\n');
 
 // Фичу не назвали: одна подходит — берём её; несколько — вопрос; ни одной — этапы фич и стоп.
 // argsFor(slug) — вызов, который повторить с выбранной фичей.

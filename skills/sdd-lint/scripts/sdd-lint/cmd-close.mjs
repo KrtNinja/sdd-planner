@@ -3,7 +3,6 @@
 import fs from 'node:fs';
 
 import { flags, pos } from './args.mjs';
-import { questionsView } from './ask.mjs';
 import { chooseFeature } from './guide.mjs';
 import { closeSummary, closeQuestion, closePreview } from './close.mjs';
 import { skill, lintCmd } from './config.mjs';
@@ -12,6 +11,7 @@ import { findings, report } from './findings.mjs';
 import { genLinks } from './gen-links.mjs';
 import { rel } from './md.mjs';
 import { needDir } from './pick.mjs';
+import { questionsView } from './question.mjs';
 import { tempArtifacts } from './stage.mjs';
 import { legacyPaths } from './work.mjs';
 

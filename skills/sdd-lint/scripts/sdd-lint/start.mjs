@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { askView, lintArgs, questionsView } from './ask.mjs';
+import { askView } from './ask.mjs';
 import { SKILLS_DIR } from './cmd-prompt.mjs';
 import { skill, lintCmd } from './config.mjs';
 import { contextFindings, loadContext, markContext, syncContext } from './context.mjs';
@@ -12,6 +12,7 @@ import { line } from './findings.mjs';
 import { NEW_PROJECT, REPO, classify, inventory, outside, parseSourcesAnswer, requestOf, slugFromFile, slugProblem, titleOf } from './input.mjs';
 import { dropHeader, header, read, rel, setHeader, uniq } from './md.mjs';
 import { DOCS, isDir, listFeatures } from './pick.mjs';
+import { lintArgs, questionsView, taskFor } from './question.mjs';
 import { bump, reset } from './runs.mjs';
 
 // «нет» — источников нет, но проект не новый: о том, как устроено сейчас, спрашиваем человека.
@@ -115,7 +116,7 @@ function researchText(m, created, again = null) {
     '',
     'Запусти сабагента. Его задача целиком, ничего не добавляй и не пересказывай:',
     '',
-    `Вызови инструмент sdd_lint с args ${lintArgs(['research', 'context', d])} и выполни то, что он вернёт.`,
+    taskFor(['research', 'context', d]),
     '',
     `Сабагент закончил — ${call('start', d)}; его отчёт человеку не пересказывай.`,
     `Сабагентов у тебя нет — выполни сам здесь: ${call('research', 'context', d)}, затем ${call('start', d)}.`,
