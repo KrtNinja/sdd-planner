@@ -27,7 +27,7 @@ test('eval: кейсы grill на «хорошей» и «плохой» мод�
   const e = env();
   const r = run(e, '--cases', 'grill/start-empty-asks-task,grill/start-phrase-asks-sources', '--models', 'good,bad');
   assert.equal(r.code, 1, r.out + r.err);
-  assert.match(r.out, /^evals \d{8}-\d{4}: кейсов 2, моделей 2\./);
+  assert.match(r.out, /^evals \d{8}-\d{4}: кейсов 2, моделей 2, судья смысловых критериев — good\./);
   assert.match(r.out, /grill\/start-empty-asks-task +✓ 3\/3 +✗ \d\/3/);
   assert.match(r.out, /grill\/start-phrase-asks-sources +✓ 4\/4 +✗ \d\/4/);
   assert.match(r.out, /- grill\/start-empty-asks-task · bad · 01: первый вызов sdd_lint: нет/);
@@ -39,10 +39,13 @@ test('eval: кейсы grill на «хорошей» и «плохой» мод�
   assert.match(trace, /агент: Какую задачу будем делать\?/);
   assert.ok(fs.existsSync(path.join(outDir, 'report.md')));
 });
-test('eval: смысловые критерии без --judge — «не проверено», а не провал', () => {
+test('eval: смысловые критерии — судья по умолчанию первая модель; --no-judge — «не проверено», а не провал', () => {
   const e = env();
-  const r = run(e, '--cases', 'grill/handover-first-round', '--models', 'good');
-  assert.match(r.out, /Смысловых критериев не проверено: 5 — нужен --judge <модель>\./);
+  const r = run(e, '--cases', 'grill/handover-first-round', '--models', 'good', '--no-judge');
+  assert.match(r.out, /судья смысловых критериев — нет/);
+  assert.match(r.out, /Смысловых критериев не проверено: 5 \(запуск с --no-judge\)\./);
+  const j = run(e, '--cases', 'grill/start-empty-asks-task', '--models', 'good');
+  assert.match(j.out, /судья смысловых критериев — good/);
 });
 test('eval: многоходовой кейс — второй ход через --continue, ответы человека из prompt.md', () => {
   const e = env();

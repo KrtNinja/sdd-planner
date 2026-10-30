@@ -4,7 +4,7 @@
 // (type: llm, только с --judge). На выходе — короткий отчёт; подробности и ход работы — в .eval-results/.
 //
 //   node tools/eval.mjs doctor                 — проверить, что сборка GigaCode умеет безынтерактивный режим
-//   node tools/eval.mjs [run] [--cases grill,start-*] [--models a,b] [--judge <модель>] [--turns N]
+//   node tools/eval.mjs [run] [--cases grill,start-*] [--models a,b] [--judge <модель> | --no-judge] [--turns N]
 //   node tools/eval.mjs list                   — кейсы и критерии
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -34,6 +34,8 @@ function config() {
   if (process.env.SDD_EVAL_CLI) c.cli = process.env.SDD_EVAL_CLI;
   if (opt('models')) c.models = opt('models').split(',');
   if (opt('skills')) c.skills = opt('skills');
+  // Судья смысловых критериев: --judge, иначе judge из конфига, иначе первая модель; --no-judge — без него.
+  c.judge = argv.includes('--no-judge') ? null : opt('judge') || c.judge || c.models?.[0] || null;
   return c;
 }
 const fill = (args, vars) => args.map((a) => a.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? ''));
@@ -116,7 +118,7 @@ function runOne(c, kase, model, out) {
       const r = spawnSync('bash', ['-e', '-c', script], { cwd: work, encoding: 'utf8', env: { ...process.env, EVAL_TRANSCRIPT: transcript } });
       return { ...g, ok: r.status === 0, why: (r.stderr || r.stdout).trim().split('\n').pop() || '' };
     }
-    if (!opt('judge')) return { ...g, ok: null };
+    if (!c.judge) return { ...g, ok: null };
     return { ...g, ...judge(c, g, out) };
   });
   return { kase, model, crash, results, out };
@@ -130,13 +132,13 @@ function judge(c, g, out) {
   const prompt =
     'Ты проверяешь работу другого агента. В trace.md — его ход работы (что сказал, что вызвал, что получил), в files.txt — файлы после работы. ' +
     `Критерий: «${g.text}». Прочитай оба файла и ответь двумя строками: первая — PASS или FAIL, вторая — почему, одной фразой. Ничего не меняй.`;
-  const r = cli(c, fill(c.judgeArgs || c.args, { prompt, model: opt('judge'), timeout: '300', turns: '10' }), dir, 300);
+  const r = cli(c, fill(c.judgeArgs || c.args, { prompt, model: c.judge, timeout: '300', turns: '10' }), dir, 300);
   const text = parseTranscript(r.out).texts.join('\n');
   const m = text.match(/\b(PASS|FAIL)\b\s*\n?\s*(.*)/);
   return m ? { ok: m[1] === 'PASS', why: m[2].trim() } : { ok: false, why: `судья не ответил PASS/FAIL (код ${r.code})` };
 }
 
-function report(runs, stamp, out) {
+function report(runs, stamp, out, judgeModel) {
   const models = [...new Set(runs.map((r) => r.model))];
   const names = [...new Set(runs.map((r) => r.kase.name))];
   const cell = (r) => {
@@ -147,7 +149,7 @@ function report(runs, stamp, out) {
   };
   const w = Math.max(...names.map((n) => n.length), 4);
   const lines = [
-    `evals ${stamp}: кейсов ${names.length}, моделей ${models.length}. Подробности: ${out.startsWith(ROOT) ? path.relative(ROOT, out) : out}/`,
+    `evals ${stamp}: кейсов ${names.length}, моделей ${models.length}, судья смысловых критериев — ${judgeModel || 'нет'}. Подробности: ${out.startsWith(ROOT) ? path.relative(ROOT, out) : out}/`,
     '',
     `${'кейс'.padEnd(w)}  ${models.map((m) => m.padEnd(14)).join('  ')}`,
     ...names.map((n) => `${n.padEnd(w)}  ${models.map((m) => cell(runs.find((r) => r.kase.name === n && r.model === m)).padEnd(14)).join('  ')}`),
@@ -159,7 +161,7 @@ function report(runs, stamp, out) {
   // Отчёт пересылают в чат — длинный список провалов уходит в report.md, в выводе первые 25.
   if (fails.length) lines.push('', 'Не прошло:', ...fails.slice(0, 25).map((x) => `- ${x}`), ...(fails.length > 25 ? [`…и ещё ${fails.length - 25} — в report.md`] : []));
   const skipped = runs.reduce((n, r) => n + r.results.filter((x) => x.ok === null).length, 0);
-  if (skipped) lines.push('', `Смысловых критериев не проверено: ${skipped} — нужен --judge <модель>.`);
+  if (skipped) lines.push('', `Смысловых критериев не проверено: ${skipped} (запуск с --no-judge).`);
   lines.push('', 'Ход работы по каждому прогону — trace.md рядом с отчётом.');
   return lines.join('\n');
 }
@@ -183,7 +185,7 @@ function run() {
       process.stderr.write(`… ${kase.name} · ${model}\n`);
       runs.push(runOne(c, kase, model, path.join(out, kase.name.replace('/', '__'), model.replace(/[^\w.-]/g, '_'))));
     }
-  const text = report(runs, stamp, out);
+  const text = report(runs, stamp, out, c.judge);
   fs.writeFileSync(path.join(out, 'report.md'), `${text}\n`);
   console.log(text);
   process.exit(runs.some((r) => r.crash || r.results.some((x) => x.ok === false)) ? 1 : 0);
