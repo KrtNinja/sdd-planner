@@ -5,10 +5,10 @@
   "fail": 0,
   "seconds": 123
  },
- "functions": 383,
- "crapAtLeast10": 74,
+ "functions": 384,
+ "crapAtLeast10": 72,
  "crapOver30": 10,
- "complexityAtLeast10": 71,
+ "complexityAtLeast10": 69,
  "offenders": {
   "skills/sdd-lint/scripts/sdd-lint/slices.mjs#checkSlices": {
    "complexity": 106,
@@ -56,15 +56,11 @@
   },
   "skills/sdd-lint/scripts/sdd-lint/cmd-approve.mjs#cmdApprove": {
    "complexity": 28,
-   "crap": 29.2
+   "crap": 29.1
   },
   "skills/sdd-lint/scripts/sdd-lint/readme.mjs#genReadme": {
    "complexity": 26,
    "crap": 27.2
-  },
-  "skills/sdd-lint/scripts/sdd-lint/cmd-triage.mjs#cmdTriage": {
-   "complexity": 25,
-   "crap": 26
   },
   "skills/sdd-lint/scripts/sdd-lint/cut.mjs#checkCut": {
    "complexity": 26,
@@ -73,6 +69,10 @@
   "skills/sdd-lint/scripts/sdd-lint/input.mjs#classify": {
    "complexity": 24,
    "crap": 25.9
+  },
+  "skills/sdd-lint/scripts/sdd-lint/cmd-triage.mjs#cmdTriage": {
+   "complexity": 25,
+   "crap": 25.8
   },
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#parsePlan": {
    "complexity": 24,
@@ -94,6 +94,10 @@
    "complexity": 22,
    "crap": 22
   },
+  "skills/sdd-lint/scripts/sdd-lint/cmd-ask.mjs#act": {
+   "complexity": 21,
+   "crap": 21.7
+  },
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#planPreview": {
    "complexity": 17,
    "crap": 21.5
@@ -114,13 +118,9 @@
    "complexity": 19,
    "crap": 19
   },
-  "skills/sdd-lint/scripts/sdd-lint/args.mjs#<top-level:6>": {
-   "complexity": 18,
-   "crap": 18.8
-  },
   "skills/sdd-lint/scripts/sdd-lint/cmd-gen.mjs#cmdTrace": {
    "complexity": 16,
-   "crap": 18.1
+   "crap": 18
   },
   "skills/sdd-lint/scripts/sdd-lint/open-questions.mjs#openTarget": {
    "complexity": 13,
@@ -274,10 +274,6 @@
    "complexity": 9,
    "crap": 10.4
   },
-  "skills/sdd-lint/scripts/sdd-lint.mjs#<top-level:28>": {
-   "complexity": 10,
-   "crap": 10.1
-  },
   "skills/sdd-lint/scripts/sdd-lint/adr.mjs#parseAdr": {
    "complexity": 10,
    "crap": 10
@@ -301,27 +297,23 @@
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#compactIds": {
    "complexity": 10,
    "crap": 10
-  },
-  "skills/sdd-lint/scripts/sdd-lint/cmd-ask.mjs#act": {
-   "complexity": 21,
-   "crap": 21.7
   }
  },
  "eslint": {
-  "no-nested-ternary": 39,
+  "no-nested-ternary": 38,
   "complexity": 57,
   "max-lines-per-function": 16,
   "max-statements": 32,
-  "max-len": 135,
+  "max-len": 133,
   "max-params": 4,
   "no-unused-vars": 4,
   "no-param-reassign": 1,
   "no-shadow": 3
  },
- "tscErrors": 1018,
- "clonesCodePercent": 3.92,
+ "tscErrors": 1015,
+ "clonesCodePercent": 3.89,
  "clonesTestsPercent": 6.53,
  "cycles": 0,
- "sideEffects": 143,
+ "sideEffects": 0,
  "unusedExports": 30
 }
