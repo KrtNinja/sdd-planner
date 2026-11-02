@@ -4,7 +4,7 @@
 // из очереди по одному. Всё разобрано — «Одобрить» и «Убрать AI стиль»; decide что-то поменял — ещё
 // «Повторить ревью». «Одобрить» с открытыми вопросами сначала спрашивает их по одному.
 // Решения пишет скрипт (triage) или /sdd-decide в сабагенте; очередь — колонка «Решение» файла ревью.
-import { skill, lintCmd } from './config.mjs';
+import { code, showCmd, skill, lintCmd } from './config.mjs';
 import { isEmptyCell, plural, rel } from './md.mjs';
 import { openQuestions, openTarget } from './open-questions.mjs';
 import { ANSWER, itemBlock, lintArgs, taskFor, walkQuestion } from './question.mjs';
@@ -43,9 +43,9 @@ const reviewOption = (m, x, again) => ({
   id: `review-here:${x.key}`,
   label: again ? 'Повторить ревью в сабагенте' : 'Ревью в сабагенте',
   description: `свежий контекст, находки — в ${x.dir}/_work/review/${x.key}.md`,
-  action: { subagent: taskFor(['prompt', 'sdd-review', m.name, ...x.rest]), fallback: skill('sdd-review', m.name, ...x.rest) },
+  action: { subagent: taskFor(['prompt', 'sdd-review', m.name, ...x.rest]), fallback: showCmd(skill('sdd-review', m.name, ...x.rest)) },
 });
-const windowOption = (m, x) => ({ id: `review-window:${x.key}`, label: 'Ревью в новом контексте/окне', description: 'вы запускаете команду сами', action: { show: skill('sdd-review', m.name, ...x.rest) } });
+const windowOption = (m, x) => ({ id: `review-window:${x.key}`, label: 'Ревью в новом контексте/окне', description: 'вы запускаете команду сами', action: { show: showCmd(skill('sdd-review', m.name, ...x.rest)) } });
 const humanizeOption = (x) => ({
   id: `humanize:${x.key}`,
   label: `Убрать AI стиль из ${x.of}`,
@@ -57,7 +57,7 @@ const humanizeOption = (x) => ({
       'меняй только прозу вне блоков кода; ID, строки шапки, заголовки, таблицы, тексты в «ёлочках», числа и сроки не трогай. ' +
       `Затем вызови sdd_lint с args ${lintArgs(['guard', x.target])}; при ошибках верни защищённые части как были и повтори guard. ` +
       'Последним сообщением — итог guard.',
-    fallback: `${x.what === 'slices' ? `${skill('humanizer')} по каждому файлу в ${x.dir}/slices/` : skill('humanizer', x.target)}, затем ${lintCmd('guard', x.target)}`,
+    fallback: `${x.what === 'slices' ? `${code(skill('humanizer'))} по каждому файлу в ${code(`${x.dir}/slices/`)}` : code(skill('humanizer', x.target))}, затем ${code(lintCmd('guard', x.target))}`,
   },
 });
 // Одобрение держат открытые вопросы (SP-06, SL-10): сначала они — по одному, ответ человека проводит decide,

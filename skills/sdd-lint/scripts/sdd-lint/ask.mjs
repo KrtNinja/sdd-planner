@@ -1,6 +1,6 @@
 // Вопрос человеку на этапе: варианты с рекомендацией и задания для них (ask / choose).
 import { pendingAdrs } from './adr.mjs';
-import { skill } from './config.mjs';
+import { showCmd, skill } from './config.mjs';
 import { neededAdrs, stubCount } from './cut.mjs';
 import { findings } from './findings.mjs';
 import { rel, approved, plural } from './md.mjs';
@@ -22,7 +22,7 @@ export const CLOSE_AFTER = 'Это ещё не удаление: выполни 
 // прошлого этапа. Продолжение того же этапа (cont) — здесь: контекст ещё нужен.
 function nextSkillQuestion(m, now, name, label, cont = false) {
   const here = { id: `here:${name}`, label: 'Здесь, в этом окне', description: skill(name, m.name), action: { here: ['prompt', name, m.name] } };
-  const fresh = { id: `window:${name}`, label: 'В новом контексте/окне', description: `${skill(name, m.name)} — запускаете сами, чистый контекст`, action: { show: skill(name, m.name) } };
+  const fresh = { id: `window:${name}`, label: 'В новом контексте/окне', description: `${skill(name, m.name)} — запускаете сами, чистый контекст`, action: { show: showCmd(skill(name, m.name)) } };
   const options = cont ? [here, fresh] : [fresh, here];
   options[0].recommended = true;
   return { header: 'Следующий этап', question: `${now}. ${label}?`, options };
@@ -76,7 +76,7 @@ function newAdrQuestions(m) {
     question: `Slice ${x.num} ждёт решения «${x.topic}», ADR ещё нет. Написать?`,
     options: [
       { id: `adr-here:${x.num}`, label: 'Написать ADR здесь', description: skill('sdd-adr', m.name, `"${x.topic}"`), recommended: true, action: { here: ['prompt', 'sdd-adr', m.name, x.topic] } },
-      { id: `adr-window:${x.num}`, label: 'В новом контексте/окне', description: 'вы запускаете команду сами', action: { show: skill('sdd-adr', m.name, `"${x.topic}"`) } },
+      { id: `adr-window:${x.num}`, label: 'В новом контексте/окне', description: 'вы запускаете команду сами', action: { show: showCmd(skill('sdd-adr', m.name, `"${x.topic}"`)) } },
       { id: `adr-later:${x.num}`, label: 'Позже', description: 'ничего не делать', action: { none: true } },
     ],
   }));

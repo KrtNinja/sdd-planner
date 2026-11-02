@@ -261,7 +261,7 @@ test('close без --yes ничего не удаляет: что уйдёт, п
   assert.match(r.out, /Удалится:\n  docs\/comments\/brainstorming\.md\n  docs\/comments\/spec\.md: уберутся ссылки на протокол/);
   assert.match(r.out, /Последствия:\n  - Планирование не закончено \(slices не одобрены\)/);
   assert.match(r.out, /Не git-репозиторий: удалённое не восстановить/);
-  assert.match(r.out, /Подтвердить: node scripts\/sdd-lint\.mjs close docs\/comments --yes$/m);
+  assert.match(r.out, /Подтвердить: `node scripts\/sdd-lint\.mjs close docs\/comments --yes`$/m);
   assert.ok(fs.existsSync(file(cwd, 'comments/brainstorming.md')));
 });
 
@@ -501,8 +501,8 @@ function runEnv(cwd, env, ...args) {
 test('следующий шаг: готовые команды со slug фичи', () => {
   const cwd = workspace();
   const r = run(cwd, 'docs/comments');
-  assert.match(r.out, /ревью в чистом контексте: \/sdd-review comments slices/);
-  assert.match(r.out, /одобрить: node scripts\/sdd-lint\.mjs approve slices docs\/comments/);
+  assert.match(r.out, /ревью в чистом контексте: `\/sdd-review comments slices`/);
+  assert.match(r.out, /одобрить: `node scripts\/sdd-lint\.mjs approve slices docs\/comments`/);
 });
 test('следующий шаг: по умолчанию скилл вызывается сразу по имени, без /skills', () => {
   const cwd = workspace();
@@ -510,8 +510,8 @@ test('следующий шаг: по умолчанию скилл вызыва
   delete env.SDD_SKILL_PREFIX; delete env.SDD_LINT_CMD;
   const r = spawnSync('node', [LINT, 'docs/comments'], { cwd, encoding: 'utf8', env });
   const out = r.stdout + r.stderr;
-  assert.match(out, /(^|\s)\/sdd-review comments slices/);
-  assert.match(out, /(^|\s)\/sdd-lint approve slices docs\/comments/);
+  assert.match(out, /(^|[\s`])\/sdd-review comments slices/);
+  assert.match(out, /(^|[\s`])\/sdd-lint approve slices docs\/comments/);
   assert.doesNotMatch(out, /\/skills /);
 });
 test('следующий шаг: форма команд задаётся окружением', () => {
@@ -532,7 +532,7 @@ test('следующий шаг: spec вернули «на ревью» — с�
 test('нет папки фичи: короткое сообщение со списком фич', () => {
   const r = run(workspace(), 'docs/nope');
   assert.equal(r.code, 2);
-  assert.match(r.out, /Нет папки docs\/nope\. Фичи в docs\/: comments\. Новая фича начинается с \/sdd-grill nope\./);
+  assert.match(r.out, /Нет папки docs\/nope\. Фичи в docs\/: comments\. Новая фича начинается с `\/sdd-grill nope`\./);
   assert.doesNotMatch(r.out, /Коды выхода/);
 });
 test('guard без снимка и git: «не с чем сверить», а не «изменены»', () => {
@@ -548,7 +548,7 @@ test('approve slices: ставит «одобрено <дата>» и показ
   const r = run(cwd, 'approve', 'slices', 'docs/comments');
   assert.equal(r.code, 0, r.out);
   assert.match(status(cwd, 'comments/slices/README.md'), new RegExp(`^Статус: одобрено ${today()} · ${FP}$`));
-  assert.match(r.out, /перед merge убрать временные артефакты \(docs\/comments\/brainstorming\.md\): \/sdd-close comments/);
+  assert.match(r.out, /перед merge убрать временные артефакты \(`docs\/comments\/brainstorming\.md`\): `\/sdd-close comments`/);
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
 });
 // ---------- export: интерфейс для зоны реализации ----------
@@ -559,7 +559,7 @@ const exported = (cwd) => {
 test('export: ворота build закрыты — код 3, причина и подсказка в JSON', () => {
   const e = exported(workspace());
   assert.equal(e.code, 3);
-  assert.deepEqual(e.gate, { build: 'closed', reason: 'slices не одобрены', hint: 'Сначала одобрите slices: node scripts/sdd-lint.mjs approve slices docs/comments' });
+  assert.deepEqual(e.gate, { build: 'closed', reason: 'slices не одобрены', hint: 'Сначала одобрите slices: `node scripts/sdd-lint.mjs approve slices docs/comments`' });
 });
 test('export: после одобрения — slices, слои, сервисы и ссылки на AC для тестов', () => {
   const cwd = workspace();
@@ -615,7 +615,7 @@ test('approve spec: защищённые части изменились пос�
   const r = run(cwd, 'approve', 'spec', 'docs/comments');
   assert.equal(r.code, 1);
   assert.match(r.out, /HG-01.*текст — стало: «Исправить вход по SMS»/);
-  assert.match(r.out, /снимите новый снимок \(node scripts\/sdd-lint\.mjs snapshot docs\/comments\/spec\.md\)/);
+  assert.match(r.out, /снимите новый снимок \(`node scripts\/sdd-lint\.mjs snapshot docs\/comments\/spec\.md`\)/);
   assert.equal(status(cwd, 'comments/spec.md'), 'Статус: на ревью');
 });
 test('approve adr: единственный ждущий ADR принимается без номера', () => {
@@ -662,8 +662,8 @@ test('ревью: открытый блокер — RV-01 и шаг «закры
   assert.equal(res.code, 0);
   assert.deepEqual(rules(res).filter((r) => r.startsWith('RV')), ['RV-01']);
   const out = run(cwd, 'docs/comments').out;
-  assert.match(out, /закрыть блокеры ревью R2 \(docs\/comments\/_work\/review\/slices\.md\): по одному — вопрос этапа \(node scripts\/sdd-lint\.mjs ask docs\/comments\); решение — \/sdd-decide comments R2 "<решение>"/);
-  assert.match(out, /ревью уже было: docs\/comments\/_work\/review\/slices\.md/);
+  assert.match(out, /закрыть блокеры ревью R2 \(`docs\/comments\/_work\/review\/slices\.md`\): по одному — вопрос этапа \(`node scripts\/sdd-lint\.mjs ask docs\/comments`\); решение — `\/sdd-decide comments R2 "<решение>"`/);
+  assert.match(out, /ревью уже было: `docs\/comments\/_work\/review\/slices\.md`/);
 });
 test('ревью: approve не проходит, пока у блокера пустое «Решение»', () => {
   const cwd = workspace();
@@ -694,7 +694,7 @@ test('без аргументов: меню с фичами, этапом и г�
   const r = run(workspace());
   assert.equal(r.code, 0);
   assert.match(r.out, /comments\s+Slices на ревью/);
-  assert.match(r.out, /→ ревью в чистом контексте: \/sdd-review comments slices/);
+  assert.match(r.out, /→ ревью в чистом контексте: `\/sdd-review comments slices`/);
   assert.match(r.out, /node scripts\/sdd-lint\.mjs approve spec\|slices\|adr comments/);
 });
 test('без аргументов вне репозитория с доками: подсказка, откуда запускать', () => {
@@ -715,7 +715,7 @@ test('не хватает варианта или фичи: варианты г�
   let r = run(cwd, 'approve');
   assert.equal(r.code, 2);
   assert.match(r.out, /approve — выбери вариант/);
-  assert.match(r.out, /approve slices comments\s+— одобрить slices/);
+  assert.match(r.out, /approve slices comments`\s+— одобрить slices/);
   // gate без фичи выбирает сам (tests/guide.test.mjs); подходящих нет — этапы фич.
   r = run(cwd, 'gate', 'spec');
   assert.equal(r.code, 2);
@@ -724,7 +724,7 @@ test('не хватает варианта или фичи: варианты г�
 test('опечатка в команде: «Может, approve?»', () => {
   const r = run(workspace(), 'aprove', 'slices', 'comments');
   assert.equal(r.code, 2);
-  assert.match(r.out, /Нет команды «aprove»\. Может, approve\? node scripts\/sdd-lint\.mjs approve slices comments/);
+  assert.match(r.out, /Нет команды «aprove»\. Может, approve\? `node scripts\/sdd-lint\.mjs approve slices comments`/);
 });
 test('help <команда> — только её справка', () => {
   const r = run(workspace(), 'help', 'approve');
@@ -801,7 +801,7 @@ test('choose: ревью — задача сабагенту без переск
   assert.equal(r.code, 0);
   assert.match(r.out, /Вызови инструмент sdd_lint с args \["prompt","sdd-review","comments","slices"\] и выполни то, что он вернёт\./);
   assert.match(r.out, /Следующий вопрос: sdd_lint с args \["ask","docs\/comments"\]/);
-  assert.match(r.out, /Сабагентов у тебя нет — задание сам не выполняй: передай человеку дословно «\/sdd-review comments slices» и остановись\./);
+  assert.match(r.out, /Сабагентов у тебя нет — задание сам не выполняй\. Передай человеку дословно и остановись:\n\n`\/sdd-review comments slices`\n\nTip: Введите \/sdd-review comments slices чтобы продолжить/);
 });
 test('choose: humanizer — снимок снимает скрипт, сабагенту остаются humanizer и guard', () => {
   const cwd = workspace();
@@ -809,7 +809,7 @@ test('choose: humanizer — снимок снимает скрипт, сабаг
   assert.equal(r.code, 0, r.out);
   assert.doesNotMatch(r.out, /"snapshot"/);
   assert.match(r.out, /sdd_lint с args \["guard","docs\/comments"\]/);
-  assert.match(r.out, /передай человеку дословно «\/humanizer по каждому файлу в docs\/comments\/slices\/, затем node scripts\/sdd-lint\.mjs guard docs\/comments»/);
+  assert.match(r.out, /Передай человеку дословно и остановись:\n\n`\/humanizer` по каждому файлу в `docs\/comments\/slices\/`, затем `node scripts\/sdd-lint\.mjs guard docs\/comments`/);
   assert.ok(fs.readdirSync(path.join(cwd, '.tmp/sdd-lint-snapshots')).length > 0, 'снимок не снят');
   edit(cwd, 'comments/slices/002-comments.md', 'AC-002-B2 Длина текста', 'AC-002-B2 Длина');
   const g = run(cwd, 'guard', 'docs/comments');
@@ -899,7 +899,7 @@ test('close: удаляет _work/ целиком вместе с протоко
   fs.writeFileSync(file(cwd, 'comments/_work/notes.txt'), 'черновик агента\n');
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   const st = run(cwd, 'comments').out;
-  assert.match(st, /перед merge убрать временные артефакты \(docs\/comments\/brainstorming\.md, docs\/comments\/_work\/\): \/sdd-close comments/);
+  assert.match(st, /перед merge убрать временные артефакты \(`docs\/comments\/brainstorming\.md`, `docs\/comments\/_work\/`\): `\/sdd-close comments`/);
   const p = run(cwd, 'close', 'comments');
   assert.match(p.out, /  docs\/comments\/_work\/notes\.txt\n  docs\/comments\/_work\/plan\.md\n  docs\/comments\/_work\/review\/slices\.md/);
   assert.match(p.out, /Не закоммичено: docs\/comments\/_work\/notes\.txt, docs\/comments\/_work\/plan\.md, docs\/comments\/_work\/review\/slices\.md — удалится без следа/);

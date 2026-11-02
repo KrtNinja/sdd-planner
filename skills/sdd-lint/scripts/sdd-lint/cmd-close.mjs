@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { flags, pos } from './args.mjs';
 import { chooseFeature } from './guide.mjs';
 import { closeSummary, closeQuestion, closePreview } from './close.mjs';
-import { skill, lintCmd } from './config.mjs';
+import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { findings, report } from './findings.mjs';
 import { genLinks } from './gen-links.mjs';
@@ -36,7 +36,7 @@ export function cmdClose() {
   const s = closeSummary(m);
   if (!flags.yes) {
     if (flags.json) console.log(JSON.stringify(questionsView(dir, `Закрытие ${dir}`, [closeQuestion(m, s)]), null, 2));
-    else console.log(`${closePreview(s)}\n\nПодтвердить: ${lintCmd('close', dir, '--yes')}`);
+    else console.log(`${closePreview(s)}\n\nПодтвердить: ${lintCode('close', dir, '--yes')}`);
     process.exit(0);
   }
 
@@ -54,7 +54,7 @@ export function cmdClose() {
   console.log(
     `\nУдалено: ${gone.join(', ')}. В spec нет ссылок на протокол, ссылки на FR в slices обновлены.` +
       (s.risks.length ? `\nЗакрыто с последствиями:\n${s.risks.map((x) => `  - ${x}`).join('\n')}` : '') +
-      `\nЗакоммитьте удаление вместе с остальными документами. Решения дальше — ${skill('sdd-decide', m.name)}: правит FR и AC напрямую.`,
+      `\nЗакоммитьте удаление вместе с остальными документами. Решения дальше — ${skillCode('sdd-decide', m.name)}: правит FR и AC напрямую.`,
   );
   process.exit(c.err ? 1 : 0);
 }

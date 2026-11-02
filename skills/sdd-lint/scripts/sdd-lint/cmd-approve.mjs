@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pendingAdrs } from './adr.mjs';
 import { fingerprint, approvalMds } from './approval.mjs';
 import { pos } from './args.mjs';
-import { skill, lintCmd } from './config.mjs';
+import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { findings, add, report } from './findings.mjs';
 import { read, rel, approved, header, today } from './md.mjs';
@@ -31,12 +31,12 @@ export function cmdApprove() {
   let scope;
   let word = 'одобрено';
   if (what === 'spec') {
-    if (!m.spec) refuse(`нет spec.md. Сначала: ${skill('sdd-spec', m.name)}`);
+    if (!m.spec) refuse(`нет spec.md. Сначала: ${skillCode('sdd-spec', m.name)}`);
     target = m.specFile;
     scope = [m.protocolFile, m.specFile];
   } else if (what === 'slices') {
-    if (!m.slices.size || m.readme == null) refuse(`нет slices или slices/README.md. Сначала: ${skill('sdd-slices', m.name)}`);
-    if (!m.spec || !approved(m.spec.status)) refuse(`Dev Spec не одобрен — slices опираются на него. Сначала: ${lintCmd('approve', 'spec', dir)}`);
+    if (!m.slices.size || m.readme == null) refuse(`нет slices или slices/README.md. Сначала: ${skillCode('sdd-slices', m.name)}`);
+    if (!m.spec || !approved(m.spec.status)) refuse(`Dev Spec не одобрен — slices опираются на него. Сначала: ${lintCode('approve', 'spec', dir)}`);
     target = m.readmeFile;
     scope = [m.protocolFile, m.specFile, m.readmeFile, ...[...m.slices.values()].map((x) => x.file)];
   } else {
@@ -44,7 +44,7 @@ export function cmdApprove() {
     const pending = pendingAdrs(m);
     const adr = pos[2] ? m.featureAdrs.find((a) => a.num === pos[2].padStart(4, '0')) : pending.length === 1 ? pending[0] : null;
     if (!adr) {
-      const list = pending.map((a) => lintCmd('approve', 'adr', dir, a.num));
+      const list = pending.map((a) => lintCode('approve', 'adr', dir, a.num));
       refuse(
         pos[2]
           ? `ADR ${pos[2]} не найден среди ADR фичи ${m.name}`
@@ -92,7 +92,7 @@ export function cmdApprove() {
     report();
     const hg = findings.some((x) => x.rule === 'HG-01');
     console.log(`\nНЕ ОДОБРЕНО: ${rel(target)} остаётся «${cur}».`);
-    if (hg) console.log(`Если защищённые части поменяли вы сами — снимите новый снимок (${lintCmd('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`);
+    if (hg) console.log(`Если защищённые части поменяли вы сами — снимите новый снимок (${lintCode('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`);
     process.exit(1);
   }
   fs.writeFileSync(target, next);

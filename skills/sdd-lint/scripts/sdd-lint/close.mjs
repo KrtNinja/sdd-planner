@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { pendingAdrs } from './adr.mjs';
-import { lintCmd } from './config.mjs';
+import { lintCode } from './config.mjs';
 import { runChecks } from './feature.mjs';
 import { findings } from './findings.mjs';
 import { git, gitInfo } from './git.mjs';
@@ -82,7 +82,7 @@ export function closeSummary(m) {
   else if (dirty?.length) risks.push(`Не закоммичено: ${listed(dirty)} — удалится без следа, в истории git этого не будет.`);
 
   const errs = findings.filter((x) => x.level === 'err' && !doomed(path.resolve(x.file)));
-  if (errs.length) risks.push(`Ошибок lint в постоянных документах: ${errs.length} — close их не исправит. Список: ${lintCmd(dir)}.`);
+  if (errs.length) risks.push(`Ошибок lint в постоянных документах: ${errs.length} — close их не исправит. Список: ${lintCode(dir)}.`);
 
   return { dir, files, effects, risks };
 }

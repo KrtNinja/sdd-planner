@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { pendingAdrs } from './adr.mjs';
 import { askView } from './ask.mjs';
-import { skill } from './config.mjs';
+import { skillCode } from './config.mjs';
 import { neededAdrs } from './cut.mjs';
 import { loadFeature } from './feature.mjs';
 import { approved, rel } from './md.mjs';
@@ -55,7 +55,7 @@ export function chooseFeature(stage, argsFor) {
       text: [
         `Фич, где можно ${WHAT[stage]}, нет.`,
         ...(all.length ? ['Фичи и этапы:', ...lines] : [`В ${DOCS}/ пока нет фич.`]),
-        `Скажи это человеку одним сообщением, добавь: «Новая фича начинается с ${skill('sdd-grill')}». Остановись.`,
+        `Скажи это человеку одним сообщением, добавь: «Новая фича начинается с ${skillCode('sdd-grill')}». Остановись.`,
       ].join('\n'),
     };
   }
