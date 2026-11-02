@@ -52,7 +52,7 @@ function run(m, a, id, asked = null) {
       console.log(screen(a.fallback || 'Сабагентов нет — этот шаг здесь не выполнить.', G.stop));
       process.exit(0);
     }
-    if (a.snapshot) for (const f of targetFiles(a.snapshot)) saveSnapshot(f);
+    if (a.snapshot) for (const f of targetFiles(LEGACY, a.snapshot)) saveSnapshot(f);
     // Без сабагентов: here — тот же скилл здесь, fallback — что сказать человеку (choose --fallback).
     const none = a.here ? `без сабагентов — ${G.call(a.here)}` : `без сабагентов — ${G.call(['choose', d, id, '--fallback'])}`;
     console.log(screen(a.say, G.sub(a.subagent), a.quiet ? G.quiet : G.report, G.then(next), none));

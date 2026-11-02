@@ -2,7 +2,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { LEGACY, flags, pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { code, lintCode } from './config.mjs';
 import { loadFeature, featureFiles } from './feature.mjs';
@@ -12,24 +11,26 @@ import { rel } from './md.mjs';
 import { resolveFeature, pickFeature } from './pick.mjs';
 import { snapPath, protectedParts, saveSnapshot, diffParts } from './snapshot.mjs';
 
-export const targetFiles = (t) => {
-  if (!t) pickFeature(LEGACY, 'Укажи файл или фичу', 0);
+export const targetFiles = (ctx, t) => {
+  if (!t) pickFeature(ctx, 'Укажи файл или фичу', 0);
   if (!fs.existsSync(t)) {
     const f = resolveFeature(t);
-    if (!f) usage(LEGACY, `Нет файла или папки ${t}`);
+    if (!f) usage(ctx, `Нет файла или папки ${t}`);
     t = f;
   }
   return fs.statSync(t).isDirectory() ? featureFiles(loadFeature(resolveFeature(t) || t)) : [path.resolve(t)];
 };
 
-export function cmdSnapshot() {
-  const files = targetFiles(pos[0]);
+export function cmdSnapshot(ctx) {
+  const { pos } = ctx.args;
+  const files = targetFiles(ctx, pos[0]);
   for (const f of files) saveSnapshot(f);
-  console.log(`Снимок защищённых частей: ${files.map(rel).join(', ')}. После humanizer: ${lintCode('guard', pos[0])}`);
+  ctx.io.log(`Снимок защищённых частей: ${files.map(rel).join(', ')}. После humanizer: ${lintCode('guard', pos[0])}`);
 }
 
-export function cmdGuard() {
-  const files = targetFiles(pos[0]);
+export function cmdGuard(ctx) {
+  const { flags, pos } = ctx.args;
+  const files = targetFiles(ctx, pos[0]);
   let bad = 0;
   const noBase = [];
   for (const f of files) {
@@ -58,7 +59,7 @@ export function cmdGuard() {
     bad += 1;
     for (const d of diffs) add('HG-01', f, null, `(против: ${from}) ${d}`);
   }
-  report(LEGACY, { noBase: noBase.map(rel) });
+  report(ctx, { noBase: noBase.map(rel) });
   if (!flags.json) {
     const ok = files.length - bad - noBase.length;
     const out = [];
@@ -68,7 +69,7 @@ export function cmdGuard() {
         `Не с чем сверить ${noBase.length} файл(ов): нет снимка и версии в git — ${noBase.map((f) => code(rel(f))).join(', ')}. Снимок снимают до humanizer: ${lintCode('snapshot', '<файл>')}. Если humanizer уже прошёл, сверьте защищённые части глазами.`,
       );
     if (ok) out.push(`Защищённые части не тронуты в ${ok} файл(ах).`);
-    console.log(`\n${out.join('\n\n')}`);
+    ctx.io.log(`\n${out.join('\n\n')}`);
   }
-  process.exit(bad || noBase.length ? 1 : 0);
+  ctx.io.exit(bad || noBase.length ? 1 : 0);
 }
