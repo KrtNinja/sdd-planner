@@ -66,7 +66,7 @@ jobs:
           done
           pip install --quiet "$RUNNER_TEMP/ub/crapper" "$RUNNER_TEMP/ub/dryer" "$RUNNER_TEMP/ub/mutator"
       - run: npm install --prefix tools --no-audit --no-fund
-      - name: Покрытие LCOV (c8 видит и дочерние процессы, которые порождают тесты)
+      - name: Покрытие LCOV — встроенное в node --test (тесты зовут run() в своём процессе)
         run: npm --prefix tools run lcov
       - name: crapper
         run: crapper --use-existing-coverage "$CODE" | tee crapper.txt
