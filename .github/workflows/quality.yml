@@ -1,0 +1,123 @@
+# Качество кода sdd-lint: тесты, замеры на Node и инструменты ub-mode (crapper, dryer, mutator).
+# Пользователям расширения это не нужно — только тому, кто правит код инструмента.
+# Гейты детерминированные: «не хуже базовой линии» (tools/metrics/baseline.json, ub-baseline.json).
+name: quality
+
+on:
+  push:
+    branches: [main, 'refactor/**']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      mutate:
+        description: 'Путь для mutator (пусто — без мутационного тестирования)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  # Инструменты ub-mode закреплены по коммиту: гейт не должен меняться сам по себе.
+  CRAPPER_SHA: 6fd92c4c9bcc56efb64a2f8743d5a2993bcfd42d
+  DRYER_SHA: 66ff6d21a42c04afcad89c78a80066176d1294b0
+  MUTATOR_SHA: a5a0cb803b66e0cdb8bf471b3b08af701d424a41
+  CODE: skills/sdd-lint/scripts
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node --test tests/*.test.mjs
+
+  metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --prefix tools --no-audit --no-fund
+      - name: Гейт на Node (ESLint, tsc --checkJs, CRAP по V8, повторы, граф импортов)
+        run: npm --prefix tools run gate
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-metrics
+          path: tools/metrics/.out/report.json
+
+  ub-mode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Инструменты ub-mode
+        run: |
+          mkdir -p "$RUNNER_TEMP/ub"
+          for t in crapper:$CRAPPER_SHA dryer:$DRYER_SHA mutator:$MUTATOR_SHA; do
+            name=${t%%:*}; sha=${t##*:}
+            git clone --quiet "https://github.com/unclebob/$name" "$RUNNER_TEMP/ub/$name"
+            git -C "$RUNNER_TEMP/ub/$name" checkout --quiet "$sha"
+          done
+          pip install --quiet "$RUNNER_TEMP/ub/crapper" "$RUNNER_TEMP/ub/dryer" "$RUNNER_TEMP/ub/mutator"
+      - run: npm install --prefix tools --no-audit --no-fund
+      - name: Покрытие LCOV (c8 видит и дочерние процессы, которые порождают тесты)
+        run: npm --prefix tools run lcov
+      - name: crapper
+        run: crapper --use-existing-coverage "$CODE" | tee crapper.txt
+      # dryer на этом коммите не знает .js/.mjs (crapper и mutator знают): JS — подмножество синтаксиса
+      # TypeScript, поэтому копия кода с расширением .ts разбирается тем же tree-sitter.
+      - name: dryer
+        run: |
+          find "$CODE" -name '*.mjs' | while read -r f; do mkdir -p "dry-src/$(dirname "$f")"; cp "$f" "dry-src/${f%.mjs}.ts"; done
+          dryer --threshold 0.8 "dry-src/$CODE" | tee dryer.txt
+      - name: mutator — только места мутаций, без прогона
+        continue-on-error: true
+        run: mutator --scan --no-coverage "$CODE" | tee mutator-scan.txt
+      - name: Гейт ub-mode
+        run: npm --prefix tools run ub:gate
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ub-metrics
+          include-hidden-files: true
+          path: |
+            .metrics/
+            crapper.txt
+            dryer.txt
+            mutator-scan.txt
+
+  mutate:
+    if: github.event_name == 'workflow_dispatch' && inputs.mutate != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: |
+          mkdir -p "$RUNNER_TEMP/ub"
+          for t in crapper:$CRAPPER_SHA mutator:$MUTATOR_SHA; do
+            name=${t%%:*}; sha=${t##*:}
+            git clone --quiet "https://github.com/unclebob/$name" "$RUNNER_TEMP/ub/$name"
+            git -C "$RUNNER_TEMP/ub/$name" checkout --quiet "$sha"
+          done
+          pip install --quiet "$RUNNER_TEMP/ub/crapper" "$RUNNER_TEMP/ub/mutator"
+      - run: npm install --prefix tools --no-audit --no-fund && npm --prefix tools run lcov
+      - name: mutator
+        run: mutator --use-existing-coverage --test-command "node --test tests/" "${{ inputs.mutate }}" | tee mutator.txt
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutate
+          include-hidden-files: true
+          path: |
+            .metrics/mutate/
+            mutator.txt
