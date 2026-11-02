@@ -4,37 +4,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { root, repo, run, tmpDir, json, optionIds } from './helpers.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
-const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: 'node scripts/sdd-lint.mjs', SDD_VIEW: 'json' };
-
-// Пустой репозиторий с доками; files — { 'путь': 'текст' }.
-function repo(files = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-start-test-'));
-  fs.mkdirSync(path.join(dir, 'docs'));
-  for (const [f, t] of Object.entries(files)) {
-    fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true });
-    fs.writeFileSync(path.join(dir, f), t);
-  }
-  return dir;
-}
 const SERVICES = {
   'services/tasks-core/README.md': '# tasks-core\n\nРоли: owner и member.\nУ задачи один исполнитель.\n',
   'services/notify-service/README.md': '# notify-service\n\nУведомления в приложении и по почте.\n',
 };
-function run(cwd, ...args) {
-  const r = spawnSync('node', [LINT, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, TMPDIR: path.join(cwd, '.tmp') } });
-  return { code: r.status, out: r.stdout + r.stderr };
-}
-// Вопрос в выводе start — JSON после текста.
-const json = (out) => JSON.parse(out.slice(out.indexOf('{')));
-const optionIds = (out) => json(out).questions.flatMap((q) => q.options.map((o) => o.id));
 const recommended = (out) => json(out).questions[0].options.find((o) => o.recommended).id;
+// Чтение от корня рабочей папки, а не от docs/.
 const read = (cwd, f) => fs.readFileSync(path.join(cwd, f), 'utf8');
 const ctxFile = (slug) => `docs/${slug}/_work/context.md`;
 // То, что делает сабагент: пишет факты под заголовками разделов.
@@ -360,7 +338,7 @@ test('ничего не нашлось — вопрос «Есть ещё док
   assert.match(read(cwd, ctxFile('handover')), /^Принято: да$/m);
 });
 test('не открылась папка вне проекта — подсказка /directory add; «готово» — изучить заново', () => {
-  const ext = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-ext-'));
+  const ext = tmpDir('sdd-ext-');
   fs.writeFileSync(path.join(ext, 'README.md'), '# ext\n');
   const cwd = researched();
   const rel = path.relative(cwd, ext);
