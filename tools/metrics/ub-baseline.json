@@ -1,13 +1,8 @@
 {
  "crap": {
-  "functions": 424,
-  "over10": 74,
+  "functions": 438,
+  "over10": 71,
   "offenders": {
-   "skills.sdd-lint.scripts.sdd-lint.readme#checkReadme": {
-    "complexity": 45,
-    "coverage": 59.4595,
-    "crap": 179.925
-   },
    "skills.sdd-lint.scripts.sdd-lint.cmd-menu#complete": {
     "complexity": 48,
     "coverage": 71.875,
@@ -27,16 +22,6 @@
     "complexity": 26,
     "coverage": 61.9048,
     "crap": 63.373
-   },
-   "skills.sdd-lint.scripts.sdd-lint.adr#checkAdrs": {
-    "complexity": 42,
-    "coverage": 78.3784,
-    "crap": 59.8304
-   },
-   "skills.sdd-lint.scripts.sdd-lint.plan#checkPlan": {
-    "complexity": 37,
-    "coverage": 80,
-    "crap": 47.952
    },
    "skills.sdd-lint.scripts.sdd-lint.cmd-check#gateClosed": {
     "complexity": 22,

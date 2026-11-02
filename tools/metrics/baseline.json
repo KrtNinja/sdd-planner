@@ -1,34 +1,22 @@
 {
  "tests": {
-  "total": 263,
-  "pass": 263,
+  "total": 269,
+  "pass": 269,
   "fail": 0,
   "seconds": 19
  },
- "functions": 426,
- "crapAtLeast10": 69,
- "crapOver30": 7,
- "complexityAtLeast10": 66,
+ "functions": 440,
+ "crapAtLeast10": 66,
+ "crapOver30": 4,
+ "complexityAtLeast10": 63,
  "offenders": {
   "skills/sdd-lint/scripts/sdd-lint/cmd-menu.mjs#complete": {
    "complexity": 48,
    "crap": 73.1
   },
-  "skills/sdd-lint/scripts/sdd-lint/readme.mjs#checkReadme": {
-   "complexity": 45,
-   "crap": 72.2
-  },
-  "skills/sdd-lint/scripts/sdd-lint/plan.mjs#checkPlan": {
-   "complexity": 37,
-   "crap": 52.3
-  },
   "skills/sdd-lint/scripts/sdd-lint/cmd-check.mjs#gateClosed": {
    "complexity": 22,
    "crap": 47.8
-  },
-  "skills/sdd-lint/scripts/sdd-lint/adr.mjs#checkAdrs": {
-   "complexity": 42,
-   "crap": 45.9
   },
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#slugify": {
    "complexity": 6,
@@ -289,19 +277,19 @@
  },
  "eslint": {
   "no-nested-ternary": 37,
-  "max-lines-per-function": 14,
-  "max-statements": 30,
-  "complexity": 54,
-  "max-len": 130,
+  "max-len": 128,
   "max-params": 4,
+  "complexity": 51,
+  "max-statements": 27,
+  "max-lines-per-function": 11,
   "no-unused-vars": 4,
   "no-param-reassign": 1,
   "no-shadow": 3
  },
- "tscErrors": 985,
- "clonesCodePercent": 3.15,
- "clonesTestsPercent": 6.34,
+ "tscErrors": 974,
+ "clonesCodePercent": 3.1,
+ "clonesTestsPercent": 6.3,
  "cycles": 0,
  "sideEffects": 0,
- "unusedExports": 30
+ "unusedExports": 29
 }

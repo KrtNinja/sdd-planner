@@ -69,6 +69,15 @@ caught('SL-25', 'comments/slices/002-comments.md', 'уведомления об 
 // README и ADR
 caught('RM-02', 'comments/slices/README.md', '| [FR-8](../spec.md#L81) | 003 |', '| [FR-8](../spec.md#L81) | 002 |');
 caught('RM-04', 'comments/slices/README.md', '| FR-6, FR-7 |', '| FR-6 |');
+// Таблица slices и «Порядок работ» в README.
+for (const [from, to, msg] of [
+  ['| Slice | Тип', '| Срез | Тип', /нет таблицы slices/],
+  ['| [003 Уведомления', '| [004 Уведомления', /в таблице нет slice 003/],
+  ['| 001, 002 | Р1', '| 001 | Р1', /003: «Зависит от» в README не совпадает со slice/],
+  ['001 → 002 → 003', '001 → 003 → 002', /«Порядок работ»: 003 раньше своей зависимости 002/],
+  ['001 → 002 → 003', '001 → 002', /«Порядок работ»: нет 003/],
+  ['## Порядок работ', '## Очерёдность', /нет раздела «Порядок работ»/],
+]) caught('RM-02', 'comments/slices/README.md', from, to, msg);
 caught('AD-04', 'adr/0001-mention-notifications.md', 'Выбран.', 'Хороший вариант.');
 caught('AD-05', 'adr/0001-mention-notifications.md', '- минус: сбой notify-service роняет публикацию (FR-10)\n\nОтклонён: не выполняет FR-10.', '- минус: сложно\n\nОтклонён: не нравится.');
 caught('AD-06', 'adr/0001-mention-notifications.md', 'FR-10 и NFR-3: уведомление', 'FR-12 и NFR-3: уведомление');

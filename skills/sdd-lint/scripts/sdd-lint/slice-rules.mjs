@@ -4,7 +4,8 @@ import { dependencyCycles } from './graph.mjs';
 import { reqRefs, BASIS_LINK_RE, specFileHref, staleReqLinks } from './links.mjs';
 import { AC_ANY, AC_LIVE } from './ac-rules.mjs';
 import { read, uniq, approved, noneText, scan, sectionText, header, headerLine } from './md.mjs';
-import { coverage, checkReadme } from './readme.mjs';
+import { coverage } from './readme.mjs';
+import { checkReadme } from './readme-rules.mjs';
 
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок правил — порядок находок: по каждому slice шапка, затем AC, затем хвост; потом фича целиком.

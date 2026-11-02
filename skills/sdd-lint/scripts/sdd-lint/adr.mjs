@@ -1,14 +1,14 @@
-// ADR: разбор и проверки AD-*.
+// ADR: разбор. Проверки AD-* — в adr-rules.mjs.
 import path from 'node:path';
 
-import { collect, noStatus } from './findings.mjs';
-import { rel, uniq, approved, scan, inSection, hasSection, sectionText, header, reqIds } from './md.mjs';
+import { scan, inSection, header } from './md.mjs';
 
 // Ограничение — то, что в решении не обсуждается: решение компании, бюджет, ресурсы, сроки.
 // Описывается в «Контексте» строкой «- ОГР-n что именно — кто поставил», на него ссылаются варианты.
 export const LIMIT_RE = /(?<![\p{L}\d])ОГР-(\d+)(?!\d)/gu;
-const limitIds = (s) => [...(s || '').matchAll(LIMIT_RE)].map((m) => m[0]);
+export const limitIds = (/** @type {string | undefined} */ s) => [...(s || '').matchAll(LIMIT_RE)].map((m) => m[0]);
 
+/** @param {string} file @param {string} md */
 export function parseAdr(file, md) {
   const sc = scan(md);
   const limits = inSection(sc, /^Контекст/)
@@ -39,53 +39,7 @@ export function parseAdr(file, md) {
   };
 }
 
-export function checkAdrs(m) {
-  const { found, add } = collect();
-  const seen = new Map();
-  for (const a of m.adrs) {
-    if (seen.has(a.num)) add('AD-09', a.file, null, `номер ${a.num} уже у ${rel(seen.get(a.num))}`);
-    seen.set(a.num, a.file);
-  }
-  for (const a of m.featureAdrs) {
-    const f = a.file;
-    found.push(...noStatus('AD-01', f, a.status, null));
-    if (a.headNum && a.headNum.padStart(4, '0') !== a.num) add('AD-09', f, 1, `файл ${a.num}, в заголовке ADR-${a.headNum}`);
-    for (const sec of ['Контекст', 'Варианты', 'Решение', 'Последствия', 'Не выяснено'])
-      if (!hasSection(a.sc, new RegExp(`^${sec}`))) add('AD-02', f, null, `нет раздела «${sec}»`);
-    if (hasSection(a.sc, /^Варианты/)) {
-      if (a.variants.length < 2) add('AD-03', f, null, `вариантов: ${a.variants.length}`);
-      for (const v of a.variants) {
-        if (!v.verdict) add('AD-04', f, v.n, `«${v.title}» без строки «Отклонён | Выбран | Отложен»`);
-        else if (v.verdict.startsWith('отклон') && !reqIds(v.text).length && !limitIds(v.text).length)
-          add('AD-05', f, v.n, `«${v.title}» отклонён без ссылки на FR/NFR или ограничение ОГР-n`);
-      }
-      const chosen = a.variants.filter((v) => v.verdict === 'выбран').length;
-      if (a.variants.length && chosen !== 1) add('AD-04', f, null, `выбрано вариантов: ${chosen}, нужен ровно один`);
-    }
-    const defined = new Map();
-    for (const x of a.limits) {
-      if (defined.has(x.id)) add('AD-11', f, x.n, `${x.id} уже описано в строке ${defined.get(x.id)}`);
-      else defined.set(x.id, x.n);
-    }
-    for (const l of a.sc.lines)
-      for (const id of uniq(limitIds(l.text))) if (!defined.has(id)) add('AD-11', f, l.n, `${id} нет в «Контексте»`);
-    if (hasSection(a.sc, /^Контекст/)) {
-      const ids = reqIds(sectionText(a.sc, /^Контекст/));
-      if (!ids.length) add('AD-06', f, null, '«Контекст» без FR/NFR');
-      if (m.spec) for (const id of ids) if (!m.spec.reqs.has(id)) add('AD-06', f, null, `«Контекст»: ${id} нет в spec.md`);
-    }
-    const touched = (header(a.md, 'Затрагивает slices') || '').match(/\b\d{3}\b/g) || [];
-    const consNums = [...sectionText(a.sc, /^Последствия/).matchAll(/slices?\s+(\d{3})/gi)].map((x) => x[1]);
-    if (m.slices.size) {
-      for (const n of uniq([...touched, ...consNums])) if (!m.slices.has(n)) add('AD-07', f, null, `slice ${n} нет`);
-      for (const n of touched) if (!consNums.includes(n)) add('AD-07', f, null, `slice ${n} из шапки не описан в «Последствия»`);
-    }
-    for (const l of inSection(a.sc, /^Не выяснено/).filter((x) => !x.inCode && /^\s*[-*]\s+\S/.test(x.text)))
-      if (!/блокир/i.test(l.text) && !/блокир/i.test(l.h2)) add('AD-08', f, l.n, 'не сказано, блокирует ли пункт slices');
-    if (approved(m.slicesStatus) && !/принят/i.test(a.status || '')) add('AD-10', f, null, `статус «${a.status || '—'}», slices уже одобрены`);
-  }
-  return found;
-}
-
 // Где фича и что делать дальше — готовыми командами со slug.
 export const pendingAdrs = (m) => m.featureAdrs.filter((a) => !/принят/i.test(a.status || ''));
+
+/** @typedef {ReturnType<typeof parseAdr>} Adr */
