@@ -3,40 +3,40 @@
   "total": 260,
   "pass": 260,
   "fail": 0,
-  "seconds": 18
+  "seconds": 19
  },
- "functions": 389,
+ "functions": 394,
  "crapAtLeast10": 72,
  "crapOver30": 10,
  "complexityAtLeast10": 69,
  "offenders": {
   "skills/sdd-lint/scripts/sdd-lint/slices.mjs#checkSlices": {
    "complexity": 106,
-   "crap": 149.5
-  },
-  "skills/sdd-lint/scripts/sdd-lint/readme.mjs#checkReadme": {
-   "complexity": 45,
-   "crap": 73.5
+   "crap": 148
   },
   "skills/sdd-lint/scripts/sdd-lint/cmd-menu.mjs#complete": {
    "complexity": 48,
    "crap": 73.1
   },
+  "skills/sdd-lint/scripts/sdd-lint/readme.mjs#checkReadme": {
+   "complexity": 45,
+   "crap": 72.2
+  },
   "skills/sdd-lint/scripts/sdd-lint/spec.mjs#checkSpec": {
-   "complexity": 64,
-   "crap": 69.8
+   "complexity": 63,
+   "crap": 67
   },
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#checkPlan": {
    "complexity": 42,
-   "crap": 58.3
+   "crap": 57.8
   },
   "skills/sdd-lint/scripts/sdd-lint/adr.mjs#checkAdrs": {
-   "complexity": 43,
-   "crap": 53.1
+   "complexity": 42,
+   "crap": 48.7
   },
   "skills/sdd-lint/scripts/sdd-lint/cmd-check.mjs#gateClosed": {
    "complexity": 22,
-   "crap": 50.2
+   "crap": 47.8
   },
   "skills/sdd-lint/scripts/mcp.mjs#handle": {
    "complexity": 16,
@@ -150,10 +150,6 @@
    "complexity": 16,
    "crap": 16
   },
-  "skills/sdd-lint/scripts/sdd-lint/context.mjs#checkContext": {
-   "complexity": 15,
-   "crap": 15.1
-  },
   "skills/sdd-lint/scripts/sdd-lint/input.mjs#splitInput": {
    "complexity": 15,
    "crap": 15.1
@@ -161,6 +157,10 @@
   "skills/sdd-lint/scripts/sdd-lint/start.mjs#addSources": {
    "complexity": 15,
    "crap": 15.1
+  },
+  "skills/sdd-lint/scripts/sdd-lint/context.mjs#checkContext": {
+   "complexity": 15,
+   "crap": 15
   },
   "skills/sdd-lint/scripts/sdd-lint/data.mjs#parseData": {
    "complexity": 15,
@@ -310,8 +310,8 @@
   "no-param-reassign": 1,
   "no-shadow": 3
  },
- "tscErrors": 1010,
- "clonesCodePercent": 3.45,
+ "tscErrors": 1003,
+ "clonesCodePercent": 3.3,
  "clonesTestsPercent": 6.54,
  "cycles": 0,
  "sideEffects": 0,
