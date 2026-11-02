@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { ownApprovals, approveCmd } from './approval.mjs';
-import { LEGACY, flags, pos } from './legacy.mjs';
 import { diffChecks } from './cmd-diff.mjs';
 import { skillCode } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
@@ -63,7 +62,7 @@ function numberPlaceholders(m) {
 }
 // Вся механика fix: кириллица в ID, номера, ссылки, README, сброс одобрения правленого; затем проверки
 // и сверка с git. Находки остаются в findings — их печатают fix и done.
-export function fixFeature(dir, { snapshot = false } = {}) {
+export function fixFeature(ctx, dir, { snapshot = false } = {}) {
   const files = (m) => uniq([...featureFiles(m), m.readmeFile, m.planFile].map((f) => path.resolve(f)));
   let m = loadFeature(dir);
   const notes = [];
@@ -94,7 +93,7 @@ export function fixFeature(dir, { snapshot = false } = {}) {
   m = loadFeature(dir);
   if (m.spec) for (const sl of m.slices.values()) linkSlice(sl, m.spec);
   m = loadFeature(dir);
-  if (m.slices.size) genReadme(LEGACY, m, true);
+  if (m.slices.size) genReadme(ctx, m, true);
   // Одобрение давалось прошлой версии — статус «на ревью», одобрять заново человеку.
   m = loadFeature(dir);
   for (const x of ownApprovals(m).filter((a) => a.state === 'changed')) {
@@ -117,20 +116,21 @@ export function fixFeature(dir, { snapshot = false } = {}) {
 }
 export const fixedText = (changed) => (changed.length ? `Скрипт поправил:\n${changed.map((x) => `- ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');
 
-export function cmdFix() {
-  const { m, changed, notes } = fixFeature(needDir(LEGACY, pos[0]), { snapshot: flags.snapshot });
+export function cmdFix(ctx) {
+  const { flags, pos } = ctx.args;
+  const { m, changed, notes } = fixFeature(ctx, needDir(ctx, pos[0]), { snapshot: flags.snapshot });
   const st = stageOf(m);
   if (!flags.json) {
-    console.log(fixedText(changed));
-    for (const n of notes) console.log(`\n${n}`);
-    if (findings.length) console.log('');
+    ctx.io.log(fixedText(changed));
+    for (const n of notes) ctx.io.log(`\n${n}`);
+    if (findings.length) ctx.io.log('');
   }
-  const c = report(LEGACY, { stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip), fixed: changed, notes });
+  const c = report(ctx, { stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip), fixed: changed, notes });
   if (!flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
-    console.log(`\n${stageText(st)}`);
-    console.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
-    if (!c.err) printTip(LEGACY, st);
+    ctx.io.log(`\n${stageText(st)}`);
+    ctx.io.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
+    if (!c.err) printTip(ctx, st);
   }
-  process.exit(c.err ? 1 : 0);
+  ctx.io.exit(c.err ? 1 : 0);
 }
