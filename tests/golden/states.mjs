@@ -3,10 +3,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { root, GOOD } from '../helpers.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const GOOD = path.join(root, 'tests/fixtures/good');
 const DATA = path.join(root, 'tests/golden/data');
 
 // Фиксированные автор и время коммита: хэши и вывод git одинаковы при каждом прогоне.

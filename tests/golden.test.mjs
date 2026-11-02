@@ -12,16 +12,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { STATES, GIT_ENV } from './golden/states.mjs';
+import { root, LINT, MCP, SCREEN_ENV, tmpDir } from './helpers.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LINT = path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
-const MCP = path.join(root, 'skills/sdd-lint/scripts/mcp.mjs');
 const DIR = path.join(root, 'tests/golden');
 const SCENARIOS = JSON.parse(fs.readFileSync(path.join(DIR, 'scenarios.json'), 'utf8'));
 const UPDATE = process.env.UPDATE_GOLDEN === '1';
-const ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: '/sdd-lint', SDD_VIEW: '' };
 const PARALLEL = Math.max(2, Math.min(8, os.availableParallelism?.() ?? 4));
 
 // Путь к репозиторию, временная папка, даты и отпечаток одобрения меняются от прогона к прогону — смысл вывода нет.
@@ -37,7 +33,7 @@ function normalize(out, dirs) {
 
 function spawnOut(cmd, args, cwd, input) {
   return new Promise((resolve) => {
-    const p = spawn(cmd, args, { cwd, env: { ...process.env, ...ENV, ...GIT_ENV, TMPDIR: path.join(cwd, '.tmp') } });
+    const p = spawn(cmd, args, { cwd, env: { ...process.env, ...SCREEN_ENV, ...GIT_ENV, TMPDIR: path.join(cwd, '.tmp') } });
     let out = '';
     p.stdout.on('data', (d) => { out += d; });
     p.stderr.on('data', (d) => { out += d; });
@@ -57,7 +53,7 @@ async function mcpCall(cwd, args) {
 }
 
 async function runOne(state, args) {
-  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-golden-'));
+  const cwd = tmpDir('sdd-golden-');
   const isMcp = state === 'mcp';
   STATES[isMcp ? 'good' : state](cwd);
   const dirs = [fs.realpathSync(cwd), cwd];
