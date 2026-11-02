@@ -1,7 +1,6 @@
 // Команды ask и choose.
 import { execFileSync } from 'node:child_process';
 
-import { LEGACY, flags, pos } from './legacy.mjs';
 import { askOf, askView } from './ask.mjs';
 import { closeOptions } from './close.mjs';
 import { targetFiles } from './cmd-guard.mjs';
@@ -15,10 +14,13 @@ import { saveSnapshot } from './snapshot.mjs';
 import { tempArtifacts } from './stage.mjs';
 import { startQuestion } from './start.mjs';
 
-export function cmdAsk() {
-  const m = loadFeature(needDir(LEGACY, pos[0]));
-  console.log(viewText(askView(m)));
-  process.exit(0);
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
+/** @param {Ctx} ctx */
+export function cmdAsk(ctx) {
+  const m = loadFeature(needDir(ctx, ctx.args.pos[0]));
+  ctx.io.log(viewText(askView(m)));
+  ctx.io.exit(0);
 }
 
 function runLint(args) {
@@ -31,40 +33,43 @@ function runLint(args) {
 // Одно исполнение для всех действий: выбранного варианта и ответа человека на wait.
 // Человеку — карточка (что происходит), агенту — строка ⚙. id — вариант, asked — вопрос, на который
 // пришёл ответ: ответ не понят (код 2) — спросить ещё раз.
-function run(m, a, id, asked = null) {
+/** @param {Ctx} ctx */
+function act(ctx, m, a, { id, asked = null }) {
   const d = rel(m.dir);
   const next = a.next || ['ask', d];
   if (a.lint) {
     const { out, code } = runLint(a.lint);
     const { card, gear } = splitGear(out);
     if (code === 2 && a.retry && asked) {
-      console.log(waitText(blocks(card, asked.wait), asked.then));
-      process.exit(0);
+      ctx.io.log(waitText(blocks(card, asked.wait), asked.then));
+      ctx.io.exit(0);
     }
     // Вывод команды уже карточка; её строка ⚙ главнее (close --json задаёт свой вопрос, start ведёт дальше).
     // after — что дальше, когда команда прошла (gen slices: продолжить скилл, а не новый вопрос).
     const g = code ? gear || gearLine(G.stop) : a.after ? gearLine(a.after) : gear || gearLine(G.call(next));
-    console.log(blocks(card || 'Готово.', g));
-    process.exit(code);
+    ctx.io.log(blocks(card || 'Готово.', g));
+    ctx.io.exit(code);
   }
   if (a.subagent) {
-    if (flags.fallback) {
-      console.log(screen(a.fallback || 'Сабагентов нет — этот шаг здесь не выполнить.', G.stop));
-      process.exit(0);
+    if (ctx.args.flags.fallback) {
+      ctx.io.log(screen(a.fallback || 'Сабагентов нет — этот шаг здесь не выполнить.', G.stop));
+      ctx.io.exit(0);
     }
-    if (a.snapshot) for (const f of targetFiles(LEGACY, a.snapshot)) saveSnapshot(f);
+    if (a.snapshot) for (const f of targetFiles(ctx, a.snapshot)) saveSnapshot(f);
     // Без сабагентов: here — тот же скилл здесь, fallback — что сказать человеку (choose --fallback).
     const none = a.here ? `без сабагентов — ${G.call(a.here)}` : `без сабагентов — ${G.call(['choose', d, id, '--fallback'])}`;
-    console.log(screen(a.say, G.sub(a.subagent), a.quiet ? G.quiet : G.report, G.then(next), none));
-  } else if (a.here) console.log(screen(skillPrompt(LEGACY, a.here[1], a.here.slice(2)), G.skill));
-  else if (a.show) console.log(screen(a.show, G.stop));
-  else if (a.wait) console.log(waitText(a.wait, a.then));
-  else console.log(screen('Хорошо, ничего не делаю.', G.stop));
-  process.exit(0);
+    ctx.io.log(screen(a.say, G.sub(a.subagent), a.quiet ? G.quiet : G.report, G.then(next), none));
+  } else if (a.here) ctx.io.log(screen(skillPrompt(ctx, a.here[1], a.here.slice(2)), G.skill));
+  else if (a.show) ctx.io.log(screen(a.show, G.stop));
+  else if (a.wait) ctx.io.log(waitText(a.wait, a.then));
+  else ctx.io.log(screen('Хорошо, ничего не делаю.', G.stop));
+  ctx.io.exit(0);
 }
 
-export function cmdChoose() {
-  const m = loadFeature(needDir(LEGACY, pos[0]));
+/** @param {Ctx} ctx */
+export function cmdChoose(ctx) {
+  const { pos } = ctx.args;
+  const m = loadFeature(needDir(ctx, pos[0]));
   const d = rel(m.dir);
   const [id, answer] = [pos[1], pos[2]];
   // Подтверждение close задаёт сам close, поэтому его варианта в askOf нет: добавляем, пока есть что удалять.
@@ -72,17 +77,17 @@ export function cmdChoose() {
   const all = [...askOf(m).questions.flatMap((q) => q.options), ...(tempArtifacts(m).length ? closeOptions(m) : []), ...(startQuestion(m)?.options || [])];
   const opt = all.find((o) => o.id === id);
   if (!opt) {
-    console.error(screen(id ? `Варианта «${id}» сейчас нет — этап изменился. Задам вопрос заново.` : 'Вариант не указан.', G.call(['ask', d])));
-    process.exit(2);
+    ctx.io.error(screen(id ? `Варианта «${id}» сейчас нет — этап изменился. Задам вопрос заново.` : 'Вариант не указан.', G.call(['ask', d])));
+    ctx.io.exit(2);
   }
   const a = opt.action;
   // Ответ человека на wait: answer превращает его в действие (decide в сабагенте, triage).
   if (answer !== undefined && a.answer) {
     if (!answer.trim() || answer === ANSWER) {
-      console.log(waitText(blocks('Ответа нет.', a.wait), a.then));
-      process.exit(0);
+      ctx.io.log(waitText(blocks('Ответа нет.', a.wait), a.then));
+      ctx.io.exit(0);
     }
-    run(m, a.answer(answer), id, a);
+    act(ctx, m, a.answer(answer), { id, asked: a });
   }
-  run(m, a, id);
+  act(ctx, m, a, { id });
 }

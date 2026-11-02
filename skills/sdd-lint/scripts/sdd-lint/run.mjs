@@ -19,29 +19,42 @@ import { lintCmd } from './config.mjs';
 import { findings } from './findings.mjs';
 import { createIo, Exit } from './io.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
+/** @type {Record<string, (ctx: Ctx) => void>} */
 const COMMANDS = {
   start: cmdStart, research: cmdResearch, completion: cmdCompletion, check: cmdCheck, fix: cmdFix, done: cmdDone, plan: cmdPlan,
   gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace,
   close: cmdClose, export: cmdExport, next: cmdNext, ask: cmdAsk, choose: cmdChoose, triage: cmdTriage, prompt: cmdPrompt,
 };
 
+// help и --help/-h у любой команды: справка по одной команде или общая.
+/** @param {Ctx} ctx */
+function help(ctx) {
+  const { pos, cmd } = ctx.args;
+  const name = cmd === 'help' ? pos[0] : cmd !== 'check' ? cmd : null;
+  const one = name ? helpFor(name) : null;
+  ctx.io.log(one ? `${one}\n\nВсе команды: ${lintCmd('help')}` : HELP);
+}
+/** @param {import('./args.mjs').Args} args */
+const wantsHelp = ({ argv, cmd }) => cmd === 'help' || (cmd !== '__complete' && (argv.includes('--help') || argv.includes('-h')));
+
+/** @param {Ctx} ctx */
 function dispatch(ctx) {
-  const { argv, pos, cmd } = ctx.args;
-  if (cmd === 'help' || (cmd !== '__complete' && (argv.includes('--help') || argv.includes('-h')))) {
-    const one = cmd === 'help' && pos[0] ? helpFor(pos[0]) : cmd !== 'help' && cmd !== 'check' ? helpFor(cmd) : null;
-    ctx.io.log(one ? `${one}\n\nВсе команды: ${lintCmd('help')}` : HELP);
-    return;
-  }
-  if (cmd === '__complete') {
-    ctx.io.log(complete(argv.slice(1)).join('\n'));
-    return;
-  }
-  if (cmd === 'check' && !argv.length) cmdMenu();
-  if (cmd === 'check') checkTypo();
-  COMMANDS[cmd](ctx);
+  const { argv, cmd } = ctx.args;
+  if (wantsHelp(ctx.args)) return help(ctx);
+  // Tab-дополнение: варианты для текущего слова, по строке.
+  if (cmd === '__complete') return ctx.io.log(complete(argv.slice(1)).join('\n'));
+  if (cmd === 'check' && !argv.length) cmdMenu(ctx);
+  if (cmd === 'check') checkTypo(ctx);
+  return COMMANDS[cmd](ctx);
 }
 
 // argv — аргументы после имени скрипта; write(fd, text) — куда печатать сразу (без него вывод копится в chunks).
+/**
+ * @param {string[]} argv
+ * @param {{ write?: (fd: 1 | 2, text: string) => void }} [opts]
+ */
 export function run(argv, { write } = {}) {
   const ctx = { args: parseArgs(argv), io: createIo(write) };
   // Находки пока копятся в общем массиве модуля (уйдёт в шаге 5): каждый вызов начинает с чистого.
