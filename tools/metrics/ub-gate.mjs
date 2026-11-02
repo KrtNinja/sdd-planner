@@ -88,11 +88,16 @@ if (process.argv.includes('--baseline')) {
   fs.writeFileSync(BASELINE, `${JSON.stringify(now, null, 1)}\n`);
   console.log(`Базовая линия записана: ${rel(BASELINE)}`);
 } else if (fs.existsSync(BASELINE)) {
-  const bad = compare(now, JSON.parse(fs.readFileSync(BASELINE, 'utf8')));
+  const base = JSON.parse(fs.readFileSync(BASELINE, 'utf8'));
+  const bad = compare(now, base);
   if (bad.length) { console.log(`\nГЕЙТ НЕ ПРОЙДЕН:\n${bad.map((x) => `- ${x}`).join('\n')}`); process.exitCode = 1; }
   else console.log('\nГейт пройден: не хуже базовой линии.');
-} else {
-  // Отчёты лежат и в артефакте ub-metrics, но базовую линию удобнее взять прямо из лога CI.
-  console.log(`\nБазовой линии нет (${rel(BASELINE)}) — только сводка. Снять: npm run ub:baseline или скопировать JSON ниже.`);
+  const count = (x) => [x.crap?.over10, x.dry?.candidates, x.mutate?.survivedForms].map((n) => n ?? 0);
+  if (!bad.length && count(now).some((n, i) => n < count(base)[i])) printBaseline('Стало лучше базовой линии — её можно обновить');
+} else printBaseline(`Базовой линии нет (${rel(BASELINE)}) — только сводка`);
+
+// Отчёты лежат и в артефакте ub-metrics, но базовую линию удобнее взять прямо из лога CI.
+function printBaseline(why) {
+  console.log(`\n${why}: npm run ub:baseline после прогона инструментов или JSON ниже в tools/metrics/ub-baseline.json.`);
   console.log(`--- ub-baseline.json ---\n${JSON.stringify(now)}\n--- конец ---`);
 }
