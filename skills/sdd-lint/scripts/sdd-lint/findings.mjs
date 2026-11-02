@@ -8,10 +8,10 @@ import { RULES } from './rules.mjs';
 /** @typedef {import('./model.mjs').Finding} Finding */
 
 // Находка правила rule: уровень — из каталога rules.mjs, путь — от корня репозитория.
-/** @param {string} rule @param {string} file @param {number | null | undefined} line @param {string} msg @returns {Finding} */
+/** @param {string} rule @param {string | null | undefined} file @param {number | null | undefined} line @param {string} msg @returns {Finding} */
 export const finding = (rule, file, line, msg) => ({ rule, level: RULES[rule][0], file: rel(file), line: line || null, msg });
 // add для своего массива находок: adder(list)(rule, file, line, msg).
-/** @param {Finding[]} list @returns {(rule: string, file: string, line: number | null | undefined, msg: string) => void} */
+/** @param {Finding[]} list @returns {(rule: string, file: string | null | undefined, line: number | null | undefined, msg: string) => void} */
 export const adder = (list) => (rule, file, line, msg) => {
   list.push(finding(rule, file, line, msg));
 };

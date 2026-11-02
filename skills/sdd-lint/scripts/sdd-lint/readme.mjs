@@ -19,14 +19,14 @@ export const coverage = (m) => {
   for (const [num, sl] of m.slices)
     for (const id of sl.basis) {
       if (!covered.has(id)) covered.set(id, new Set());
-      covered.get(id)?.add(num);
+      /** @type {Set<string>} */ (covered.get(id)).add(num);
     }
   return covered;
 };
 
 // slices, которые делят требование: всё, кроме 001 «подготовка» — он ссылается на все FR через контракты.
 /** @param {Feature} m @param {Iterable<string>} nums */
-export const sharing = (m, nums) => [...nums].filter((n) => !(n === '001' && /подготов/i.test(m.slices.get(n)?.type || '')));
+export const sharing = (m, nums) => [...nums].filter((n) => !(n === '001' && /подготов/i.test(/** @type {Slice} */ (m.slices.get(n)).type || '')));
 
 // слои порядка работ: внутри слоя slices можно делать параллельно. items — Map номер → { deps }.
 /** @param {Feature} m @param {Map<string, { deps: string[] }>} [items] */

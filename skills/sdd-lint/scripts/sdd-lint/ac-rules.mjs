@@ -1,7 +1,8 @@
 // Правила SL-* по AC slice: место в разделах, WHEN / THEN, «Проверяет:», FR из «Основание», стоп-слова, «тексты».
+// @ts-check
 import { unknownNames } from './data.mjs';
 import { finding } from './findings.mjs';
-import { quotes, rel, word } from './md.mjs';
+import { quotes, rel, word, matched } from './md.mjs';
 
 /** @typedef {import('./model.mjs').Finding} Finding */
 /** @typedef {import('./model.mjs').Slice} Slice */
@@ -19,7 +20,7 @@ const AC_STOP_WORDS = [
 ];
 
 const KW = /^(WHEN|AND|THEN|OR|BUT)\b/;
-const indent = (/** @type {string} */ t) => t.match(/^\s*/)[0].length;
+const indent = (/** @type {string} */ t) => matched(t, /^\s*/)[0].length;
 const sideOfHeading = (/** @type {string | null | undefined} */ h) => {
   if (!h) return null;
   if (/общ/i.test(h)) return '';
@@ -37,7 +38,7 @@ function depBasisOf(slices, sl) {
     for (const d of slices.get(num)?.deps || []) {
       if (seen.has(d) || !slices.has(d)) continue;
       seen.add(d);
-      for (const id of slices.get(d).basis) out.add(id);
+      for (const id of /** @type {Slice} */ (slices.get(d)).basis) out.add(id);
       walk(d);
     }
   };

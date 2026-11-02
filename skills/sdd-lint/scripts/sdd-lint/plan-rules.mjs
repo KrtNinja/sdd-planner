@@ -1,4 +1,5 @@
 // Правила PL-* по плану нарезки _work/plan.md: план целиком, каждый slice плана, связи между ними — списками { ids, check }.
+// @ts-check
 import { adrNums, reason, stubLines } from './cut.mjs';
 import { finding } from './findings.mjs';
 import { dependencyCycles } from './graph.mjs';
@@ -6,26 +7,28 @@ import { approved } from './md.mjs';
 import { KEYS, sharedReqs, nfrOnly } from './plan.mjs';
 import { registry, halvesProblem } from './services.mjs';
 
+/** @typedef {import('./model.mjs').Feature} Feature */
+
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок правил — порядок находок: шапка плана, затем по каждому slice, затем связи между slices.
 /** @typedef {import('./model.mjs').Finding} Finding */
-/** @typedef {NonNullable<ReturnType<typeof import('./plan.mjs').parsePlan>>} Plan */
-/** @typedef {Plan['slices'][number]} PlanSlice */
+/** @typedef {import('./model.mjs').Plan} Plan */
+/** @typedef {import('./model.mjs').PlanSlice} PlanSlice */
 /**
- * @typedef {{ m: any, p: Plan, f: string, nums: Set<string>, first: string | undefined, reg: any }} PlanContext
+ * @typedef {{ m: Feature, p: Plan, f: string, nums: Set<string>, first: string | undefined, reg: import('./model.mjs').Registry | null }} PlanContext
  * @typedef {{ ids: string[], check: (c: PlanContext) => Finding[] }} PlanRule
- * @typedef {{ ids: string[], check: (s: any, c: PlanContext) => Finding[] }} PlanSliceRule
+ * @typedef {{ ids: string[], check: (s: PlanSlice, c: PlanContext) => Finding[] }} PlanSliceRule
  */
 
 // Строка ключа в шапке slice, а без неё — заголовок slice.
-const at = (/** @type {any} */ s, /** @type {string} */ k) => s.headN[k] || s.n;
+const at = (/** @type {PlanSlice} */ s, /** @type {string} */ k) => s.headN[k] || s.n;
 
 // PL-03: номер и slug у каждого slice свои.
 /** @param {PlanContext} c */
 function uniqueNames({ p, f }) {
   /** @type {Record<string, Map<string, string>>} */
   const seen = { num: new Map(), slug: new Map() };
-  return p.slices.flatMap((/** @type {any} */ s) =>
+  return p.slices.flatMap((s) =>
     [['num', s.num], ['slug', s.slug]].flatMap(([k, v]) => {
       if (!seen[k].has(v)) {
         seen[k].set(v, s.title);
@@ -43,7 +46,7 @@ const PLAN_HEAD = [
 ];
 
 // PL-07: зависимость не на себя и на slice из плана.
-/** @param {any} s @param {PlanContext} c */
+/** @param {PlanSlice} s @param {PlanContext} c */
 function depsKnown(s, { f, nums }) {
   return s.deps.flatMap((/** @type {string} */ d) => {
     if (d === s.num) return [finding('PL-07', f, at(s, 'Зависимости'), `${s.num} зависит сам от себя`)];
@@ -51,11 +54,11 @@ function depsKnown(s, { f, nums }) {
   });
 }
 // PL-09: Р1 ссылается на ADR, который есть и ещё не принят.
-/** @param {any} s @param {PlanContext} c */
+/** @param {PlanSlice} s @param {PlanContext} c */
 function adrRefs(s, { m, f }) {
   if (reason(s.why) !== '1') return [];
   return adrNums(s.why).flatMap((num) => {
-    const a = m.adrs.find((/** @type {any} */ x) => x.num === num);
+    const a = m.adrs.find((x) => x.num === num);
     if (!a) return [finding('PL-09', f, at(s, 'Почему отдельно'), `${s.num}: ADR-${num} нет в docs/adr`)];
     return approved(a.status) ? [finding('PL-09', f, at(s, 'Почему отдельно'), `${s.num}: ADR-${num} уже «${a.status}»`)] : [];
   });
@@ -66,8 +69,8 @@ const PLAN_SLICE = [
   { ids: ['PL-02'], check: (s, { f }) => KEYS.filter((k) => s.head[k] === undefined).map((k) => finding('PL-02', f, s.n, `${s.num}: нет строки «${k}:»`)) },
   {
     ids: ['PL-05'],
-    check: (s, { m, f }) =>
-      m.spec ? [...s.basis].filter((id) => !m.spec.reqs.has(id)).map((id) => finding('PL-05', f, at(s, 'Основание'), `${s.num}: ${id} нет в spec.md`)) : [],
+    check: (s, { m: { spec }, f }) =>
+      spec ? [...s.basis].filter((id) => !spec.reqs.has(id)).map((id) => finding('PL-05', f, at(s, 'Основание'), `${s.num}: ${id} нет в spec.md`)) : [],
   },
   {
     // Без причины отдельно стоят только 001 и первый поведенческий slice.
@@ -111,13 +114,13 @@ const PLAN_TAIL = [
 ];
 
 // Плана нет — проверять нечего; slices уже нарезаны — план лишний (PL-13); плохие заголовки и пустой план — PL-01.
-/** @param {any} m @returns {Finding[]} */
+/** @param {Feature} m @returns {Finding[]} */
 export function checkPlan(m) {
   const p = m.plan;
   if (!p) return [];
   const f = p.file;
   if (m.slices.size) return [finding('PL-13', f, null, `в slices/ уже ${m.slices.size} файл(ов) slices`)];
-  const bad = p.bad.map((/** @type {any} */ b) => finding('PL-01', f, b.n, `«${b.text}» — не заголовок slice`));
+  const bad = p.bad.map((b) => finding('PL-01', f, b.n, `«${b.text}» — не заголовок slice`));
   if (!p.slices.length) return [...bad, finding('PL-01', f, null, 'нет ни одного slice')];
   const first = p.slices.filter((s) => s.type === 'поведение').map((s) => s.num).sort()[0];
   /** @type {PlanContext} */

@@ -64,8 +64,9 @@ export function scan(md) {
 // Заголовок ## вне кода: у такой строки раздел h2 — она сама.
 /** @param {Line} l @returns {l is Line & { h2: string }} */
 export const isH2 = (l) => !l.inCode && /^##\s/.test(l.text);
+// Строки раздела без заголовка: у каждой h2 — строка.
 /** @param {Scan} sc @param {RegExp} re */
-export const inSection = (sc, re) => sc.lines.filter((l) => l.h2 && re.test(l.h2) && !isH2(l));
+export const inSection = (sc, re) => /** @type {(Line & { h2: string })[]} */ (sc.lines.filter((l) => l.h2 && re.test(l.h2) && !isH2(l)));
 /** @param {Scan} sc @param {RegExp} re */
 export const hasSection = (sc, re) => sc.lines.some((l) => isH2(l) && re.test(l.h2));
 /** @param {Scan} sc @param {RegExp} re */

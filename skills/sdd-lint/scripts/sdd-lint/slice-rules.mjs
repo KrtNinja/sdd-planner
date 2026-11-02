@@ -1,9 +1,10 @@
 // Правила SL-* по slices: шапка, AC, хвост slice, фича целиком — списками { ids, check }.
+// @ts-check
 import { finding } from './findings.mjs';
 import { dependencyCycles } from './graph.mjs';
 import { reqRefs, BASIS_LINK_RE, specFileHref, staleReqLinks } from './links.mjs';
 import { AC_ANY, AC_LIVE } from './ac-rules.mjs';
-import { read, uniq, approved, noneText, scan, sectionText, header, headerLine } from './md.mjs';
+import { read, uniq, approved, noneText, scan, sectionText, header, headerLine, matched } from './md.mjs';
 import { coverage } from './readme.mjs';
 import { checkReadme } from './readme-rules.mjs';
 
@@ -13,9 +14,11 @@ import { checkReadme } from './readme-rules.mjs';
 
 /** @typedef {import('./model.mjs').Finding} Finding */
 /** @typedef {import('./model.mjs').Slice} Slice */
+/** @typedef {import('./model.mjs').Ac} Ac */
+/** @typedef {import('./model.mjs').Feature} Feature */
 /**
- * @typedef {{ m: any, s: any, slices: Map<string, Slice>, firstBehaviour: string | undefined,
- *   prevDef: Map<import('./model.mjs').Ac, string | undefined>, defs: Map<string, string> }} SliceContext
+ * @typedef {{ m: Feature, s: import('./model.mjs').Spec | null, slices: Map<string, Slice>, firstBehaviour: string | undefined,
+ *   prevDef: Map<Ac, string | undefined>, defs: Map<string, string> }} SliceContext
  * @typedef {{ ids: string[], check: (sl: Slice, c: SliceContext) => Finding[] }} SliceRule
  * @typedef {{ ids: string[], check: (c: SliceContext) => Finding[] }} FeatureRule
  */
@@ -25,11 +28,13 @@ const WHY_RE = /^\**\s*[РP][123](?!\d)/u;
 const isBehaviour = (/** @type {Slice} */ sl) => /поведение/i.test(sl.type || '');
 const live = (/** @type {Slice} */ sl) => sl.acs.filter((a) => !a.deleted && !a.stub);
 
-/** @param {any} m @returns {SliceContext} */
+/** @param {Feature} m @returns {SliceContext} */
 function sliceContext(m) {
   const behaviour = [...m.slices.values()].filter(isBehaviour).map((x) => x.num).sort();
   // Где AC определён до этого места: SL-05 называет предыдущее определение, SL-27 — все ID.
+  /** @type {Map<Ac, string | undefined>} */
   const prevDef = new Map();
+  /** @type {Map<string, string>} */
   const defs = new Map();
   for (const sl of m.slices.values())
     for (const ac of sl.acs) {
@@ -62,12 +67,13 @@ const SLICE_HEAD = [
   {
     ids: ['SL-28'],
     check: (sl, c) => {
-      if (!c.s) return [];
+      const s = c.s;
+      if (!s) return [];
       const basis = header(sl.md, 'Основание') || '';
       const got = (basis.match(BASIS_LINK_RE) || [])[1];
-      const bad = got !== specFileHref(sl.file, c.s.file) || reqRefs(basis).some((r) => r.href);
+      const bad = got !== specFileHref(sl.file, s.file) || reqRefs(basis).some((r) => r.href);
       const msg = got === undefined ? '«Основание» без ссылки на spec.md' : '«Основание»: ссылка на spec.md не та или ссылки на отдельные FR';
-      const links = sl.acs.filter((x) => x.checks).flatMap((ac) => staleReqLinks(sl.file, ac.checks.n, ac.checks.text, c.s));
+      const links = sl.acs.flatMap((ac) => (ac.checks ? staleReqLinks(sl.file, ac.checks.n, ac.checks.text, s) : []));
       return [...(bad ? [finding('SL-28', sl.file, sl.basisLine, msg)] : []), ...links];
     },
   },
@@ -91,7 +97,7 @@ function behaviourCovered(sl, c) {
 function boundsRefs(sl, c) {
   const bounds = sectionText(sl.sc, /^Границы/);
   const refs = [
-    ...[...bounds.matchAll(/\((\d{3}(?:\s*(?:,|и)\s*\d{3})*)\)/g)].flatMap((x) => x[1].match(/\d{3}/g)),
+    ...[...bounds.matchAll(/\((\d{3}(?:\s*(?:,|и)\s*\d{3})*)\)/g)].flatMap((x) => matched(x[1], /\d{3}/g)),
     ...[...bounds.matchAll(/slice\s+(\d{3})/gi)].map((x) => x[1]),
   ];
   return uniq(refs).filter((r) => !c.slices.has(r)).map((r) => finding('SL-25', sl.file, null, `«Границы»: slice ${r} нет`));
@@ -104,7 +110,7 @@ const SLICE_TAIL = [
     ids: ['SL-08'],
     check: (sl) =>
       ['B', 'F']
-        .map((side) => [side, sl.acs.filter((a) => a.side === side && !a.deleted).length])
+        .map((side) => /** @type {[string, number]} */ ([side, sl.acs.filter((a) => a.side === side && !a.deleted).length]))
         .filter(([, n]) => n > 10)
         .map(([side, n]) => finding('SL-08', sl.file, null, `${n} AC в ${side === 'B' ? 'серверной' : 'фронтенд'}-половине`)),
   },
@@ -131,12 +137,13 @@ function depsExist(c) {
 // SL-12 / SL-13: «Основание» — из spec, и каждое FR spec покрыто каким-то slice.
 /** @param {SliceContext} c */
 function specCovered(c) {
-  if (!c.s) return [];
+  const s = c.s;
+  if (!s) return [];
   const unknown = [...c.slices.values()].flatMap((sl) =>
-    [...sl.basis].filter((id) => !c.s.reqs.has(id)).map((id) => finding('SL-12', sl.file, headerLine(sl.md, 'Основание'), `«Основание»: ${id} нет в spec.md`)),
+    [...sl.basis].filter((id) => !s.reqs.has(id)).map((id) => finding('SL-12', sl.file, headerLine(sl.md, 'Основание'), `«Основание»: ${id} нет в spec.md`)),
   );
   const covered = coverage(c.m);
-  const missing = [...c.s.reqs.values()]
+  const missing = [...s.reqs.values()]
     .filter((r) => !r.deleted && !covered.has(r.id))
     .map((r) => finding('SL-13', c.m.slicesDir, null, `${r.id} не покрыт ни одним slice`));
   return [...unknown, ...missing];
@@ -168,11 +175,11 @@ const FEATURE = [
   { ids: ['SL-27'], check: acLinks },
 ];
 
-/** @param {any} m @returns {Finding[]} */
+/** @param {Feature} m @returns {Finding[]} */
 export function checkSlices(m) {
   if (!m.slices.size) return [];
   const c = sliceContext(m);
-  const perAc = (/** @type {Slice} */ sl) => (/** @type {import('./model.mjs').Ac} */ ac) => [
+  const perAc = (/** @type {Slice} */ sl) => (/** @type {Ac} */ ac) => [
     ...AC_ANY.flatMap((r) => r.check(ac, sl, c)),
     ...(ac.deleted || ac.stub ? [] : AC_LIVE.flatMap((r) => r.check(ac, sl, c))),
   ];

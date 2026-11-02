@@ -1,14 +1,17 @@
 // Правила RM-* по slices/README.md: таблица, «Покрытие», «Порядок работ», «Пересечения», «Проверка фичи» — списком { ids, check }.
+// @ts-check
 import { finding } from './findings.mjs';
 import { staleReqLinks } from './links.mjs';
 import { uniq, inSection, sectionText, tables, col, reqIds } from './md.mjs';
 import { coverage, sharing } from './readme.mjs';
 
+/** @typedef {import('./model.mjs').Feature} Feature */
+
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок правил — порядок находок. c — README и покрытие FR по slices, посчитанное один раз.
 /** @typedef {import('./model.mjs').Finding} Finding */
 /**
- * @typedef {{ m: any, f: string, sc: any, covered: Map<string, Set<string>> }} ReadmeContext
+ * @typedef {{ m: Feature, f: string, sc: import('./model.mjs').Scan, covered: Map<string, Set<string>> }} ReadmeContext
  * @typedef {{ ids: string[], check: (c: ReadmeContext) => Finding[] }} ReadmeRule
  */
 
@@ -20,8 +23,8 @@ const sameSet = (/** @type {Iterable<string>} */ a, /** @type {Iterable<string>}
 const nums3 = (/** @type {string | undefined} */ s) => (s || '').match(/\b\d{3}\b/g) || [];
 
 // Таблица slices: строка на каждый файл, «Основание» и «Зависит от» как в файле, лишних строк нет.
-/** @param {any} t @param {Map<string, any>} rows @param {string} f */
-const rowProblems = (t, rows, f) => (/** @type {[string, any]} */ [num, sl]) => {
+/** @param {import('./model.mjs').Table} t @param {Map<string, import('./model.mjs').TableRow>} rows @param {string} f */
+const rowProblems = (t, rows, f) => (/** @type {[string, import('./model.mjs').Slice]} */ [num, sl]) => {
   const r = rows.get(num);
   if (!r) return [finding('RM-02', f, t.start, `в таблице нет slice ${num}`)];
   const cb = col(t, /основани/i);
@@ -33,9 +36,9 @@ const rowProblems = (t, rows, f) => (/** @type {[string, any]} */ [num, sl]) => 
 };
 /** @param {ReadmeContext} c */
 function sliceTable({ m, f, sc }) {
-  const t = tables(sc.lines.filter((/** @type {any} */ l) => !l.inCode)).find((/** @type {any} */ x) => /^slice$/i.test(x.header[0] || ''));
+  const t = tables(sc.lines.filter((l) => !l.inCode)).find((x) => /^slice$/i.test(x.header[0] || ''));
   if (!t) return [finding('RM-02', f, null, 'нет таблицы slices')];
-  /** @type {Map<string, any>} */
+  /** @type {Map<string, import('./model.mjs').TableRow>} */
   const rows = new Map();
   for (const r of t.rows) {
     const num = nums3(r.cells[0])[0];
@@ -49,12 +52,12 @@ function sliceTable({ m, f, sc }) {
 
 // «Покрытие Dev Spec»: ссылки на FR живые, строка на каждое FR из «Основание», slices те же.
 /** @param {ReadmeContext} c */
-function coverageTable({ m, f, sc, covered }) {
+function coverageTable({ m: { spec }, f, sc, covered }) {
   const cov = tables(inSection(sc, /^Покрытие/))[0];
   if (!cov) return [finding('RM-02', f, null, 'нет раздела «Покрытие Dev Spec»')];
-  const rows = cov.rows.map((/** @type {any} */ r) => ({ r, id: reqIds(r.cells[0])[0] })).filter((x) => x.id);
+  const rows = cov.rows.map((r) => ({ r, id: reqIds(r.cells[0])[0] })).filter((x) => x.id);
   const inReadme = new Map(rows.map(({ r, id }) => [id, { set: nums3(r.cells.slice(1).join(' ')), n: r.n }]));
-  const links = m.spec ? rows.flatMap(({ r }) => staleReqLinks(f, r.n, r.cells[0], m.spec)) : [];
+  const links = spec ? rows.flatMap(({ r }) => staleReqLinks(f, r.n, r.cells[0], spec)) : [];
   const mismatch = [...covered].flatMap(([id, nums]) => {
     const x = inReadme.get(id);
     if (!x) return [finding('RM-02', f, cov.start, `«Покрытие»: нет строки ${id}`)];
@@ -71,7 +74,7 @@ function workOrder({ m, f, sc }) {
   if (!order) return [finding('RM-02', f, null, 'нет раздела «Порядок работ»')];
   const pos = new Map();
   for (const x of order.matchAll(/\b\d{3}\b/g)) if (!pos.has(x[0])) pos.set(x[0], x.index);
-  return [...m.slices].flatMap(([/** @type {string} */ num, /** @type {any} */ sl]) => [
+  return [...m.slices].flatMap(([/** @type {string} */ num, sl]) => [
     ...(pos.has(num) ? [] : [finding('RM-02', f, null, `«Порядок работ»: нет ${num}`)]),
     ...sl.deps
       .filter((/** @type {string} */ d) => pos.has(d) && pos.has(num) && pos.get(d) > pos.get(num))
@@ -90,7 +93,7 @@ const README = [
     check: ({ m, f, sc, covered }) => {
       const cross = reqIds(sectionText(sc, /^Пересечения/));
       return [...covered]
-        .map(([id, nums]) => [id, sharing(m, nums)])
+        .map(([id, nums]) => /** @type {[string, string[]]} */ ([id, sharing(m, nums)]))
         .filter(([id, beh]) => beh.length > 1 && !cross.includes(id))
         .map(([id, beh]) => finding('RM-03', f, null, `${id} в slices ${beh.join(', ')}, в «Пересечения» не описан`));
     },
@@ -108,9 +111,10 @@ const README = [
   },
 ];
 
-/** @param {any} m @returns {Finding[]} */
+/** @param {Feature} m @returns {Finding[]} */
 export function checkReadme(m) {
   if (m.readme == null) return [finding('RM-01', m.readmeFile, null, 'нет README со списком slices, покрытием и порядком')];
-  const c = { m, f: m.readmeFile, sc: m.readmeSc, covered: coverage(m) };
+  // readmeSc есть, когда есть README.
+  const c = { m, f: m.readmeFile, sc: /** @type {import('./model.mjs').Scan} */ (m.readmeSc), covered: coverage(m) };
   return README.flatMap((r) => r.check(c));
 }
