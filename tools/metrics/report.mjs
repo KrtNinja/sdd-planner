@@ -97,7 +97,8 @@ function compare(now, base) {
     else if (cur < was) better.push(`${name}: ${was} → ${cur}`);
   };
   if (!(now.tests.fail === 0)) bad.push(`тесты: упало ${now.tests.fail}`);
-  notWorse('тестов меньше, чем в базовой линии', base.tests.total - now.tests.total, 0);
+  if (now.tests.total < base.tests.total) bad.push(`тестов стало меньше: ${base.tests.total} → ${now.tests.total}`);
+  else if (now.tests.total > base.tests.total) better.push(`тестов: ${base.tests.total} → ${now.tests.total}`);
   for (const [key, e] of Object.entries(now.offenders)) {
     const was = base.offenders[key];
     const metric = e.crap === null ? 'complexity' : 'crap';
