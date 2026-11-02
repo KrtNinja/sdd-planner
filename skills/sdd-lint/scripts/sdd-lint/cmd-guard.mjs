@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { flags, pos } from './args.mjs';
 import { usage } from './cli.mjs';
-import { lintCmd } from './config.mjs';
+import { lintCode } from './config.mjs';
 import { loadFeature, featureFiles } from './feature.mjs';
 import { add, report } from './findings.mjs';
 import { gitInfo, gitShow } from './git.mjs';
@@ -25,7 +25,7 @@ export const targetFiles = (t) => {
 export function cmdSnapshot() {
   const files = targetFiles(pos[0]);
   for (const f of files) saveSnapshot(f);
-  console.log(`Снимок защищённых частей: ${files.map(rel).join(', ')}. После humanizer: ${lintCmd('guard', pos[0])}`);
+  console.log(`Снимок защищённых частей: ${files.map(rel).join(', ')}. После humanizer: ${lintCode('guard', pos[0])}`);
 }
 
 export function cmdGuard() {
@@ -66,7 +66,7 @@ export function cmdGuard() {
     if (noBase.length)
       out.push(
         `Не с чем сверить ${noBase.length} файл(ов): нет снимка и версии в git — ${noBase.map(rel).join(', ')}.`,
-        `  Снимок снимают до humanizer: ${lintCmd('snapshot', '<файл>')}. Если humanizer уже прошёл, сверьте защищённые части глазами.`,
+        `  Снимок снимают до humanizer: ${lintCode('snapshot', '<файл>')}. Если humanizer уже прошёл, сверьте защищённые части глазами.`,
       );
     if (ok) out.push(`Защищённые части не тронуты в ${ok} файл(ах).`);
     console.log(`\n${out.join('\n')}`);

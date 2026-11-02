@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pos, CMD_INFO, CHOICES, SLOTS, FLAGS, COMMANDS } from './args.mjs';
 import { askOf } from './ask.mjs';
 import { promptSkills } from './cmd-prompt.mjs';
-import { skill, lintCmd } from './config.mjs';
+import { code, lintCmd, skillCode, lintCode } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { git } from './git.mjs';
 import { DOCS, isDir, listFeatures, resolveFeature, pickChoice } from './pick.mjs';
@@ -17,7 +17,7 @@ export function cmdMenu() {
   const out = ['sdd-lint — проверки планирования SDD', ''];
   let tip = null;
   if (!isDir(DOCS)) out.push(`Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
-  else if (!known.length) out.push(`В ${DOCS}/ пока нет фич. Новая начинается с ${skill('sdd-grill')} — он спросит задачу.`);
+  else if (!known.length) out.push(`В ${DOCS}/ пока нет фич. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.`);
   else {
     out.push(`Фичи в ${DOCS}/:`);
     const w = Math.max(...known.map((f) => f.length));
@@ -47,9 +47,9 @@ export function cmdMenu() {
     [lintCmd('export', ex), CMD_INFO.export],
   ];
   const w = Math.max(...rows.map(([c]) => c.length));
-  out.push('', 'Команды:', ...rows.map(([c, d]) => `  ${c.padEnd(w)}  ${d}`));
-  out.push('', `Закрыть фичу перед merge — ${skill('sdd-close', ex)}: убирает протокол и _work/ (ревью, план нарезки) — после подтверждения.`);
-  out.push('', `Справка по команде: ${lintCmd('help', '<команда>')}. Путь к фиче дописывает Tab после @: @${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`);
+  out.push('', 'Команды:', ...rows.map(([c, d]) => `  ${code(c)}${' '.repeat(w - c.length)}  ${d}`));
+  out.push('', `Закрыть фичу перед merge — ${skillCode('sdd-close', ex)}: убирает протокол и ${code('_work/')} (ревью, план нарезки) — после подтверждения.`);
+  out.push('', `Справка по команде: ${lintCode('help', '<команда>')}. Путь к фиче дописывает Tab после @: ${code(`@${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`)}`);
   if (tip) out.push('', tip);
   console.log(out.join('\n'));
   process.exit(0);
@@ -70,7 +70,7 @@ export function checkTypo() {
   const near = COMMANDS.map((c) => [c, distance(w.toLowerCase(), c)]).filter(([c, n]) => n <= (c.length > 4 ? 2 : 1)).sort((a, b) => a[1] - b[1]);
   if (!near.length) return;
   const fixed = lintCmd(near[0][0], ...pos.slice(1));
-  console.error(`Нет команды «${w}». Может, ${near[0][0]}? ${fixed}`);
+  console.error(`Нет команды «${w}». Может, ${near[0][0]}? ${code(fixed)}`);
   process.exit(2);
 }
 

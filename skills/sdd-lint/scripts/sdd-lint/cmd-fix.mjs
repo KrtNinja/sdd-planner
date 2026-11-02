@@ -5,7 +5,7 @@ import path from 'node:path';
 import { ownApprovals, approveCmd } from './approval.mjs';
 import { flags, pos } from './args.mjs';
 import { diffChecks } from './cmd-diff.mjs';
-import { skill } from './config.mjs';
+import { skillCode } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
 import { findings, hasErrors, report } from './findings.mjs';
 import { linkSpec, linkSlice } from './gen-links.mjs';
@@ -90,7 +90,7 @@ export function fixFeature(dir, { snapshot = false } = {}) {
   // Ссылки на протокол: без протокола их убирает только close (/sdd-close) — fix их не трогает.
   if (m.spec && m.protocol) linkSpec(m);
   else if (m.spec && hasProtocolTraces(m.spec.md))
-    notes.push(`${rel(m.protocolFile)} нет, а spec ссылается на протокол: ссылки не тронуты. Если фича закрывается — ${skill('sdd-close', m.name)}`);
+    notes.push(`${rel(m.protocolFile)} нет, а spec ссылается на протокол: ссылки не тронуты. Если фича закрывается — ${skillCode('sdd-close', m.name)}`);
   m = loadFeature(dir);
   if (m.spec) for (const sl of m.slices.values()) linkSlice(sl, m.spec);
   m = loadFeature(dir);

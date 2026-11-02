@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { askView } from './ask.mjs';
 import { SKILLS_DIR } from './cmd-prompt.mjs';
-import { skill, lintCmd } from './config.mjs';
+import { skillCode, lintCode } from './config.mjs';
 import { contextFindings, loadContext, markContext, syncContext } from './context.mjs';
 import { loadFeature } from './feature.mjs';
 import { line } from './findings.mjs';
@@ -148,11 +148,11 @@ export function resume(dir, { created = false } = {}) {
   const m = loadFeature(dir);
   const d = rel(m.dir);
   if (!m.protocol) {
-    if (m.spec) return `Brainstorming ${d} пройден и закрыт: есть spec.md. Скажи человеку: «Поменять поведение — ${skill('sdd-decide', m.name, '"<вопрос>"', '"<решение>"')}; что дальше по фиче — ${lintCmd(m.name)}» — и остановись.`;
+    if (m.spec) return `Brainstorming ${d} пройден и закрыт: есть spec.md. Скажи человеку: «Поменять поведение — ${skillCode('sdd-decide', m.name, '"<вопрос>"', '"<решение>"')}; что дальше по фиче — ${lintCode(m.name)}» — и остановись.`;
     return askTask({}, m.name);
   }
   if (/готов/i.test(m.protocol.status || ''))
-    return [`Протокол ${d} готов: brainstorming закончен, новое решение — через ${skill('sdd-decide', m.name)}. Задай вопрос этапа — как сказано в instruction:`, JSON.stringify(askView(m), null, 2)].join('\n');
+    return [`Протокол ${d} готов: brainstorming закончен, новое решение — через ${skillCode('sdd-decide', m.name)}. Задай вопрос этапа — как сказано в instruction:`, JSON.stringify(askView(m), null, 2)].join('\n');
   let st = startState(m);
   if (st.step === 'sources') return questionText(m, st.question, created ? [`Создан ${d}/brainstorming.md.`] : []);
   if (st.step === 'research') return researchText(m, created);

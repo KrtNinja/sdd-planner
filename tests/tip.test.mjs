@@ -67,7 +67,7 @@ test('tip: ревью разобрано — одобрить; меню с од�
   assert.equal(tipOf(cwd), 'Tip: Введите /sdd-lint approve slices docs/comments чтобы продолжить');
   const menu = run(cwd).out;
   assert.equal(lastLine(menu), 'Tip: Введите /sdd-lint approve slices docs/comments чтобы продолжить');
-  assert.match(menu, /→ одобрить: \/sdd-lint approve slices docs\/comments/);
+  assert.match(menu, /→ одобрить: `\/sdd-lint approve slices docs\/comments`/);
 });
 
 test('tip: после approve — закрыть фичу; после close — строки нет', () => {
@@ -98,4 +98,25 @@ test('tip: при ошибках lint строки нет — сначала и�
   assert.equal(r.code, 1, r.out);
   assert.doesNotMatch(r.out, /^Tip:/m);
   assert.equal(tipOf(cwd), null);
+});
+
+// Команда вне бэктиков — «/» в начале слова, перед которым нет «`».
+const bare = (text) => text.split('\n').filter((l) => !l.startsWith('Tip:') && /(^|[^`\w/])\/(sdd-|humanizer)/.test(l));
+
+test('команды в тексте для человека — inline-кодом, строка Tip — без бэктиков', () => {
+  const cwd = workspace();
+  withReview(cwd, [BLOCKER]);
+  const r = run(cwd, 'docs/comments');
+  assert.deepEqual(bare(r.out.split('Следующий шаг')[1]), []);
+  assert.match(r.out, /одобрить: `\/sdd-lint approve slices docs\/comments`/);
+  assert.doesNotMatch(lastLine(r.out), /`/);
+  assert.deepEqual(bare(run(cwd).out), []);
+  assert.deepEqual(bare(run(cwd, 'approve').out), []);
+});
+
+test('choose: команду для нового окна — кодом и строкой Tip последней', () => {
+  const r = run(workspace(), 'choose', 'docs/comments', 'review-window:slices');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /`\/sdd-review comments slices`/);
+  assert.equal(lastLine(r.out), 'Tip: Введите /sdd-review comments slices чтобы продолжить');
 });

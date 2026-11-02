@@ -73,7 +73,7 @@ test('ворота закрыты: причина, строка человеку
   edit(cwd, 'comments/brainstorming.md', 'Статус: готов', 'Статус: идёт');
   const r = run(cwd, 'gate', 'spec', 'comments');
   assert.equal(r.code, 3);
-  assert.match(r.out, /ВОРОТА spec: закрыты — статус протокола «идёт»\.\nСкажи человеку одной строкой: «Сначала закончите brainstorming: \/sdd-grill comments»\. Затем задай вопрос этапа/);
+  assert.match(r.out, /ВОРОТА spec: закрыты — статус протокола «идёт»\.\nСкажи человеку одной строкой: «Сначала закончите brainstorming: `\/sdd-grill comments`»\. Затем задай вопрос этапа/);
   assert.ok(optionIds(r.out).includes('here:sdd-grill'));
 });
 test('ворота build (зона реализации) — по-старому, без вопроса этапа', () => {

@@ -3,7 +3,7 @@ import { pendingAdrs } from './adr.mjs';
 import { flags, pos } from './args.mjs';
 import { slicesBrief } from './brief.mjs';
 import { neededAdrs } from './cut.mjs';
-import { skill, lintCmd } from './config.mjs';
+import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
 import { findings, hasErrors, line, report } from './findings.mjs';
 import { rel, approved } from './md.mjs';
@@ -34,24 +34,24 @@ const errorsIn = (files) => findings.filter((x) => x.level === 'err' && files.ma
 // Ими же пользуется export: зона реализации видит тот же статус build, что и gate.
 export function gateClosed(m, stage) {
   const dir = rel(m.dir);
-  const check = lintCmd(dir);
+  const check = lintCode(dir);
   let closed = null;
   if (stage === 'spec') {
-    if (!m.protocol) closed = ['нет brainstorming.md', `Сначала проведите brainstorming: ${skill('sdd-grill', m.name)}`];
-    else if (!/готов/i.test(m.protocol.status || '')) closed = [`статус протокола «${m.protocol.status || '—'}»`, `Сначала закончите brainstorming: ${skill('sdd-grill', m.name)}`];
+    if (!m.protocol) closed = ['нет brainstorming.md', `Сначала проведите brainstorming: ${skillCode('sdd-grill', m.name)}`];
+    else if (!/готов/i.test(m.protocol.status || '')) closed = [`статус протокола «${m.protocol.status || '—'}»`, `Сначала закончите brainstorming: ${skillCode('sdd-grill', m.name)}`];
     else if (errorsIn([m.protocolFile]).length) closed = ['ошибки в протоколе', `В протоколе ошибки lint — поправьте его, список: ${check}`];
   } else if (stage === 'slices') {
-    if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skill('sdd-spec', m.name)}`];
-    else if (!approved(m.spec.status)) closed = [`статус spec «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCmd('approve', 'spec', dir)}`];
+    if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skillCode('sdd-spec', m.name)}`];
+    else if (!approved(m.spec.status)) closed = [`статус spec «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCode('approve', 'spec', dir)}`];
     else if (errorsIn([m.protocolFile, m.specFile]).length) closed = ['ошибки в протоколе или spec', `В spec ошибки lint — исправьте и одобрите заново, список: ${check}`];
   } else if (stage === 'adr' || stage === 'decide' || stage === 'review') {
-    if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skill('sdd-spec', m.name)}`];
+    if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skillCode('sdd-spec', m.name)}`];
   } else if (stage === 'build') {
     const pending = pendingAdrs(m);
     const need = neededAdrs(m);
-    if (!m.slices.size || !approved(m.slicesStatus)) closed = ['slices не одобрены', `Сначала одобрите slices: ${lintCmd('approve', 'slices', dir)}`];
-    else if (need.length) closed = [`нет ADR: ${need.map((x) => `«${x.topic}» (slice ${x.num})`).join(', ')}`, `Сначала напишите ADR: ${need.map((x) => skill('sdd-adr', m.name, `"${x.topic}"`)).join('; ')}`];
-    else if (pending.length) closed = [`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`, `Сначала примите ADR: ${pending.map((a) => lintCmd('approve', 'adr', dir, a.num)).join('; ')}`];
+    if (!m.slices.size || !approved(m.slicesStatus)) closed = ['slices не одобрены', `Сначала одобрите slices: ${lintCode('approve', 'slices', dir)}`];
+    else if (need.length) closed = [`нет ADR: ${need.map((x) => `«${x.topic}» (slice ${x.num})`).join(', ')}`, `Сначала напишите ADR: ${need.map((x) => skillCode('sdd-adr', m.name, `"${x.topic}"`)).join('; ')}`];
+    else if (pending.length) closed = [`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`, `Сначала примите ADR: ${pending.map((a) => lintCode('approve', 'adr', dir, a.num)).join('; ')}`];
     else if (findings.some((x) => x.level === 'err')) closed = ['есть ошибки lint', `Исправьте ошибки lint, список: ${check}`];
   }
   return closed;

@@ -1,7 +1,7 @@
 // Команды gen, next и trace.
 import { pos } from './args.mjs';
 import { usage } from './cli.mjs';
-import { lintCmd } from './config.mjs';
+import { lintCode } from './config.mjs';
 import { impact } from './gate-extra.mjs';
 import { loadFeature } from './feature.mjs';
 import { genLinks } from './gen-links.mjs';
@@ -23,7 +23,7 @@ export function cmdTrace() {
   const p = m.protocol;
   if (!s || !p) usage('Нужны brainstorming.md и spec.md');
   if (s.oldTraceLine) {
-    console.log(`В ${rel(s.file)} старый раздел «Трассировка»: ${lintCmd('fix', pos[0])}`);
+    console.log(`В ${rel(s.file)} старый раздел «Трассировка»: ${lintCode('fix', pos[0])}`);
     process.exit(1);
   }
   const where = new Map();

@@ -309,7 +309,7 @@ test('Р1 — ADR: <тема>: вопрос «Нужен ADR», ворота bui
   edit(cwd, 'adr/0001-mention-notifications.md', 'Затрагивает slices: 003\n', '');
   run(cwd, 'fix', 'docs/comments');
   assert.ok(ids(ask(cwd)).includes('adr-here:003'));
-  assert.match(run(cwd, 'docs/comments').out, /написать ADR «дедупликация уведомлений» \(slice 003\): \/sdd-adr comments "дедупликация уведомлений"/);
+  assert.match(run(cwd, 'docs/comments').out, /написать ADR «дедупликация уведомлений» \(slice 003\): `\/sdd-adr comments "дедупликация уведомлений"`/);
   assert.equal(run(cwd, 'approve', 'adr', 'docs/comments', '0001').code, 0);
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   const g = run(cwd, 'gate', 'build', 'docs/comments');

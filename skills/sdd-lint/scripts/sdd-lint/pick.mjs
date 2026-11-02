@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { pos, CHOICES, SLOTS, cmd } from './args.mjs';
-import { skill, lintCmd } from './config.mjs';
+import { code, lintCmd, skillCode, lintCode } from './config.mjs';
 import { rel } from './md.mjs';
 
 export const DOCS = 'docs';
@@ -33,10 +33,10 @@ const callPrefix = (n) => [cmd === 'check' ? null : cmd, ...pos.slice(0, n)].fil
 export function pickFeature(why, n) {
   const known = listFeatures();
   if (!known.length) {
-    console.error(isDir(DOCS) ? `${why}. В ${DOCS}/ пока нет фич. Новая начинается с ${skill('sdd-grill')} — он спросит задачу.` : `${why}. Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
+    console.error(isDir(DOCS) ? `${why}. В ${DOCS}/ пока нет фич. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.` : `${why}. Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
     process.exit(2);
   }
-  const lines = known.map((f) => `  ${lintCmd(...callPrefix(n), f)}`);
+  const lines = known.map((f) => `  ${lintCode(...callPrefix(n), f)}`);
   console.error(`${why}. Фичи в ${DOCS}/:\n${lines.join('\n')}`);
   process.exit(2);
 }
@@ -49,7 +49,7 @@ export function pickChoice(name, n = 0) {
   const cmdsList = opts.map(([k]) => line(k));
   const w = Math.max(...cmdsList.map((x) => x.length));
   const bad = pos[n] ? `Нет варианта «${pos[n]}» у ${name}` : `${name} — выбери вариант`;
-  console.error(`${bad}:\n${opts.map(([, d], i) => `  ${cmdsList[i].padEnd(w)}  — ${d}`).join('\n')}`);
+  console.error(`${bad}:\n${opts.map(([, d], i) => `  ${code(cmdsList[i])}${' '.repeat(w - cmdsList[i].length)}  — ${d}`).join('\n')}`);
   process.exit(2);
 }
 export function needDir(d, n = 0) {
@@ -70,7 +70,7 @@ export function needDir(d, n = 0) {
     [
       `Нет папки ${d}.`,
       known.length ? `Фичи в ${rel(parent)}/: ${known.join(', ')}.` : `В ${rel(parent)}/ пока нет фич.`,
-      `Новая фича начинается с ${skill('sdd-grill', slug)}.`,
+      `Новая фича начинается с ${skillCode('sdd-grill', slug)}.`,
     ].join(' '),
   );
   process.exit(2);
