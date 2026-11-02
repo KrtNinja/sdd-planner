@@ -1,7 +1,7 @@
 {
  "crap": {
-  "functions": 411,
-  "over10": 75,
+  "functions": 424,
+  "over10": 74,
   "offenders": {
    "skills.sdd-lint.scripts.sdd-lint.readme#checkReadme": {
     "complexity": 45,
@@ -17,11 +17,6 @@
     "complexity": 20,
     "coverage": 48,
     "crap": 76.2432
-   },
-   "skills.sdd-lint.scripts.sdd-lint.spec#checkSpec": {
-    "complexity": 63,
-    "coverage": 89.1566,
-    "crap": 68.0603
    },
    "skills.sdd-lint.scripts.sdd-lint.plan#parsePlan": {
     "complexity": 24,
