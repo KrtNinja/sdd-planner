@@ -1,9 +1,9 @@
 {
  "tests": {
-  "total": 272,
-  "pass": 272,
+  "total": 273,
+  "pass": 273,
   "fail": 0,
-  "seconds": 26
+  "seconds": 30
  },
  "functions": 450,
  "crapAtLeast10": 61,
@@ -270,7 +270,7 @@
  "tsCheckModules": 20,
  "tsCheckErrors": 0,
  "clonesCodePercent": 3.07,
- "clonesTestsPercent": 6.15,
+ "clonesTestsPercent": 6.13,
  "cycles": 0,
  "sideEffects": 0,
  "unusedExports": 29
