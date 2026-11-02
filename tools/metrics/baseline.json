@@ -94,10 +94,6 @@
    "complexity": 22,
    "crap": 22
   },
-  "skills/sdd-lint/scripts/sdd-lint/cmd-ask.mjs#run": {
-   "complexity": 21,
-   "crap": 21.7
-  },
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#planPreview": {
    "complexity": 17,
    "crap": 21.5
@@ -305,6 +301,10 @@
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#compactIds": {
    "complexity": 10,
    "crap": 10
+  },
+  "skills/sdd-lint/scripts/sdd-lint/cmd-ask.mjs#act": {
+   "complexity": 21,
+   "crap": 21.7
   }
  },
  "eslint": {
