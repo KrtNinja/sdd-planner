@@ -3,12 +3,12 @@
   "total": 253,
   "pass": 253,
   "fail": 0,
-  "seconds": 96
+  "seconds": 88
  },
  "functions": 383,
- "crapOver10": 69,
+ "crapAtLeast10": 76,
  "crapOver30": 12,
- "complexityOver10": 62,
+ "complexityAtLeast10": 71,
  "offenders": {
   "skills/sdd-lint/scripts/sdd-lint/slices.mjs#checkSlices": {
    "complexity": 106,
@@ -285,6 +285,34 @@
   "skills/sdd-lint/scripts/sdd-lint/start.mjs#renameFeature": {
    "complexity": 9,
    "crap": 10.4
+  },
+  "skills/sdd-lint/scripts/sdd-lint/adr.mjs#parseAdr": {
+   "complexity": 10,
+   "crap": 10
+  },
+  "skills/sdd-lint/scripts/sdd-lint/approval.mjs#verifyApprovals": {
+   "complexity": 10,
+   "crap": 10
+  },
+  "skills/sdd-lint/scripts/sdd-lint/cmd-ask.mjs#cmdChoose": {
+   "complexity": 10,
+   "crap": 10
+  },
+  "skills/sdd-lint/scripts/sdd-lint/findings.mjs#report": {
+   "complexity": 10,
+   "crap": 10
+  },
+  "skills/sdd-lint/scripts/sdd-lint/guide.mjs#reviewTargets": {
+   "complexity": 9,
+   "crap": 10
+  },
+  "skills/sdd-lint/scripts/sdd-lint/name.mjs#nameTrouble": {
+   "complexity": 10,
+   "crap": 10
+  },
+  "skills/sdd-lint/scripts/sdd-lint/plan.mjs#compactIds": {
+   "complexity": 10,
+   "crap": 10
   }
  },
  "eslint": {
