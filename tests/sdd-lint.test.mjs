@@ -482,6 +482,16 @@ test('следующий шаг: spec вернули «на ревью» — с�
   assert.match(r.out, /approve spec docs\/comments/);
   assert.doesNotMatch(r.out, /Планирование завершено/);
 });
+test('следующий шаг: slices одобрены, ADR фичи не принят — сначала ревью и приёмка ADR', () => {
+  const cwd = workspace();
+  assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
+  edit(cwd, 'adr/0001-mention-notifications.md', 'Статус: принято 27.10.2026 · 9aebc0', 'Статус: предложено');
+  const r = run(cwd, 'docs/comments');
+  assert.match(r.out, /Slices одобрены\. Перед реализацией примите ADR: 0001\./);
+  assert.match(r.out, /ADR 0001 «предложено» — ревью: `\/sdd-review comments adr 0001`/);
+  assert.match(r.out, /approve adr docs\/comments 0001/);
+  assert.doesNotMatch(r.out, /Планирование завершено/);
+});
 test('нет папки фичи: короткое сообщение со списком фич', () => {
   const r = run(workspace(), 'docs/nope');
   assert.equal(r.code, 2);

@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { root, MCP, workspace, run, file, read, edit, check, rules, caught } from './helpers.mjs';
+import { replyTo } from '../skills/sdd-lint/scripts/sdd-lint/mcp-server.mjs';
+import { root, MCP, workspace, run, file, read, edit, check, rules, caught, inDir } from './helpers.mjs';
 
 const S002 = 'comments/slices/002-comments.md';
 const S003 = 'comments/slices/003-mention-notifications.md';
@@ -275,6 +276,41 @@ test('MCP: ответ сервера всегда с кодом выхода —
     env: { ...process.env, TMPDIR: path.join(cwd, '.tmp') },
   });
   assert.match(JSON.parse(chk.trim()).result.content[0].text, /\n\n⚙ sdd: код 0$/);
+});
+test('MCP: служебные методы, уведомления и ошибки JSON-RPC', () => {
+  const reply = (msg) => {
+    const r = replyTo(typeof msg === 'string' ? msg : JSON.stringify({ jsonrpc: '2.0', ...msg }));
+    return r && JSON.parse(r);
+  };
+  assert.deepEqual(reply({ id: 1, method: 'ping' }), { jsonrpc: '2.0', id: 1, result: {} });
+  const init = reply({ id: 2, method: 'initialize' }).result;
+  assert.equal(init.protocolVersion, '2025-06-18');
+  assert.equal(init.serverInfo.name, 'sdd-lint');
+  assert.equal(reply({ id: 3, method: 'initialize', params: { protocolVersion: '2024-11-05' } }).result.protocolVersion, '2024-11-05');
+  const [tool] = reply({ id: 4, method: 'tools/list' }).result.tools;
+  assert.equal(tool.name, 'sdd_lint');
+  assert.deepEqual(Object.keys(tool.inputSchema.properties), ['args']);
+  // Уведомление (без id), пустая строка и не-объект — без ответа.
+  assert.equal(reply({ method: 'notifications/initialized' }), null);
+  assert.equal(reply('   '), null);
+  assert.equal(reply('null'), null);
+  assert.deepEqual(reply('{oops').error, { code: -32700, message: 'Parse error' });
+  assert.deepEqual(reply({ id: 5, method: 'resources/list' }).error, { code: -32601, message: 'Метод не поддерживается: resources/list' });
+  assert.deepEqual(reply({ id: 6, method: 'toString' }).error.code, -32601);
+  assert.deepEqual(reply({ id: 7, method: 'tools/call', params: { name: 'other' } }).error, { code: -32602, message: 'Нет инструмента other' });
+  assert.deepEqual(reply({ id: 8, method: 'tools/call', params: { name: 'sdd_lint', arguments: { args: [1] } } }).error, { code: -32602, message: 'args — массив строк' });
+  assert.deepEqual(reply({ id: 9, method: 'tools/call', params: { name: 'sdd_lint', arguments: { args: 'help' } } }).error.code, -32602);
+});
+test('MCP: вызов sdd_lint в процессе — вывод экрана без цвета, окружение после вызова прежнее', () => {
+  const cwd = planWorkspace(null);
+  const before = process.env.SDD_VIEW;
+  const call = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'sdd_lint', arguments: { args: ['plan', 'comments'] } } });
+  const text = inDir(cwd, {}, () => JSON.parse(replyTo(call)).result.content[0].text);
+  assert.match(text, /^Плана нарезки ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: .* · код 2$/);
+  assert.equal(process.env.SDD_VIEW, before);
+  // Без аргументов — список фич (args по умолчанию []).
+  const all = inDir(cwd, {}, () => JSON.parse(replyTo(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'sdd_lint' } }))));
+  assert.match(all.result.content[0].text, /comments/);
 });
 test('prompt: в шапке — вопрос из правил и абсолютный путь к скрипту для вариантов 2 и 3', () => {
   const r = run(workspace(), 'prompt', 'sdd-slices', 'comments');

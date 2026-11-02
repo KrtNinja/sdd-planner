@@ -10,6 +10,10 @@ import { fileURLToPath } from 'node:url';
 
 import { run as runLint } from '../skills/sdd-lint/scripts/sdd-lint/run.mjs';
 
+// Дочерние процессы (CLI, MCP, hook) покрытие не пишут: Node склеивает файлы покрытия процессов в порядке PID,
+// и непокрытые ветки то попадают в отчёт, то нет. Покрытие — только у кода, вызванного в процессе тестов.
+delete process.env.NODE_V8_COVERAGE;
+
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
 export const MCP = path.join(root, 'skills/sdd-lint/scripts/mcp.mjs');
@@ -56,23 +60,27 @@ export function commitAll(cwd, msg = 'init') {
   return cwd;
 }
 
-// Запуск sdd-lint функцией run() в этом же процессе: { code, out } — stdout, затем stderr, как у spawnSync.
-// На время вызова — папка cwd, окружение env и свой TMPDIR (там счётчики прогонов и снимки), потом всё
-// возвращается. Тесты одного файла идут по очереди, поэтому смена папки процесса безопасна.
-export const runner = (env) => (cwd, ...args) => {
+// fn() в папке cwd с окружением env и своим TMPDIR (там счётчики прогонов и снимки), потом всё возвращается.
+// Тесты идут по очереди, поэтому смена папки процесса безопасна.
+// runner — запуск sdd-lint функцией run() так же: { code, out } — stdout, затем stderr, как у spawnSync.
+export function inDir(cwd, env, fn) {
   const vars = { ...env, TMPDIR: path.join(cwd, '.tmp') };
   const saved = { cwd: process.cwd(), env: Object.fromEntries(Object.keys(vars).map((k) => [k, process.env[k]])) };
   process.chdir(cwd);
   Object.assign(process.env, vars);
   try {
-    const { code, chunks } = runLint(args);
-    const text = (fd) => chunks.filter(([f]) => f === fd).map(([, t]) => t).join('');
-    return { code, out: text(1) + text(2) };
+    return fn();
   } finally {
     process.chdir(saved.cwd);
     for (const [k, v] of Object.entries(saved.env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
   }
-};
+}
+export const runner = (env) => (cwd, ...args) =>
+  inDir(cwd, env, () => {
+    const { code, chunks } = runLint(args);
+    const text = (fd) => chunks.filter(([f]) => f === fd).map(([, t]) => t).join('');
+    return { code, out: text(1) + text(2) };
+  });
 export const run = runner(JSON_ENV);
 
 // Тот же вызов отдельным процессом — для проверок самой точки входа (CLI, симлинк, hook).

@@ -13,7 +13,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { STATES, GIT_ENV } from './golden/states.mjs';
-import { root, LINT, MCP, SCREEN_ENV, tmpDir, runner } from './helpers.mjs';
+import { replyTo } from '../skills/sdd-lint/scripts/sdd-lint/mcp-server.mjs';
+import { root, LINT, MCP, SCREEN_ENV, tmpDir, runner, inDir } from './helpers.mjs';
 
 const DIR = path.join(root, 'tests/golden');
 const SCENARIOS = JSON.parse(fs.readFileSync(path.join(DIR, 'scenarios.json'), 'utf8'));
@@ -44,14 +45,22 @@ function spawnOut(cmd, args, cwd, input) {
 }
 
 // MCP: initialize и один tools/call — как агент вызывает sdd_lint. Ответ — текст инструмента.
-async function mcpCall(cwd, args) {
+// replyTo — сервер функцией, в этом процессе; spawn — сервер отдельным процессом (выборка в «MCP = процесс»).
+const rpcInput = (args) => {
   const rpc = (id, method, params) => JSON.stringify({ jsonrpc: '2.0', id, method, params });
-  const input = `${rpc(1, 'initialize', { protocolVersion: '2025-06-18' })}\n${rpc(2, 'tools/call', { name: 'sdd_lint', arguments: { args } })}\n`;
-  const r = await spawnOut('node', [MCP], cwd, input);
-  const reply = r.out.split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((m) => m.id === 2);
-  if (reply?.error) return { code: r.code, out: `error ${reply.error.code}: ${reply.error.message}` };
-  return { code: r.code, out: `${reply.result.isError ? 'isError\n' : ''}${reply.result.content.map((c) => c.text).join('\n')}` };
+  return [rpc(1, 'initialize', { protocolVersion: '2025-06-18' }), rpc(2, 'tools/call', { name: 'sdd_lint', arguments: { args } })];
+};
+function toolText(code, lines) {
+  const reply = lines.filter(Boolean).map((l) => JSON.parse(l)).find((m) => m.id === 2);
+  if (reply?.error) return { code, out: `error ${reply.error.code}: ${reply.error.message}` };
+  return { code, out: `${reply.result.isError ? 'isError\n' : ''}${reply.result.content.map((c) => c.text).join('\n')}` };
 }
+// Код — процесса сервера: он отвечает и выходит с 0, когда stdin закрыт; в процессе тестов — тот же 0.
+const mcpCall = (cwd, args) => toolText(0, inDir(cwd, { ...SCREEN_ENV, ...GIT_ENV }, () => rpcInput(args).map(replyTo)));
+const mcpSpawn = async (cwd, args) => {
+  const r = await spawnOut('node', [MCP], cwd, `${rpcInput(args).join('\n')}\n`);
+  return toolText(r.code, r.out.split('\n'));
+};
 
 // Сценарий вызывается функцией run() в этом процессе; через CLI — выборка в тесте «CLI = run()» ниже.
 const inProcess = runner({ ...SCREEN_ENV, ...GIT_ENV });
@@ -66,7 +75,7 @@ async function runOne(state, args, how = 'run') {
   const isMcp = state === 'mcp';
   STATES[isMcp ? 'good' : state](cwd);
   const dirs = [fs.realpathSync(cwd), cwd];
-  const r = isMcp ? await mcpCall(cwd, args) : how === 'cli' ? await viaCli(cwd, args) : inProcess(cwd, ...args);
+  const r = how === 'spawn' ? await (isMcp ? mcpSpawn : viaCli)(cwd, args) : isMcp ? mcpCall(cwd, args) : inProcess(cwd, ...args);
   fs.rmSync(cwd, { recursive: true, force: true });
   return { args, code: r.code, out: normalize(r.out, dirs) };
 }
@@ -105,12 +114,13 @@ for (const state of Object.keys(SCENARIOS)) {
   });
 }
 
-// Точка входа CLI печатает то же, что run(): каждый десятый сценарий каждого состояния — отдельным процессом.
-test('golden: CLI = run()', async () => {
-  for (const state of Object.keys(SCENARIOS).filter((x) => x !== 'mcp')) {
+// Точки входа печатают то же, что функции: каждый десятый сценарий каждого состояния — отдельным процессом
+// (sdd-lint.mjs для CLI, mcp.mjs для MCP).
+test('golden: CLI = run(), MCP = процесс', async () => {
+  for (const state of Object.keys(SCENARIOS)) {
     for (const args of SCENARIOS[state].filter((_, i) => i % 10 === 0)) {
-      const [cli, fn] = [await runOne(state, args, 'cli'), await runOne(state, args)];
-      assert.deepEqual(cli, fn, `${state}: sdd-lint ${args.join(' ')}`);
+      const [spawned, fn] = [await runOne(state, args, 'spawn'), await runOne(state, args)];
+      assert.deepEqual(spawned, fn, `${state}: ${title(state, args)}`);
     }
   }
 });

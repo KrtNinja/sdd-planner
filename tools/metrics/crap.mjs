@@ -2,8 +2,8 @@
 // Локальная замена crapper (ему нужен Python + tree-sitter; в CI он идёт сам, см. ub-gate.mjs).
 // CC: if, циклы, catch, ?:, case, &&, ||, ??, ?. — по функциям верхнего уровня вместе с вложенными
 // колбэками, как crapper для JS. cov: доля непробельных символов функции, исполненных хотя бы в одном
-// процессе тестов. Покрытие — сырое V8 из NODE_V8_COVERAGE: тесты запускают sdd-lint дочерним
-// процессом, и встроенное --experimental-test-coverage его не видит.
+// процессе тестов. Покрытие — сырое V8 из NODE_V8_COVERAGE по процессам тестовых файлов: объединение масок
+// от порядка файлов не зависит. Дочерние процессы тестов (CLI, MCP) покрытие не пишут — см. tests/helpers.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
