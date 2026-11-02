@@ -70,8 +70,12 @@ jobs:
         run: npm --prefix tools run lcov
       - name: crapper
         run: crapper --use-existing-coverage "$CODE" | tee crapper.txt
+      # dryer на этом коммите не знает .js/.mjs (crapper и mutator знают): JS — подмножество синтаксиса
+      # TypeScript, поэтому копия кода с расширением .ts разбирается тем же tree-sitter.
       - name: dryer
-        run: dryer --edn --threshold 0.8 "$CODE" > dryer.edn.txt; dryer --threshold 0.8 "$CODE" | tee dryer.txt
+        run: |
+          find "$CODE" -name '*.mjs' | while read -r f; do mkdir -p "dry-src/$(dirname "$f")"; cp "$f" "dry-src/${f%.mjs}.ts"; done
+          dryer --threshold 0.8 "dry-src/$CODE" | tee dryer.txt
       - name: mutator — только места мутаций, без прогона
         continue-on-error: true
         run: mutator --scan --no-coverage "$CODE" | tee mutator-scan.txt

@@ -54,9 +54,9 @@ function collect() {
   const mut = fs.existsSync(mutDir) ? fs.readdirSync(mutDir).filter((f) => f.endsWith('.edn')).map((f) => readIf(path.join(mutDir, f))) : [];
   const offenders = {};
   for (const e of crap?.entries ?? []) if ((e.crap ?? e.complexity) >= CRAP_MAX) offenders[`${e.namespace}#${e.name}`] = { complexity: e.complexity, coverage: e.coverage, crap: e.crap };
-  const pairs = (dry?.candidates ?? []).filter((c) => c.score >= DRY_MIN).map((c) => ({
-    score: +c.score.toFixed(2), left: `${c.left.file}:${c.left['start-line']}-${c.left['end-line']}`, right: `${c.right.file}:${c.right['start-line']}-${c.right['end-line']}`,
-  }));
+  // CI кладёт для dryer копию кода в dry-src/ с .ts вместо .mjs — возвращаем исходные пути.
+  const at = (s) => `${s.file.replace(/^(.*\/)?dry-src\//, '').replace(/\.ts$/, '.mjs')}:${s['start-line']}-${s['end-line']}`;
+  const pairs = (dry?.candidates ?? []).filter((c) => c.score >= DRY_MIN).map((c) => ({ score: +c.score.toFixed(2), left: at(c.left), right: at(c.right) }));
   const survived = mut.flatMap((m) => (m.forms ?? []).filter((f) => f.survived > 0).map((f) => `${m.namespace}#${f.id}: ${f.survived}`));
   return {
     crap: crap ? { functions: crap.entries.length, over10: Object.keys(offenders).length, offenders } : null,
@@ -91,4 +91,8 @@ if (process.argv.includes('--baseline')) {
   const bad = compare(now, JSON.parse(fs.readFileSync(BASELINE, 'utf8')));
   if (bad.length) { console.log(`\nГЕЙТ НЕ ПРОЙДЕН:\n${bad.map((x) => `- ${x}`).join('\n')}`); process.exitCode = 1; }
   else console.log('\nГейт пройден: не хуже базовой линии.');
-} else console.log(`\nБазовой линии нет (${rel(BASELINE)}) — только сводка. Снять: npm run ub:baseline`);
+} else {
+  // Отчёты лежат и в артефакте ub-metrics, но базовую линию удобнее взять прямо из лога CI.
+  console.log(`\nБазовой линии нет (${rel(BASELINE)}) — только сводка. Снять: npm run ub:baseline или скопировать JSON ниже.`);
+  console.log(`--- ub-baseline.json ---\n${JSON.stringify(now)}\n--- конец ---`);
+}

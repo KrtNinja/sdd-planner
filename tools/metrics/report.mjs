@@ -17,6 +17,7 @@ import { crap, coverageMasks } from './crap.mjs';
 const TOOLS = path.join(REPO, 'tools');
 const OUT = path.join(TOOLS, 'metrics/.out');
 const BASELINE = path.join(TOOLS, 'metrics/baseline.json');
+// ub-mode: «Reduce each function under CRAP 10» — нарушение с 10 включительно.
 const CRAP_MAX = 10;
 // Где можно печатать и завершать процесс: точка входа CLI и MCP-сервер.
 const IO_ALLOWED = new Set(['skills/sdd-lint/scripts/sdd-lint.mjs', 'skills/sdd-lint/scripts/mcp.mjs']);
@@ -70,13 +71,13 @@ function sideEffects() {
 }
 
 function summary(r) {
-  const offenders = r.crap.entries.filter((e) => (e.crap ?? e.complexity) > CRAP_MAX);
+  const offenders = r.crap.entries.filter((e) => (e.crap ?? e.complexity) >= CRAP_MAX);
   return {
     tests: r.tests,
     functions: r.crap.functions,
-    crapOver10: r.crap.entries.filter((e) => e.crap > 10).length,
+    crapAtLeast10: r.crap.entries.filter((e) => e.crap >= 10).length,
     crapOver30: r.crap.entries.filter((e) => e.crap > 30).length,
-    complexityOver10: r.crap.entries.filter((e) => e.complexity > 10).length,
+    complexityAtLeast10: r.crap.entries.filter((e) => e.complexity >= 10).length,
     offenders: Object.fromEntries(offenders.map((e) => [e.key, { complexity: e.complexity, crap: e.crap }])),
     eslint: r.eslint,
     tscErrors: r.tsc.total,
@@ -100,7 +101,7 @@ function compare(now, base) {
   for (const [key, e] of Object.entries(now.offenders)) {
     const was = base.offenders[key];
     const metric = e.crap === null ? 'complexity' : 'crap';
-    if (!was) bad.push(`${key}: новая функция с ${metric} ${e[metric]} > ${CRAP_MAX}`);
+    if (!was) bad.push(`${key}: новая функция с ${metric} ${e[metric]} ≥ ${CRAP_MAX}`);
     else if (was[metric] !== null && e[metric] > was[metric]) bad.push(`${key}: ${metric} ${was[metric]} → ${e[metric]}`);
   }
   for (const rule of new Set([...Object.keys(now.eslint), ...Object.keys(base.eslint)])) notWorse(`eslint ${rule}`, now.eslint[rule] ?? 0, base.eslint[rule] ?? 0);
@@ -111,7 +112,7 @@ function compare(now, base) {
 function print(s) {
   const t = s.tests;
   console.log(`Тесты: ${t.pass}/${t.total}, упало ${t.fail}, ${t.seconds} с`);
-  console.log(`Функций: ${s.functions}; CRAP > 10: ${s.crapOver10}, CRAP > 30: ${s.crapOver30}; сложность > 10: ${s.complexityOver10}`);
+  console.log(`Функций: ${s.functions}; CRAP ≥ 10: ${s.crapAtLeast10}, CRAP > 30: ${s.crapOver30}; сложность ≥ 10: ${s.complexityAtLeast10}`);
   console.log(`ESLint: ${Object.entries(s.eslint).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   console.log(`tsc --checkJs: ${s.tscErrors} ошибок; повторы: код ${s.clonesCodePercent}%, тесты ${s.clonesTestsPercent}%`);
   console.log(`Циклы импорта: ${s.cycles}; process.exit/argv/console вне точки входа: ${s.sideEffects}; экспортов без потребителей: ${s.unusedExports}`);
