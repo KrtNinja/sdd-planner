@@ -1,18 +1,25 @@
 // Персонажи и объекты из «Данные для примеров».
+// @ts-check
 import { esc, uniq, inSection, tables, quotes, stem } from './md.mjs';
+
+/** @typedef {import('./model.mjs').ExampleData} ExampleData */
 
 const NAME_PAIR = /(?<![\p{L}])([А-ЯЁ][а-яё]{2,})\s+([А-ЯЁ][а-яё]{2,})(?![\p{L}])/gu;
 
+/** @param {import('./model.mjs').Scan} sc @returns {ExampleData} */
 export function parseData(sc) {
   const ls = inSection(sc, /^Данные для примеров/);
+  /** @type {ExampleData['people']} */
   const people = [];
+  /** @type {Set<string>} */
   const objects = new Set();
+  /** @type {Set<string>} */
   const objNames = new Set();
-  const addPerson = (s) => {
+  const addPerson = (/** @type {string} */ s) => {
     const m = s.match(/([А-ЯЁ][а-яё]+)(?:\s+([А-ЯЁ][а-яё]+))?/u);
     if (m) people.push({ first: m[1], last: m[2] || null });
   };
-  const addObjects = (s) => {
+  const addObjects = (/** @type {string} */ s) => {
     for (const m of s.matchAll(/\b[A-Z][A-Z0-9]*-\d+\b/g)) objects.add(m[0]);
     for (const q of quotes(s)) objNames.add(q);
   };
@@ -32,8 +39,9 @@ export function parseData(sc) {
   return { people, objects, objNames };
 }
 
+/** @param {string} text @param {ExampleData} data */
 export function mentionsData(text, data) {
-  const starts = (w) => new RegExp(`(?<![\\p{L}])${esc(stem(w))}`, 'u').test(text);
+  const starts = (/** @type {string} */ w) => new RegExp(`(?<![\\p{L}])${esc(stem(w))}`, 'u').test(text);
   return (
     data.people.some((p) => starts(p.first) || (p.last && starts(p.last))) ||
     [...data.objects].some((o) => text.includes(o)) ||
@@ -41,10 +49,11 @@ export function mentionsData(text, data) {
   );
 }
 
+/** @param {string} text @param {ExampleData} data */
 export function unknownNames(text, data) {
   if (!data.people.length) return [];
   const bare = text.replace(/«[^«»]*»/g, ' ');
-  const known = (a, b) =>
+  const known = (/** @type {string} */ a, /** @type {string} */ b) =>
     data.people.some(
       (p) =>
         p.last &&

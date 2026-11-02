@@ -1,4 +1,5 @@
 // slices/README.md: покрытие, слои, gen readme. Проверки RM-* — в readme-rules.mjs.
+// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -8,27 +9,33 @@ import { rel, scan, isH2, tables, replaceSection } from './md.mjs';
 import { registry } from './services.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Slice} Slice */
 
+/** @param {Feature} m */
 export const coverage = (m) => {
+  /** @type {Map<string, Set<string>>} */
   const covered = new Map();
   for (const [num, sl] of m.slices)
     for (const id of sl.basis) {
       if (!covered.has(id)) covered.set(id, new Set());
-      covered.get(id).add(num);
+      covered.get(id)?.add(num);
     }
   return covered;
 };
 
 // slices, которые делят требование: всё, кроме 001 «подготовка» — он ссылается на все FR через контракты.
-export const sharing = (m, nums) => [...nums].filter((n) => !(n === '001' && /подготов/i.test(m.slices.get(n).type || '')));
+/** @param {Feature} m @param {Iterable<string>} nums */
+export const sharing = (m, nums) => [...nums].filter((n) => !(n === '001' && /подготов/i.test(m.slices.get(n)?.type || '')));
 
 // слои порядка работ: внутри слоя slices можно делать параллельно. items — Map номер → { deps }.
+/** @param {Feature} m @param {Map<string, { deps: string[] }>} [items] */
 export function layers(m, items = m.slices) {
   const left = new Set(items.keys());
   const done = new Set();
   const out = [];
   while (left.size) {
-    const layer = [...left].filter((n) => items.get(n).deps.every((d) => done.has(d) || !items.has(d) || d === n)).sort();
+    const layer = [...left].filter((n) => /** @type {{ deps: string[] }} */ (items.get(n)).deps.every((d) => done.has(d) || !items.has(d) || d === n)).sort();
     if (!layer.length) {
       out.push([...left].sort());
       break;
@@ -42,11 +49,12 @@ export function layers(m, items = m.slices) {
   return out;
 }
 
-/** @param {Ctx} ctx */
+/** @param {Ctx} ctx @param {Feature} m */
 export function genReadme(ctx, m, quiet = false) {
   if (!m.slices.size) usage(ctx, 'В slices/ нет файлов NNN-*.md');
-  const link = (text) => (m.spec ? linkReqs(text, m.readmeFile, m.spec) : text);
-  const row = (sl) =>
+  const spec = m.spec;
+  const link = (/** @type {string} */ text) => (spec ? linkReqs(text, m.readmeFile, spec) : text);
+  const row = (/** @type {Slice} */ sl) =>
     `| [${sl.num} ${sl.title || sl.name}](${sl.name}) | ${sl.type || '—'} | ${sl.halves || '—'} | ${basisPlain(sl.basisRaw) || '—'} | ${sl.deps.join(', ') || '—'} | ${sl.why || '—'} |`;
   const table = ['| Slice | Тип | Стороны | Основание | Зависит от | Почему отдельно |', '|---|---|---|---|---|---|', ...[...m.slices.values()].map(row)].join('\n');
   const covered = coverage(m);
@@ -60,7 +68,7 @@ export function genReadme(ctx, m, quiet = false) {
     const adrs = m.featureAdrs.map((a) => `[${a.num}](../../adr/${path.basename(a.file)})`).join(', ') || 'нет';
     const reg = registry(m);
     // Заготовки: какие FR делят slices и сквозной шаг на каждый поведенческий slice — смысл допишет агент.
-    const shared = [...covered].map(([id, nums]) => [id, sharing(m, nums).sort()]).filter(([, nums]) => nums.length > 1);
+    const shared = [...covered].map(([id, nums]) => /** @type {[string, string[]]} */ ([id, sharing(m, nums).sort()])).filter(([, nums]) => nums.length > 1);
     const behaviour = [...m.slices.values()].filter((s) => /поведение/i.test(s.type || '') && [...s.basis].some((id) => id.startsWith('FR')));
     md = [
       `# ${m.spec?.title || m.name} — slices`,

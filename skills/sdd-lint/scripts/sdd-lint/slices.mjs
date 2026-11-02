@@ -1,23 +1,30 @@
 // Slices: разбор файлов NNN-*.md. Проверки SL-* — в slice-rules.mjs.
+// @ts-check
 import path from 'node:path';
 
 import { latinAc } from './ids.mjs';
 import { CHECKS_RE } from './links.mjs';
-import { scan, header, headerLine, reqIds, placeholders, uniq } from './md.mjs';
+import { scan, header, headerLine, reqIds, placeholders, uniq, matched } from './md.mjs';
 import { underBlocks } from './sources.mjs';
+
+/** @typedef {import('./model.mjs').Slice} Slice */
+/** @typedef {import('./model.mjs').Ac} Ac */
 
 // AC-ID и с кириллическими «А», «С», «В»: такой AC не пропадает из проверок, а SL-31 просит поправить букву.
 const AC_LINE = /^\s*([AА][CС]-(\d{3})-([BВF]?)(\d+))\b(.*)$/u;
 // «AC-002-?» — AC без номера: его пронумерует fix.
 const AC_PENDING = /^\s*[AА][CС]-(?:\d{3}-)?[BВF]?\?(?=\s|$)/u;
-/** @param {string} file @param {string} md */
+/** @param {string} file @param {string} md @returns {Slice} */
 export function parseSlice(file, md) {
   const sc = scan(md);
   const num = path.basename(file).slice(0, 3);
   const basisRaw = header(md, 'Основание') ?? '';
   const depsRaw = header(md, 'Зависимости') ?? '';
+  /** @type {Ac[]} */
   const acs = [];
+  /** @type {Slice['outside']} */
   const outside = [];
+  /** @type {Slice['multi']} */
   const multi = [];
   let pending = 0;
   const checks = underBlocks(sc, CHECKS_RE);
@@ -26,7 +33,7 @@ export function parseSlice(file, md) {
     if (idLines.length > 1) multi.push({ n: b.start, count: idLines.length });
     pending += b.lines.filter((l) => AC_PENDING.test(l.text)).length;
     for (const l of idLines) {
-      const [, raw, acNum, rawSide, k, rest] = l.text.match(AC_LINE);
+      const [, raw, acNum, rawSide, k, rest] = matched(l.text, AC_LINE);
       const id = latinAc(raw);
       const side = latinAc(rawSide);
       const stub = placeholders(b.lines.map((x) => x.text).join('\n')).length + placeholders(checks.get(b.idx)?.text).length > 0;
@@ -48,7 +55,7 @@ export function parseSlice(file, md) {
       });
     }
   }
-  for (const l of sc.lines) if (!l.inCode && AC_LINE.test(l.text)) outside.push({ id: latinAc(l.text.match(AC_LINE)[1]), n: l.n });
+  for (const l of sc.lines) if (!l.inCode && AC_LINE.test(l.text)) outside.push({ id: latinAc(matched(l.text, AC_LINE)[1]), n: l.n });
   const used = new Set([...checks.values()].map((x) => x.n));
   const strayChecks = sc.lines.filter((l) => !l.inCode && CHECKS_RE.test(l.text) && !used.has(l.n)).map((l) => l.n);
   return {
@@ -73,6 +80,3 @@ export function parseSlice(file, md) {
     multi,
   };
 }
-
-/** @typedef {ReturnType<typeof parseSlice>} Slice */
-/** @typedef {Slice['acs'][number]} Ac */

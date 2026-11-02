@@ -121,6 +121,10 @@ export function tables(ls) {
 /** @param {Table} t @param {string | RegExp} m */
 export const col = (t, m) => t.header.findIndex((h) => (typeof m === 'string' ? h === m : m.test(h)));
 
+// Совпадение, которое уже проверено test() или фильтром: тип без null.
+/** @param {string} s @param {RegExp} re */
+export const matched = (s, re) => /** @type {RegExpMatchArray} */ (s.match(re));
+
 export const REQ_RE = /\bN?FR-\d+\b/g;
 /** @param {Text} s */
 export const reqIds = (s) => uniq([...(s || '').matchAll(REQ_RE)].map((m) => m[0]));
