@@ -1,4 +1,5 @@
 // Старт /sdd-grill по шагам: задача → имя и папка фичи → источники → исследование сабагентом → «Старт готов».
+// @ts-check
 // Агент передаёт сюда ответы человека и делает, что сказано в выводе: вопросы и задания — данные скрипта.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,108 +7,31 @@ import path from 'node:path';
 import { askOf } from './ask.mjs';
 import { SKILLS_DIR } from './cmd-prompt.mjs';
 import { skillCode, lintCode } from './config.mjs';
-import { contextFindings, loadContext, markContext, syncContext } from './context.mjs';
+import { loadContext, markContext } from './context.mjs';
 import { loadFeature } from './feature.mjs';
 import { item } from './findings.mjs';
-import { NEW_PROJECT, REPO, caseTwin, classify, inventory, outside, parseSourcesAnswer, requestOf, slugProblem, titleOf } from './input.mjs';
+import { NEW_PROJECT, REPO, caseTwin, classify, inventory, parseSourcesAnswer, requestOf, slugProblem, titleOf } from './input.mjs';
 import { dropHeader, header, read, rel, setHeader, uniq } from './md.mjs';
 import { folderName, nameTrouble } from './name.mjs';
 import { DOCS, isDir, listFeatures } from './pick.mjs';
 import { ANSWER, questionsView, viewText, waitText } from './question.mjs';
-import { A, G, blocks, codePaths, list, screen } from './screen.mjs';
+import { A, G, blocks, screen } from './screen.mjs';
 import { bump, reset } from './runs.mjs';
+import { GIVE, NONE, SPECIAL, projectSources, sourcesOf, startState, writeSources } from './start-sources.mjs';
 
-// «нет» — источников нет, но проект не новый: о том, как устроено сейчас, спрашиваем человека.
-export const NONE = 'нет';
-const SPECIAL = [NEW_PROJECT, NONE];
-const GIVE =
-  'Пришлите пути или ссылки — можно несколько, через пробел. Надёжнее пути на этом компьютере: начните с @, Tab дополнит. ' +
-  'Внутренние сайты (вики, GitLab) агент может не открыть — тогда сохраните страницу в файл и дайте путь.';
-const MORE = 'Пришлите ещё пути или ссылки. Дали доступ к папке (/directory add <путь>) — напишите «готово», изучу заново.';
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Protocol} Protocol */
+/** @typedef {import('./question.mjs').Question} Question */
+/** @typedef {import('./start-sources.mjs').StartState} StartState */
+
 // Часть строки ⚙: человек попросит другое имя папки — куда его передать.
+/** @param {string} d */
 const rename = (d) => `другое имя папки → ${A(['start', d, '--rename', '<имя>'])}`;
 
-export function sourcesOf(p) {
-  const v = header(p?.md, 'Источники');
-  if (!v || /^<.*>$/.test(v) || /^[—–-]?$/.test(v)) return null;
-  return v.split(/\s*;\s*/).filter(Boolean);
-}
-export function taskOf(p) {
-  const q = header(p.md, 'Запрос') || '';
-  const f = q.match(/^файл\s+(.+)$/);
-  if (f) return { file: f[1].trim(), line: q };
-  const u = q.match(/^ссылка\s+(\S+)/);
-  if (u) return { url: u[1], line: q };
-  return { text: q.replace(/^«|»$/g, ''), line: q };
-}
-const projectSources = (src) => src.filter((x) => !SPECIAL.includes(x));
-// Что изучать: файл или ссылку задачи, затем источники проекта.
-export const researchList = (task, src) => [...(task.file ? [task.file] : task.url ? [task.url] : []), ...projectSources(src)];
-const writeSources = (m, list) => fs.writeFileSync(m.protocolFile, setHeader(m.protocol.md, 'Источники', list.join('; '), ['Запрос', 'Статус']));
 
-function sourcesQuestion(m) {
-  const d = rel(m.dir);
-  const inv = inventory(m.name);
-  const repo = { id: 'src:repo', label: 'Нет, хватит того, что в этой папке', description: 'сабагент изучит то, что уже здесь', action: { lint: ['start', d, '--sources', REPO] } };
-  const give = { id: 'src:give', label: 'Да, пришлю пути или ссылки', description: 'следующим сообщением', action: { wait: GIVE, then: ['start', d, '--sources', ANSWER] } };
-  const fresh = { id: 'src:new', label: 'Нет, это новый проект', description: 'изучать нечего: спрошу, как должно быть', action: { lint: ['start', d, '--sources', NEW_PROJECT] } };
-  // Есть код или несколько документов — изучить их и не мучить человека; почти пусто — попросить источники.
-  const options = inv.empty ? [give, fresh] : inv.code > 0 || inv.docs >= 2 ? [repo, give, fresh] : [give, repo, fresh];
-  options[0].recommended = true;
-  const seen = inv.empty ? 'В этой папке, кроме фичи, ничего нет.' : `В этой папке уже вижу:\n${list(inv.items.map(codePaths))}`;
-  return {
-    header: 'Источники',
-    question: 'Есть дополнительная документация или код, которые помогут понять, как устроен проект?',
-    preview: blocks(`Папка фичи: \`${d}\` (другое имя — напишите, какое).`, seen),
-    options,
-  };
-}
-// После исследования: ничего не нашлось или не всё открылось — спросить, а не молча идти дальше.
-function afterQuestion(m, ctx, src) {
-  const d = rel(m.dir);
-  const nothing = projectSources(src).length > 0 && ctx.facts === 0;
-  if (ctx.accepted || (!nothing && !ctx.unread.length)) return null;
-  // /directory add — только для папок вне проекта, которые сабагент не открыл.
-  const outs = projectSources(src).filter((x) => outside(x) && !/^https?:/.test(x) && ctx.unread.some((u) => u.text.includes(x)));
-  const lines = [`Изучил источники: фактов о проекте — ${ctx.facts}.`];
-  if (ctx.unread.length) lines.push(`Не прочитал:\n${list(ctx.unread.map((x) => x.text.replace(/^\s*[-*]\s+/, '')))}`);
-  if (outs.length) lines.push(`Папки вне проекта GigaCode читает после команды: ${outs.map((x) => `\`/directory add ${x}\``).join(', ')}`);
-  const go = { id: 'ctx:go', label: 'Продолжаем с тем, что есть', description: 'чего нет в источниках, спрошу у вас', action: { lint: ['start', d, '--accept'] } };
-  const more = { id: 'ctx:more', label: 'Дам доступ или пришлю ещё', description: 'пути, ссылки или «готово» после /directory add', action: { wait: MORE, then: ['start', d, '--sources', ANSWER] } };
-  const options = nothing ? [more, go] : [go, more];
-  options[0].recommended = true;
-  return {
-    header: 'Источники',
-    question: nothing ? 'По задаче в источниках ничего не нашёл. Есть ещё документация или код?' : 'Часть источников не открылась. Как продолжим?',
-    preview: blocks(lines),
-    options,
-  };
-}
-
-// Что сделать сейчас по фиче с протоколом «идёт». Одно место для start и choose.
-export function startState(m) {
-  const src = sourcesOf(m.protocol);
-  if (!src) return { step: 'sources', question: sourcesQuestion(m) };
-  const task = taskOf(m.protocol);
-  const list = researchList(task, src);
-  if (!list.length) return { step: 'ready', src, task };
-  const key = list.join('; ');
-  let ctx = loadContext(m);
-  // Сабагент переписал шапку — вернуть её, а не изучать всё заново.
-  if (ctx && ctx.sources == null && ctx.filled) ctx = syncContext(m, key, task.line).ctx;
-  if (!ctx || ctx.sources !== key || (!ctx.checked && !ctx.filled)) return { step: 'research', src, task, ctx };
-  if (!ctx.checked) {
-    const errs = contextFindings(ctx).filter((x) => x.level === 'err');
-    if (errs.length) return { step: 'fix', src, task, ctx, errs };
-    markContext(ctx, 'Проверено');
-    ctx = loadContext(m);
-  }
-  const question = afterQuestion(m, ctx, src);
-  return question ? { step: 'after', src, task, ctx, question } : { step: 'ready', src, task, ctx };
-}
-export const startQuestion = (m) => (m.protocol && !/готов/i.test(m.protocol.status || '') ? startState(m).question || null : null);
-
+/** @param {Feature} m @param {Question} q @param {string[]} [lead] */
 const questionText = (m, q, lead = []) => viewText(questionsView(rel(m.dir), 'Brainstorming: источники', [q], { lead: blocks(lead), extra: [rename(rel(m.dir))] }));
+/** @param {Feature} m @param {boolean} created @param {string[] | null} [again] */
 function researchText(m, created, again = null) {
   const d = rel(m.dir);
   const say = created ? `Папка фичи — \`${d}\` (другое имя — напишите, какое). Изучаю источники, это займёт несколько минут.` : 'Изучаю источники, это займёт несколько минут.';
@@ -120,9 +44,10 @@ function researchText(m, created, again = null) {
     created ? rename(d) : null,
   );
 }
+/** @param {Feature} m @param {StartState & { step: 'ready' }} st @param {boolean} created @param {string | null} warn */
 function readyText(m, st, created, warn) {
   const d = rel(m.dir);
-  const p = m.protocol;
+  const p = /** @type {Protocol} */ (m.protocol);
   const rows = p.rows.length;
   const last = p.rows[rows - 1];
   const parts = ['старт готов', `фича ${d}`];
@@ -142,6 +67,7 @@ function readyText(m, st, created, warn) {
 }
 
 // Фича с папкой: следующий шаг старта.
+/** @param {string} dir @param {{ created?: boolean }} [opts] */
 export function resume(dir, { created = false } = {}) {
   const m = loadFeature(dir);
   const d = rel(m.dir);
@@ -156,6 +82,7 @@ export function resume(dir, { created = false } = {}) {
   let st = startState(m);
   if (st.step === 'sources') return questionText(m, st.question, created ? [`Создан \`${d}/brainstorming.md\`.`] : []);
   if (st.step === 'research') return researchText(m, created);
+  /** @type {string | null} */
   let warn = null;
   if (st.step === 'fix') {
     const { runs } = bump(m.dir, 'research');
@@ -171,7 +98,8 @@ export function resume(dir, { created = false } = {}) {
   }
   reset(m.dir, 'research');
   if (st.step === 'after') return questionText(m, st.question, warn ? [warn] : []);
-  return readyText(m, st, created, warn);
+  // После fix startState даёт after или ready, after вернулся выше.
+  return readyText(m, /** @type {StartState & { step: 'ready' }} */ (st), created, warn);
 }
 
 function startedFeatures() {
@@ -180,6 +108,7 @@ function startedFeatures() {
     return md && !/готов/i.test(header(md, 'Статус') || '');
   });
 }
+/** @param {{ sources?: string[] }} [input] @param {string | null} [slug] */
 export function askTask({ sources = [] } = {}, slug = null) {
   const started = startedFeatures();
   const args = ['start', `${ANSWER}${sources.length ? ` ${sources.join(' ')}` : ''}`, ...(slug ? ['--slug', slug] : [])];
@@ -193,6 +122,10 @@ export function askTask({ sources = [] } = {}, slug = null) {
   );
 }
 
+/**
+ * @param {import('./input.mjs').Input & { kind: 'task' }} c @param {string} slug @param {string} raw @param {boolean} own
+ * @returns {{ dir: string, text?: undefined } | { text: string, dir?: undefined }}
+ */
 function createFeature(c, slug, raw, own) {
   const trouble = nameTrouble(slug, raw, own);
   if (trouble) return { text: trouble };
@@ -204,7 +137,7 @@ function createFeature(c, slug, raw, own) {
         G.stop,
       ),
     };
-  let md = read(path.join(SKILLS_DIR, 'sdd-grill', 'assets', 'brainstorming.md'));
+  let md = /** @type {string} */ (read(path.join(SKILLS_DIR, 'sdd-grill', 'assets', 'brainstorming.md')));
   md = md.replace('<Фича>', titleOf(c.task, slug)).replace(/^Запрос:.*$/m, () => `Запрос: ${requestOf(c.task)}`);
   if (c.sources.length) md = setHeader(md, 'Источники', c.sources.join('; '), ['Запрос']);
   fs.mkdirSync(dir, { recursive: true });
@@ -214,6 +147,7 @@ function createFeature(c, slug, raw, own) {
 
 // Всё, что человек написал после /sdd-grill. slug — имя папки, которое придумал агент;
 // name — ответ человека на вопрос «Как назвать папку?»: id варианта или имя словами.
+/** @param {string} raw @param {string | null} [slug] @param {string | null} [name] */
 export function startFrom(raw, slug = null, name = null) {
   const c = classify(raw);
   if (c.missing.length)
@@ -225,19 +159,21 @@ export function startFrom(raw, slug = null, name = null) {
   if (c.kind !== 'task') return askTask(c, slug || c.slug);
   const n = folderName(c, raw, slug, name);
   if (n.text) return n.text;
-  const r = createFeature(c, n.slug, raw, n.own);
+  // Вопроса нет — имя есть (folderName).
+  const r = createFeature(c, /** @type {string} */ (n.slug), raw, /** @type {boolean} */ (n.own));
   if (r.text) return r.text;
   const note = n.from ? `Из ответа «${n.from}» взято имя папки \`${n.slug}\`.` : null;
-  return blocks(note, resume(r.dir, { created: true }));
+  return blocks(note, resume(/** @type {string} */ (r.dir), { created: true }));
 }
 
 // Ответ человека про источники: пути и ссылки дописываются, «нет» и «новый проект» — особые значения.
+/** @param {string} dir @param {string} answer */
 export function addSources(dir, answer) {
   const m = loadFeature(dir);
   const d = rel(m.dir);
   if (!m.protocol) return askTask({}, m.name);
   const a = parseSourcesAnswer(answer);
-  const ask = (text) => waitText(text, ['start', d, '--sources', ANSWER]);
+  const ask = (/** @type {string} */ text) => waitText(text, ['start', d, '--sources', ANSWER]);
   if (a.missing.length) return ask(`Не нашёл ${a.missing.map((x) => `\`${x}\``).join(', ')}. Проверьте путь: начните с \`@\` — Tab дополнит. Или пришлите ссылку.`);
   if (a.unclear) return ask(`Из ответа не понял, есть ли источники. ${GIVE} Нет ничего — напишите «нет».`);
   const cur = sourcesOf(m.protocol) || [];
@@ -262,12 +198,14 @@ export function addSources(dir, answer) {
   }
   return resume(dir);
 }
+/** @param {string} dir */
 export function acceptContext(dir) {
   const m = loadFeature(dir);
   const ctx = loadContext(m);
   if (ctx) markContext(ctx, 'Принято');
   return resume(dir);
 }
+/** @param {string} dir @param {string} slug */
 export function renameFeature(dir, slug) {
   const m = loadFeature(dir);
   const d = rel(m.dir);
