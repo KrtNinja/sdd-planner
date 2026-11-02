@@ -1,4 +1,5 @@
 // Текущий этап фичи и блок «Следующий шаг».
+// @ts-check
 import fs from 'node:fs';
 
 import { pendingAdrs } from './adr.mjs';
@@ -9,9 +10,15 @@ import { openBlockers, reviewKey } from './review.mjs';
 import { legacyPaths, workFiles } from './work.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Review} Review */
+/** @typedef {import('./model.mjs').ReviewRow} ReviewRow */
+/** Шаги для чтения и одна рекомендуемая команда для строки Tip. @typedef {{ steps: string[], tip: string | null }} Steps */
+/** Этап фичи: где она (now), что дальше (next), команда для Tip. @typedef {{ now: string, next: string[], tip: string | null }} Stage */
 
 // Временные артефакты этапа планирования: нужны, пока требования пишутся, в merge не идут. Убирает их /sdd-close.
 // Протокол лежит в папке фичи, остальное — в _work/; старые review/ и slices/plan.md close тоже убирает.
+/** @param {Feature} m @returns {string[]} */
 export function tempArtifacts(m) {
   const old = legacyPaths(m);
   return [
@@ -19,13 +26,15 @@ export function tempArtifacts(m) {
     workFiles(m).length ? `${rel(m.workDir)}/` : null,
     fs.existsSync(old.review) ? `${rel(old.review)}/` : null,
     fs.existsSync(old.plan) ? rel(old.plan) : null,
-  ].filter(Boolean);
+  ].filter((x) => x !== null);
 }
 
 // Рекомендуемая команда при ревью артефакта — та же очерёдность, что в вопросе этапа (ask):
 // ревью не было — ревью; открытые блокеры — их разбор; ревью разобрано — одобрить.
+/** @param {Feature} m @param {Review | undefined} rv @param {ReviewRow[]} open @param {string} review @param {string} approve */
 const reviewTip = (m, rv, open, review, approve) => (open.length ? lintCmd('ask', rel(m.dir)) : rv ? approve : review);
 
+/** @param {Feature} m @param {'spec' | 'slices'} what @returns {Steps} */
 function handoff(m, what) {
   const dir = rel(m.dir);
   const target = what === 'spec' ? rel(m.specFile) : `${dir}/slices/`;
@@ -38,16 +47,20 @@ function handoff(m, what) {
   const steps = [
     `по желанию убрать AI стиль: ${human}, затем ${guard}`,
     rv ? `ревью уже было: ${code(rel(rv.file))}; повторить в чистом контексте — ${code(review)}` : `ревью в чистом контексте: ${code(review)}`,
-    ...(open.length ? [blockersStep(m, rv, open)] : []),
+    ...(open.length ? [blockersStep(m, /** @type {Review} */ (rv), open)] : []),
     `одобрить: ${code(approve)}`,
   ];
   return { steps, tip: reviewTip(m, rv, open, review, approve) };
 }
+// open — открытые блокеры этого ревью: раз они есть, есть и файл ревью.
+/** @param {Feature} m @param {Review} rv @param {ReviewRow[]} open */
 export function blockersStep(m, rv, open) {
   const ids = open.map((r) => r.id);
   return `закрыть блокеры ревью ${ids.join(', ')} (${code(rel(rv.file))}): по одному — вопрос этапа (${code(lintCmd('ask', rel(m.dir)))}); решение — ${code(skill('sdd-decide', m.name, ids[0], '"<решение>"'))}, правка — исправьте файл и впишите «исправлено» в колонку «Решение»`;
 }
+/** @param {Feature} m @returns {Steps} */
 function adrSteps(m) {
+  /** @type {string | null} */
   let tip = null;
   const steps = pendingAdrs(m).flatMap((a) => {
     const rv = m.reviews.get(reviewKey('adr', a.num));
@@ -57,20 +70,24 @@ function adrSteps(m) {
     tip ??= reviewTip(m, rv, open, review, approve);
     return [
       rv ? `ADR ${a.num} «${a.status || '—'}» — ревью уже было: ${code(rel(rv.file))}` : `ADR ${a.num} «${a.status || '—'}» — ревью: ${code(review)}`,
-      ...(open.length ? [blockersStep(m, rv, open)] : []),
+      ...(open.length ? [blockersStep(m, /** @type {Review} */ (rv), open)] : []),
       `ADR ${a.num} — принять: ${code(approve)}`,
     ];
   });
   return { steps, tip };
 }
 // «Р1 — ADR: <тема>» в slices — ADR ещё не заведён: предложить его написать.
+/** @param {Feature} m @returns {Steps} */
 function newAdrSteps(m) {
   const need = neededAdrs(m).map((x) => ({ x, cmd: skill('sdd-adr', m.name, `"${x.topic}"`) }));
   return { steps: need.map(({ x, cmd }) => `написать ADR «${x.topic}» (slice ${x.num}): ${code(cmd)}`), tip: need[0]?.cmd ?? null };
 }
 // next — все шаги для чтения; tip — одна рекомендуемая команда для строки Tip (подсказка в строке ввода).
+/** @param {string} cmd @returns {Steps} */
 const one = (cmd, label = '') => ({ steps: [label ? `${label}: ${code(cmd)}` : code(cmd)], tip: cmd });
+/** @param {Feature} m @returns {Stage} */
 export function stageOf(m) {
+  /** @param {string} now @param {Steps} [main] @returns {Stage} */
   const st = (now, main = { steps: [], tip: null }) => {
     const parts = [main, newAdrSteps(m), adrSteps(m)];
     return { now, next: parts.flatMap((p) => p.steps), tip: parts.find((p) => p.tip)?.tip ?? null };
@@ -106,6 +123,7 @@ export function stageOf(m) {
   if (m.protocol) return st('Brainstorming идёт', one(skill('sdd-grill', m.name), 'продолжить'));
   return st('Brainstorming не начат', one(skill('sdd-grill', m.name)));
 }
+/** @param {Pick<Stage, 'now' | 'next'>} st */
 export function stageText({ now, next }) {
   if (!next.length) return now;
   if (next.length === 1) return `${now}. Следующий шаг: ${next[0]}`;
@@ -115,7 +133,7 @@ export function stageText({ now, next }) {
 export { tipOk, tipLine } from './config.mjs';
 // Последней строкой вывода: агент переносит её в конец ответа дословно (правило в SKILL.md sdd-lint).
 // При ошибках lint check и fix строку не печатают: сначала исправить, одобрять или ревьюить рано.
-/** @param {Ctx} ctx */
+/** @param {Ctx} ctx @param {{ tip: string | null }} st */
 export function printTip(ctx, st) {
   const t = tipLine(st.tip);
   if (t) ctx.io.log(`\n${t}`);

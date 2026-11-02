@@ -1,4 +1,5 @@
 // Ведение по этапам: какую фичу взять, если её не назвали; что сказать человеку в начале этапа;
+// @ts-check
 // вопрос «что дальше» вместо тупика у закрытых ворот. Человек может не знать процесса — подсказывает скрипт.
 import path from 'node:path';
 
@@ -13,9 +14,15 @@ import { pickText, questionsView, viewText } from './question.mjs';
 import { G, blocks, list, screen } from './screen.mjs';
 import { stageOf, tempArtifacts } from './stage.mjs';
 
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** Что ждёт ревью: режим ревью, номер ADR и подпись для вопроса. @typedef {{ mode: 'spec' | 'slices' | 'adr', num?: string, label: string }} ReviewTarget */
+
+/** @param {Feature} m */
 const ready = (m) => !!m.protocol && /готов/i.test(m.protocol.status || '');
 // Что ждёт ревью: неодобренные spec и slices, непринятые ADR фичи — по порядку этапов.
+/** @param {Feature} m @returns {ReviewTarget[]} */
 export function reviewTargets(m) {
+  /** @type {ReviewTarget[]} */
   const out = [];
   if (m.spec && !approved(m.spec.status)) out.push({ mode: 'spec', label: `Dev Spec «${m.spec.status || '—'}»` });
   if (m.slices.size && !approved(m.slicesStatus)) out.push({ mode: 'slices', label: `slices «${m.slicesStatus || '—'}»` });
@@ -23,6 +30,7 @@ export function reviewTargets(m) {
   return out;
 }
 // Фича подходит этапу: он у неё сейчас или ещё возможен.
+/** @param {Feature} m @param {string} stage */
 function eligible(m, stage) {
   if (stage === 'spec') return ready(m) && !(m.spec && approved(m.spec.status));
   if (stage === 'slices') return !!m.spec && approved(m.spec.status) && !(m.slices.size && approved(m.slicesStatus));
@@ -32,9 +40,11 @@ function eligible(m, stage) {
   if (stage === 'close') return tempArtifacts(m).length > 0;
   return false;
 }
+/** @type {Record<string, string>} */
 const WHAT = { spec: 'писать Dev Spec', slices: 'резать slices', adr: 'писать ADR', decide: 'проводить решение', review: 'делать ревью', close: 'закрывать перед merge' };
 
 // Короткое имя текущего этапа — для заданий сабагенту.
+/** @param {Feature} m */
 export function stageName(m) {
   if (!m.spec) return ready(m) ? 'Dev Spec' : 'brainstorming';
   if (!approved(m.spec.status)) return 'Dev Spec';
@@ -46,6 +56,10 @@ export function stageName(m) {
 
 // Фичу не назвали: одна подходит — берём её; несколько — вопрос; ни одной — этапы фич и стоп.
 // argsFor(slug) — вызов, который повторить с выбранной фичей.
+/**
+ * @param {string} stage @param {(slug: string) => string[]} argsFor
+ * @returns {{ dir: string, note: string, text?: undefined } | { text: string, dir?: undefined, note?: undefined }}
+ */
 export function chooseFeature(stage, argsFor) {
   const all = listFeatures().map((f) => loadFeature(path.join(DOCS, f)));
   const ok = all.filter((m) => eligible(m, stage));
@@ -72,6 +86,7 @@ export function chooseFeature(stage, argsFor) {
 }
 
 // Строка человеку в начале этапа: что сейчас будет и где он решает.
+/** @type {Record<string, (dir: string, m: Feature) => string>} */
 const HELLO = {
   spec: (d) => `Пишу Dev Spec по ${d}: только решения из протокола, ничего от себя. В конце — ревью и одобрение, решаете вы.`,
   slices: (d, m) =>
@@ -81,11 +96,14 @@ const HELLO = {
   adr: (d) => `ADR по ${d}: сначала проверю, нужен ли он; нужен — дам 2–3 варианта, выбираете вы.`,
   decide: (d) => `Провожу решение по ${d} сверху вниз: протокол → FR → AC; в конце покажу, что изменилось.`,
 };
+/** @param {Feature} m @param {string} stage */
 export const helloLine = (m, stage) => (HELLO[stage] ? HELLO[stage](rel(m.dir), m) : null);
 
 // Ворота закрыты: не тупик, а вопрос этапа — что сделать сейчас (продолжить прошлый этап, одобрить, ревью).
 // Ворота закрыты, а вопроса этапа нет (build читает зона реализации): человеку — что сделать, агенту — стоп.
+/** @param {string} stage @param {[string, string]} closed что закрыло ворота и что сделать */
 export const closedScreen = (stage, closed) => screen(`Ворота ${stage} закрыты — ${closed[0]}. ${closed[1]}`, G.stop);
+/** @param {Feature} m @param {string} stage @param {[string, string]} closed */
 export function closedText(m, stage, closed) {
   const { stage: now, questions } = askOf(m);
   return viewText(questionsView(rel(m.dir), now, questions, { lead: `Ворота ${stage} закрыты — ${closed[0]}. ${closed[1]}` }));
