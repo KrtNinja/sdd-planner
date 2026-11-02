@@ -1,5 +1,4 @@
 // Команда diff: проверки DF-* по git.
-import { LEGACY, flags, pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { skillCode } from './config.mjs';
 import { loadFeature } from './feature.mjs';
@@ -9,15 +8,16 @@ import { rel, approved } from './md.mjs';
 import { needDir } from './pick.mjs';
 import { hasProtocolTraces } from './sources.mjs';
 
-export function cmdDiff() {
-  const dir = needDir(LEGACY, pos[0]);
+export function cmdDiff(ctx) {
+  const { flags, pos } = ctx.args;
+  const dir = needDir(ctx, pos[0]);
   const g = gitInfo(dir);
-  if (!g) usage(LEGACY, 'diff работает только в git-репозитории');
+  if (!g) usage(ctx, 'diff работает только в git-репозитории');
   const ref = flags.base || 'HEAD';
   diffChecks(dir, g, ref);
-  const c = report(LEGACY, { base: ref });
-  if (!flags.json) console.log(`\nСверка с ${ref}. Ошибок: ${c.err}, предупреждений: ${c.warn}`);
-  process.exit(c.err ? 1 : 0);
+  const c = report(ctx, { base: ref });
+  if (!flags.json) ctx.io.log(`\nСверка с ${ref}. Ошибок: ${c.err}, предупреждений: ${c.warn}`);
+  ctx.io.exit(c.err ? 1 : 0);
 }
 // Проверки DF-*: рабочая копия против ref. Находки — в findings.
 export function diffChecks(dir, g, ref) {
