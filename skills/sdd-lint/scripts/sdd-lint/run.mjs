@@ -41,10 +41,9 @@ function dispatch(ctx) {
   COMMANDS[cmd](ctx);
 }
 
-// argv — аргументы после имени скрипта; write(fd, text) — куда печатать сразу (без него вывод копится в chunks);
-// script — путь к точке входа (для completion).
-export function run(argv, { write, script } = {}) {
-  const ctx = { args: parseArgs(argv), io: createIo(write), script };
+// argv — аргументы после имени скрипта; write(fd, text) — куда печатать сразу (без него вывод копится в chunks).
+export function run(argv, { write } = {}) {
+  const ctx = { args: parseArgs(argv), io: createIo(write) };
   // Находки пока копятся в общем массиве модуля (уйдёт в шаге 5): каждый вызов начинает с чистого.
   findings.length = 0;
   try {

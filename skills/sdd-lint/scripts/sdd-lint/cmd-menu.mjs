@@ -5,7 +5,7 @@ import path from 'node:path';
 import { CMD_INFO, CHOICES, SLOTS, FLAGS, COMMANDS } from './args.mjs';
 import { LEGACY, pos } from './legacy.mjs';
 import { askOf } from './ask.mjs';
-import { promptSkills } from './cmd-prompt.mjs';
+import { SELF, promptSkills } from './cmd-prompt.mjs';
 import { code, lintCmd, skillCode, lintCode } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { git } from './git.mjs';
@@ -143,7 +143,7 @@ export function complete(words) {
 export function cmdCompletion() {
   const shell = pos[0];
   if (!['bash', 'zsh'].includes(shell)) pickChoice(LEGACY, 'completion');
-  const self = fs.realpathSync(process.argv[1]).replace(/'/g, `'\\''`);
+  const self = SELF.replace(/'/g, `'\\''`);
   const run = `node '${self}' __complete`;
   if (shell === 'bash') {
     console.log(`# sdd-lint: Tab-дополнение для bash. В ~/.bashrc: source <(sdd-lint completion bash)

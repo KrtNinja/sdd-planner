@@ -11,4 +11,4 @@ import { run } from './sdd-lint/run.mjs';
 
 // Печать сразу в поток — в том же порядке, что пишет команда; код выхода — после того, как всё напечатано.
 const write = (fd, text) => (fd === 2 ? process.stderr : process.stdout).write(text);
-process.exitCode = run(process.argv.slice(2), { write, script: process.argv[1] }).code;
+process.exitCode = run(process.argv.slice(2), { write }).code;

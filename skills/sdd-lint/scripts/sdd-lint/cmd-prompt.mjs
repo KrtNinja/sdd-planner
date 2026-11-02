@@ -1,8 +1,8 @@
 // Команда prompt: скилл sdd-* и его файлы одним текстом.
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { LEGACY, flags, pos } from './legacy.mjs';
 import { lintCmd } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { read, uniq } from './md.mjs';
@@ -11,7 +11,8 @@ import { DOCS, isDir, pickFeature, needDir } from './pick.mjs';
 // Скилл одним текстом: SKILL.md без шапки и файлы, на которые он ссылается.
 // Агент получает его через MCP и не читает файлы расширения вне проекта; disable-model-invocation
 // не снимается — скилл попадает к агенту только через вариант, который выбрал человек.
-export const SELF = fs.realpathSync(process.argv[1]);
+// Точка входа lint — по месту этого модуля, а не по process.argv: тот же файл, что запущен (и через симлинк).
+export const SELF = fileURLToPath(new URL('../sdd-lint.mjs', import.meta.url));
 export const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
 export const promptSkills = () => (isDir(SKILLS_DIR) ? fs.readdirSync(SKILLS_DIR).filter((x) => /^sdd-[a-z]+$/.test(x) && x !== 'sdd-lint' && fs.existsSync(path.join(SKILLS_DIR, x, 'SKILL.md'))) : []);
 // Аргументы с пробелами — в кавычках: у /sdd-decide вопрос и решение не должны слиться в одну строку.
@@ -33,7 +34,8 @@ export function humanizeTask(target) {
     'Последним сообщением — итог guard.',
   ].join('\n');
 }
-export function skillPrompt(name, args) {
+export function skillPrompt(ctx, name, args) {
+  const { flags } = ctx.args;
   const dir = path.join(SKILLS_DIR, name);
   const body = read(path.join(dir, 'SKILL.md')).replace(/^---\n[\s\S]*?\n---\n/, '').trim();
   let links = uniq([...body.matchAll(/\]\(((?:references|assets)\/[^)\s]+\.md)\)/g)].map((x) => x[1]));
@@ -68,38 +70,39 @@ export function skillPrompt(name, args) {
     .filter((x) => x !== null)
     .join('\n');
 }
-export function cmdPrompt() {
+export function cmdPrompt(ctx) {
+  const { pos } = ctx.args;
   const known = promptSkills();
   const name = pos[0];
   if (name === 'humanize' && pos[1]) {
-    console.log(humanizeTask(pos[1]));
-    process.exit(0);
+    ctx.io.log(humanizeTask(pos[1]));
+    ctx.io.exit(0);
   }
   if (!known.includes(name)) {
-    console.error(`${name ? `Нет скилла «${name}»` : 'Укажи скилл'}. Скиллы: ${known.join(', ')}`);
-    process.exit(2);
+    ctx.io.error(`${name ? `Нет скилла «${name}»` : 'Укажи скилл'}. Скиллы: ${known.join(', ')}`);
+    ctx.io.exit(2);
   }
   const args = pos.slice(1);
   if (args.length) {
-    const m = loadFeature(needDir(LEGACY, args[0], 1));
+    const m = loadFeature(needDir(ctx, args[0], 1));
     args[0] = m.name;
     if (name === 'sdd-review') {
       if (!['spec', 'slices', 'adr'].includes(args[1])) {
-        console.error(`Режим ревью: ${['spec', 'slices', 'adr'].map((x) => lintCmd('prompt', name, m.name, x)).join(', ')}`);
-        process.exit(2);
+        ctx.io.error(`Режим ревью: ${['spec', 'slices', 'adr'].map((x) => lintCmd('prompt', name, m.name, x)).join(', ')}`);
+        ctx.io.exit(2);
       }
       if (args[1] === 'adr') {
         const nums = m.featureAdrs.map((a) => a.num);
         const num = args[2] ? args[2].padStart(4, '0') : nums.length === 1 ? nums[0] : null;
         if (!num || !nums.includes(num)) {
           const list = nums.length ? nums.map((n) => `  ${lintCmd('prompt', name, m.name, 'adr', n)}`).join('\n') : '  у фичи нет ADR';
-          console.error(`${args[2] ? `ADR ${args[2]} у фичи нет` : 'Укажи номер ADR'}:\n${list}`);
-          process.exit(2);
+          ctx.io.error(`${args[2] ? `ADR ${args[2]} у фичи нет` : 'Укажи номер ADR'}:\n${list}`);
+          ctx.io.exit(2);
         }
         args[2] = num;
       }
     }
-  } else if (name !== 'sdd-grill') pickFeature(LEGACY, 'Укажи фичу', 1);
-  console.log(skillPrompt(name, args));
-  process.exit(0);
+  } else if (name !== 'sdd-grill') pickFeature(ctx, 'Укажи фичу', 1);
+  ctx.io.log(skillPrompt(ctx, name, args));
+  ctx.io.exit(0);
 }

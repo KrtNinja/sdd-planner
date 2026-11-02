@@ -56,7 +56,7 @@ function run(m, a, id, asked = null) {
     // Без сабагентов: here — тот же скилл здесь, fallback — что сказать человеку (choose --fallback).
     const none = a.here ? `без сабагентов — ${G.call(a.here)}` : `без сабагентов — ${G.call(['choose', d, id, '--fallback'])}`;
     console.log(screen(a.say, G.sub(a.subagent), a.quiet ? G.quiet : G.report, G.then(next), none));
-  } else if (a.here) console.log(screen(skillPrompt(a.here[1], a.here.slice(2)), G.skill));
+  } else if (a.here) console.log(screen(skillPrompt(LEGACY, a.here[1], a.here.slice(2)), G.skill));
   else if (a.show) console.log(screen(a.show, G.stop));
   else if (a.wait) console.log(waitText(a.wait, a.then));
   else console.log(screen('Хорошо, ничего не делаю.', G.stop));

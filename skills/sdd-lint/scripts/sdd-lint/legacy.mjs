@@ -6,6 +6,5 @@ import { createIo } from './io.mjs';
 export const LEGACY = {
   args: parseArgs(process.argv.slice(2)),
   io: createIo((fd, text) => (fd === 2 ? process.stderr : process.stdout).write(text)),
-  script: process.argv[1],
 };
 export const { argv, flags, pos, cmd } = LEGACY.args;
