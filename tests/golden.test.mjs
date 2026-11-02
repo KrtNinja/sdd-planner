@@ -24,9 +24,9 @@ const UPDATE = process.env.UPDATE_GOLDEN === '1';
 const ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: '/sdd-lint', SDD_VIEW: '' };
 const PARALLEL = Math.max(2, Math.min(8, os.availableParallelism?.() ?? 4));
 
-// Временная папка, даты и отпечаток одобрения меняются от прогона к прогону — смысл вывода нет.
+// Путь к репозиторию, временная папка, даты и отпечаток одобрения меняются от прогона к прогону — смысл вывода нет.
 function normalize(out, dirs) {
-  let s = out;
+  let s = out.split(root).join('<REPO>');
   for (const d of dirs) s = s.split(d).join('<TMP>');
   return s
     .replace(/\d{2}\.\d{2}\.\d{4}( · [0-9a-f]{6})?/g, (_, fp) => `<ДАТА>${fp ? ' · <ОТПЕЧАТОК>' : ''}`)

@@ -1348,7 +1348,7 @@ Tip: Введите /sdd-close comments чтобы продолжить
 # Скилл sdd-adr: comments
 
 Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.
-Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `/home/claude/sdd-planner/skills/sdd-lint/scripts/sdd-lint.mjs`.
+Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `<REPO>/skills/sdd-lint/scripts/sdd-lint.mjs`.
 Файлы, на которые ссылается скилл, приложены в конце — их не открывай.
 
 ---
@@ -1462,7 +1462,7 @@ ADR фиксирует решение, которое иначе агент пр
 # Скилл sdd-close: comments
 
 Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.
-Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `/home/claude/sdd-planner/skills/sdd-lint/scripts/sdd-lint.mjs`.
+Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `<REPO>/skills/sdd-lint/scripts/sdd-lint.mjs`.
 
 ---
 
@@ -1509,7 +1509,7 @@ Lint — инструмент MCP `sdd_lint`: `sdd_lint ["help","gen"]` — эт
 # Скилл sdd-decide: comments
 
 Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.
-Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `/home/claude/sdd-planner/skills/sdd-lint/scripts/sdd-lint.mjs`.
+Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `<REPO>/skills/sdd-lint/scripts/sdd-lint.mjs`.
 
 ---
 
@@ -1569,7 +1569,7 @@ Lint — инструмент MCP `sdd_lint`: `sdd_lint ["help","gen"]` — эт
 # Скилл sdd-grill:
 
 Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.
-Аргументы скилла: ``. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `/home/claude/sdd-planner/skills/sdd-lint/scripts/sdd-lint.mjs`.
+Аргументы скилла: ``. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `<REPO>/skills/sdd-lint/scripts/sdd-lint.mjs`.
 Файлы, на которые ссылается скилл, приложены в конце — их не открывай.
 
 ---
@@ -1679,7 +1679,7 @@ Lint — инструмент MCP `sdd_lint`: `sdd_lint ["help","gen"]` — эт
 # Скилл sdd-grill: comments
 
 Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.
-Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `/home/claude/sdd-planner/skills/sdd-lint/scripts/sdd-lint.mjs`.
+Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `<REPO>/skills/sdd-lint/scripts/sdd-lint.mjs`.
 Файлы, на которые ссылается скилл, приложены в конце — их не открывай.
 
 ---
@@ -1817,7 +1817,7 @@ Lint — инструмент MCP `sdd_lint`: `sdd_lint ["help","gen"]` — эт
 # Скилл sdd-slices: comments
 
 Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.
-Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `/home/claude/sdd-planner/skills/sdd-lint/scripts/sdd-lint.mjs`.
+Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `<REPO>/skills/sdd-lint/scripts/sdd-lint.mjs`.
 Файлы, на которые ссылается скилл, приложены в конце — их не открывай.
 
 ---
@@ -1974,7 +1974,7 @@ Slice — единица приёмки: его вливают и проверя
 # Скилл sdd-spec: comments
 
 Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.
-Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `/home/claude/sdd-planner/skills/sdd-lint/scripts/sdd-lint.mjs`.
+Аргументы скилла: `comments`. Lint — инструмент MCP `sdd_lint`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `<REPO>/skills/sdd-lint/scripts/sdd-lint.mjs`.
 Файлы, на которые ссылается скилл, приложены в конце — их не открывай.
 
 ---
@@ -2507,7 +2507,7 @@ completion — выбери вариант:
 # sdd-lint: Tab-дополнение для bash. В ~/.bashrc: source <(sdd-lint completion bash)
 _sdd_lint() {
   local IFS=$'\n' out
-  out=$(node '/home/claude/sdd-planner/skills/sdd-lint/scripts/sdd-lint.mjs' __complete "${COMP_WORDS[@]:1:COMP_CWORD}" 2>/dev/null) || return 0
+  out=$(node '<REPO>/skills/sdd-lint/scripts/sdd-lint.mjs' __complete "${COMP_WORDS[@]:1:COMP_CWORD}" 2>/dev/null) || return 0
   COMPREPLY=($(printf '%s\n' "$out" | cut -f1))
   if [[ ${#COMPREPLY[@]} -eq 1 && ${COMPREPLY[0]} == */ ]]; then compopt -o nospace; fi
 }
@@ -2523,7 +2523,7 @@ complete -F _sdd_lint sdd-lint sdd-lint.mjs
 _sdd_lint() {
   local -a lines vals disp dirs
   local line v
-  lines=("${(@f)$(node '/home/claude/sdd-planner/skills/sdd-lint/scripts/sdd-lint.mjs' __complete "${(@)words[2,CURRENT]}" 2>/dev/null)}")
+  lines=("${(@f)$(node '<REPO>/skills/sdd-lint/scripts/sdd-lint.mjs' __complete "${(@)words[2,CURRENT]}" 2>/dev/null)}")
   for line in "${lines[@]}"; do
     [[ -z $line ]] && continue
     v=${line%%$'\t'*}
