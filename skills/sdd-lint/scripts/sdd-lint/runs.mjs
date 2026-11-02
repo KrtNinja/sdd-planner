@@ -7,8 +7,9 @@ import crypto from 'node:crypto';
 export const MAX_RUNS = 3;
 // Пауза дольше часа — новая попытка: вчерашние прогоны не считаются.
 const FRESH_MS = 60 * 60 * 1000;
-const stateDir = path.join(os.tmpdir(), 'sdd-lint-state');
-const stateFile = (dir, kind) => path.join(stateDir, `${crypto.createHash('sha1').update(`${fs.realpathSync(dir)}\0${kind}`).digest('hex')}.json`);
+// Папка — от os.tmpdir() на каждый вызов: TMPDIR может меняться между вызовами run() в одном процессе.
+const stateDir = () => path.join(os.tmpdir(), 'sdd-lint-state');
+const stateFile = (dir, kind) => path.join(stateDir(), `${crypto.createHash('sha1').update(`${fs.realpathSync(dir)}\0${kind}`).digest('hex')}.json`);
 
 function load(dir, kind) {
   try {
@@ -22,7 +23,7 @@ function load(dir, kind) {
 export function bump(dir, kind) {
   const prev = load(dir, kind);
   const runs = (prev?.runs || 0) + 1;
-  fs.mkdirSync(stateDir, { recursive: true });
+  fs.mkdirSync(stateDir(), { recursive: true });
   fs.writeFileSync(stateFile(dir, kind), JSON.stringify({ ...prev, runs, time: Date.now() }));
   return { runs, prev };
 }
