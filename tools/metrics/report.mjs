@@ -54,7 +54,23 @@ function tsc() {
   const r = spawnSync(bin, args, { cwd: REPO, encoding: 'utf8', maxBuffer: 1 << 26 });
   const byCode = {};
   for (const m of r.stdout.matchAll(/error (TS\d+)/g)) byCode[m[1]] = (byCode[m[1]] ?? 0) + 1;
-  return { total: Object.values(byCode).reduce((a, b) => a + b, 0), byCode };
+  const modules = tsChecked();
+  const checked = new Set(modules);
+  const errors = r.stdout.split('\n').filter((l) => checked.has(l.match(/^(.+?)\(\d+,\d+\): error TS/)?.[1]));
+  return { total: Object.values(byCode).reduce((a, b) => a + b, 0), byCode, checked: { modules, errors } };
+}
+
+// Модули с «// @ts-check» в шапке — до первой строки кода (первая строка модуля — его назначение).
+// Их типы описаны (модель — sdd-lint/model.mjs), поэтому ошибок tsc в них быть не должно.
+function tsChecked() {
+  const marked = (file) => {
+    for (const l of source(file).split('\n')) {
+      if (/^\s*\/\/\s*@ts-check\b/.test(l)) return true;
+      if (l.trim() && !/^\s*\/\//.test(l)) return false;
+    }
+    return false;
+  };
+  return listMjs(CODE).filter(marked).map(rel);
 }
 
 // process.exit и console.* вне точки входа: из-за них логику нельзя вызвать функцией и проверить в процессе.
@@ -84,6 +100,8 @@ function summary(r) {
     offenders: Object.fromEntries(offenders.map((e) => [e.key, { complexity: e.complexity, crap: e.crap }])),
     eslint: r.eslint,
     tscErrors: r.tsc.total,
+    tsCheckModules: r.tsc.checked.modules.length,
+    tsCheckErrors: r.tsc.checked.errors.length,
     clonesCodePercent: r.clonesCode.percent,
     clonesTestsPercent: r.clonesTests.percent,
     cycles: r.deps.cycles.length,
@@ -109,6 +127,10 @@ function compare(now, base) {
     else if (was[metric] !== null && e[metric] > was[metric]) bad.push(`${key}: ${metric} ${was[metric]} → ${e[metric]}`);
   }
   for (const rule of new Set([...Object.keys(now.eslint), ...Object.keys(base.eslint)])) notWorse(`eslint ${rule}`, now.eslint[rule] ?? 0, base.eslint[rule] ?? 0);
+  // В модулях с @ts-check ошибок tsc нет совсем, а сами модули не теряют пометку.
+  if (now.tsCheckErrors > 0) bad.push(`ошибок tsc в модулях с @ts-check: ${now.tsCheckErrors}, должно быть 0`);
+  if (now.tsCheckModules < (base.tsCheckModules ?? 0)) bad.push(`модулей с @ts-check стало меньше: ${base.tsCheckModules} → ${now.tsCheckModules}`);
+  else if (now.tsCheckModules > (base.tsCheckModules ?? 0)) better.push(`модулей с @ts-check: ${base.tsCheckModules ?? 0} → ${now.tsCheckModules}`);
   for (const k of ['tscErrors', 'clonesCodePercent', 'clonesTestsPercent', 'cycles', 'sideEffects', 'unusedExports']) notWorse(k, now[k], base[k]);
   return { bad, better };
 }
@@ -118,7 +140,7 @@ function print(s) {
   console.log(`Тесты: ${t.pass}/${t.total}, упало ${t.fail}, ${t.seconds} с`);
   console.log(`Функций: ${s.functions}; CRAP ≥ 10: ${s.crapAtLeast10}, CRAP > 30: ${s.crapOver30}; сложность ≥ 10: ${s.complexityAtLeast10}`);
   console.log(`ESLint: ${Object.entries(s.eslint).map(([k, v]) => `${k} ${v}`).join(', ')}`);
-  console.log(`tsc --checkJs: ${s.tscErrors} ошибок; повторы: код ${s.clonesCodePercent}%, тесты ${s.clonesTestsPercent}%`);
+  console.log(`tsc --checkJs: ${s.tscErrors} ошибок; модулей с @ts-check: ${s.tsCheckModules}, ошибок в них: ${s.tsCheckErrors}; повторы: код ${s.clonesCodePercent}%, тесты ${s.clonesTestsPercent}%`);
   console.log(`Циклы импорта: ${s.cycles}; process.exit/argv/console вне точки входа: ${s.sideEffects}; экспортов без потребителей: ${s.unusedExports}`);
 }
 
@@ -148,6 +170,7 @@ async function main() {
   if (!opt.coverage) { s.tests = base.tests; for (const e of Object.values(base.offenders)) e.crap = null; }
   const { bad, better } = compare(s, base);
   if (better.length) console.log(`\nЛучше базовой линии (можно обновить: npm run baseline):\n${better.map((x) => `- ${x}`).join('\n')}`);
+  if (r.tsc.checked.errors.length) console.log(`\nОшибки tsc в модулях с @ts-check:\n${r.tsc.checked.errors.join('\n')}`);
   if (bad.length) {
     console.log(`\nГЕЙТ НЕ ПРОЙДЕН — хуже базовой линии:\n${bad.map((x) => `- ${x}`).join('\n')}`);
     process.exitCode = 1;
