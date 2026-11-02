@@ -3,7 +3,7 @@
   "total": 260,
   "pass": 260,
   "fail": 0,
-  "seconds": 22
+  "seconds": 18
  },
  "functions": 389,
  "crapAtLeast10": 72,
@@ -311,8 +311,8 @@
   "no-shadow": 3
  },
  "tscErrors": 1010,
- "clonesCodePercent": 3.81,
- "clonesTestsPercent": 6.43,
+ "clonesCodePercent": 3.45,
+ "clonesTestsPercent": 6.54,
  "cycles": 0,
  "sideEffects": 0,
  "unusedExports": 30
