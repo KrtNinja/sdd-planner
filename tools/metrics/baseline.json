@@ -5,15 +5,11 @@
   "fail": 0,
   "seconds": 19
  },
- "functions": 394,
- "crapAtLeast10": 72,
- "crapOver30": 10,
- "complexityAtLeast10": 69,
+ "functions": 412,
+ "crapAtLeast10": 71,
+ "crapOver30": 9,
+ "complexityAtLeast10": 68,
  "offenders": {
-  "skills/sdd-lint/scripts/sdd-lint/slices.mjs#checkSlices": {
-   "complexity": 106,
-   "crap": 148
-  },
   "skills/sdd-lint/scripts/sdd-lint/cmd-menu.mjs#complete": {
    "complexity": 48,
    "crap": 73.1
@@ -27,8 +23,8 @@
    "crap": 67
   },
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#checkPlan": {
-   "complexity": 42,
-   "crap": 57.8
+   "complexity": 37,
+   "crap": 52.3
   },
   "skills/sdd-lint/scripts/sdd-lint/adr.mjs#checkAdrs": {
    "complexity": 42,
@@ -301,17 +297,17 @@
  },
  "eslint": {
   "no-nested-ternary": 38,
-  "complexity": 57,
-  "max-lines-per-function": 16,
-  "max-statements": 32,
-  "max-len": 133,
+  "complexity": 56,
+  "max-lines-per-function": 15,
+  "max-statements": 31,
+  "max-len": 131,
   "max-params": 4,
   "no-unused-vars": 4,
   "no-param-reassign": 1,
   "no-shadow": 3
  },
- "tscErrors": 1003,
- "clonesCodePercent": 3.3,
+ "tscErrors": 995,
+ "clonesCodePercent": 3.21,
  "clonesTestsPercent": 6.54,
  "cycles": 0,
  "sideEffects": 0,
