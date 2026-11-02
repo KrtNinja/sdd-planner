@@ -1,13 +1,8 @@
 {
  "crap": {
-  "functions": 387,
-  "over10": 76,
+  "functions": 410,
+  "over10": 75,
   "offenders": {
-   "skills.sdd-lint.scripts.sdd-lint.slices#checkSlices": {
-    "complexity": 106,
-    "coverage": 81.8966,
-    "crap": 172.6641
-   },
    "skills.sdd-lint.scripts.sdd-lint.readme#checkReadme": {
     "complexity": 45,
     "coverage": 61.1111,
@@ -29,19 +24,19 @@
     "crap": 76.2432
    },
    "skills.sdd-lint.scripts.sdd-lint.spec#checkSpec": {
-    "complexity": 64,
-    "coverage": 89.1566,
-    "crap": 69.2222
+    "complexity": 63,
+    "coverage": 90.1235,
+    "crap": 66.8238
    },
    "skills.sdd-lint.scripts.sdd-lint.adr#checkAdrs": {
-    "complexity": 43,
-    "coverage": 80,
-    "crap": 57.792
+    "complexity": 42,
+    "coverage": 82.3529,
+    "crap": 51.6943
    },
    "skills.sdd-lint.scripts.sdd-lint.plan#checkPlan": {
-    "complexity": 42,
-    "coverage": 83.3333,
-    "crap": 50.1667
+    "complexity": 37,
+    "coverage": 80.3922,
+    "crap": 47.3202
    },
    "skills.sdd-lint.scripts.sdd-lint.readme#genReadme": {
     "complexity": 26,
