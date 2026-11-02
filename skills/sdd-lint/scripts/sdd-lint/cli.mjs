@@ -1,6 +1,8 @@
 // Справка и ошибки вызова.
 import { code, lintCmd } from './config.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 export const HELP = `sdd-lint — проверки артефактов планирования SDD
 
   sdd-lint
@@ -103,6 +105,7 @@ export const HELP = `sdd-lint — проверки артефактов план
 Форма команд в подсказках: SDD_SKILL_PREFIX (по умолчанию «/») и SDD_LINT_CMD
 (по умолчанию «/sdd-lint»).`;
 
+/** @param {Ctx} ctx */
 export const usage = (ctx, msg) => {
   const { cmd } = ctx.args;
   ctx.io.error(msg ? `${msg}\nСправка: ${code(lintCmd('help', cmd === 'check' ? '' : cmd).trim())}` : HELP);

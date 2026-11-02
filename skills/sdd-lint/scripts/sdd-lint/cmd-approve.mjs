@@ -13,9 +13,12 @@ import { openBlockers, reviewKey } from './review.mjs';
 import { snapPath, protectedParts, diffParts } from './snapshot.mjs';
 import { printTip, stageOf, stageText } from './stage.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Ставит «одобрено <дата>» / «принято <дата>», если артефакт чист: lint без ошибок
 // (с учётом нового статуса — например, SP-06 «одобрено с открытыми вопросами»)
 // и защищённые части совпадают со снимком, если он есть.
+/** @param {Ctx} ctx */
 export function cmdApprove(ctx) {
   const { pos } = ctx.args;
   const what = pos[0];

@@ -9,6 +9,8 @@ import { genReadme } from './readme.mjs';
 import { SRC_RE, SRC_REF_RE, hasProtocolTraces, stripProtocol, protoHref } from './sources.mjs';
 import { parseSpec } from './spec.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Старый раздел «Трассировка» → «Из протокола:» под требованиями и в разделах. Возвращает новый md.
 function migrateTrace(s) {
   const t = s.oldTraceT;
@@ -112,6 +114,7 @@ export function linkSlice(sl, spec) {
   return moved.length;
 }
 
+/** @param {Ctx} ctx */
 export function genLinks(ctx, m) {
   if (!m.spec) usage(ctx, 'Нет spec.md');
   const out = [];

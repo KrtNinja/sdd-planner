@@ -14,7 +14,10 @@ import { G, blocks, list, screen } from './screen.mjs';
 import { MAX_RUNS, bump, mark, reset } from './runs.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // План проверяет скрипт, а не модель: покрытие, причины, зависимости, сервисы.
+/** @param {Ctx} ctx */
 export function cmdPlan(ctx) {
   const { pos } = ctx.args;
   const m = loadFeature(needDir(ctx, pos[0]));
@@ -62,6 +65,7 @@ function promote(m) {
 
 // Конец этапа: fix → (ошибки — исправить и снова done) → «на ревью», снимок для guard, вопрос этапа.
 // Предупреждения агент правит один раз; что осталось, видит человек.
+/** @param {Ctx} ctx */
 export function cmdDone(ctx) {
   const { pos } = ctx.args;
   const { m, changed, notes } = fixFeature(ctx, needDir(ctx, pos[0]));

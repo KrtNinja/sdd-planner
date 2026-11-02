@@ -8,6 +8,9 @@ import { rel, approved } from './md.mjs';
 import { needDir } from './pick.mjs';
 import { hasProtocolTraces } from './sources.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
+/** @param {Ctx} ctx */
 export function cmdDiff(ctx) {
   const { flags, pos } = ctx.args;
   const dir = needDir(ctx, pos[0]);

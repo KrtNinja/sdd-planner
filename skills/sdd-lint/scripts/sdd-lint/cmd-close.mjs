@@ -15,8 +15,11 @@ import { G, blocks, codePaths, list, screen } from './screen.mjs';
 import { tempArtifacts } from './stage.mjs';
 import { legacyPaths } from './work.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // После PR остаются spec, slices и ADR. Протокол и _work/ — временные артефакты: решения из них уже
 // в FR и AC, история — в git. Ссылки spec на протокол убирает genLinks.
+/** @param {Ctx} ctx */
 export function cmdClose(ctx) {
   const { flags, pos } = ctx.args;
   let target = pos[0];

@@ -8,6 +8,8 @@ import { loadFeature } from './feature.mjs';
 import { read, uniq } from './md.mjs';
 import { DOCS, isDir, pickFeature, needDir } from './pick.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Скилл одним текстом: SKILL.md без шапки и файлы, на которые он ссылается.
 // Агент получает его через MCP и не читает файлы расширения вне проекта; disable-model-invocation
 // не снимается — скилл попадает к агенту только через вариант, который выбрал человек.
@@ -34,6 +36,7 @@ export function humanizeTask(target) {
     'Последним сообщением — итог guard.',
   ].join('\n');
 }
+/** @param {Ctx} ctx */
 export function skillPrompt(ctx, name, args) {
   const { flags } = ctx.args;
   const dir = path.join(SKILLS_DIR, name);
@@ -70,6 +73,7 @@ export function skillPrompt(ctx, name, args) {
     .filter((x) => x !== null)
     .join('\n');
 }
+/** @param {Ctx} ctx */
 export function cmdPrompt(ctx) {
   const { pos } = ctx.args;
   const known = promptSkills();

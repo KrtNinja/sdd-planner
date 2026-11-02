@@ -10,7 +10,10 @@ import { genReadme } from './readme.mjs';
 import { genSlices } from './scaffold.mjs';
 import { codePaths } from './screen.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Протокол → куда ушла каждая строка: для ревью смысла трассировки.
+/** @param {Ctx} ctx */
 export function cmdTrace(ctx) {
   const { pos } = ctx.args;
   const m = loadFeature(needDir(ctx, pos[0]));
@@ -46,6 +49,7 @@ export function cmdTrace(ctx) {
   ctx.io.exit(lost ? 1 : 0);
 }
 
+/** @param {Ctx} ctx */
 export function cmdGen(ctx) {
   const { pos } = ctx.args;
   const what = pos[0];
@@ -56,6 +60,7 @@ export function cmdGen(ctx) {
   else genLinks(ctx, m);
 }
 
+/** @param {Ctx} ctx */
 export function cmdNext(ctx) {
   const { pos } = ctx.args;
   const kind = (pos[0] || '').toLowerCase();

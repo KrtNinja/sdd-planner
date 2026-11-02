@@ -8,6 +8,8 @@ import { linkReqs, basisPlain, staleReqLinks } from './links.mjs';
 import { rel, uniq, scan, isH2, inSection, sectionText, tables, col, reqIds, replaceSection } from './md.mjs';
 import { registry } from './services.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 export const coverage = (m) => {
   const covered = new Map();
   for (const [num, sl] of m.slices)
@@ -117,6 +119,7 @@ export function checkReadme(m) {
   }
 }
 
+/** @param {Ctx} ctx */
 export function genReadme(ctx, m, quiet = false) {
   if (!m.slices.size) usage(ctx, 'В slices/ нет файлов NNN-*.md');
   const link = (text) => (m.spec ? linkReqs(text, m.readmeFile, m.spec) : text);

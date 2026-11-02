@@ -12,6 +12,8 @@ import { genReadme } from './readme.mjs';
 import { G, screen } from './screen.mjs';
 import { parseHalves, halvesLine, halfHeading } from './services.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Заготовки в «<…>»: агент заменяет их текстом, SL-37 не даёт забыть ни одну.
 const acStub = (num, side) => ['```', `AC-${num}-${side}? <имя>`, '  WHEN <условие>', '  THEN <наблюдаемый исход>', '```', 'Проверяет: <FR-n>', ''];
 
@@ -65,6 +67,7 @@ function sliceText(m, plan, s) {
   return md.join('\n');
 }
 
+/** @param {Ctx} ctx */
 export function genSlices(ctx, m) {
   const dir = rel(m.dir);
   const stop = (msg) => {

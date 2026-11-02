@@ -7,6 +7,8 @@ import { layers } from './readme.mjs';
 import { serviceOfHeading, servicesOf } from './services.mjs';
 import { stageOf } from './stage.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Разметку markdown знает только планирование: реализация читает этот JSON, а не файлы slices.
 // Тест ссылается на AC строкой <feature>/<AC-ID> — так AC-002-1 разных фич не смешиваются.
 const AC_ID = 'AC-\\d{3}-[BF]?\\d+';
@@ -26,6 +28,7 @@ function acOf(feature, ac) {
   };
 }
 
+/** @param {Ctx} ctx */
 export function cmdExport(ctx) {
   const m = loadFeature(needDir(ctx, ctx.args.pos[0]));
   runChecks(m);

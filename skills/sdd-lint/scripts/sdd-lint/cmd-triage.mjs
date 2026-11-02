@@ -12,6 +12,8 @@ import { DROPPED_RE, DROPPED_TITLE } from './protocol.mjs';
 import { DECISION, findRow, untriagedRemarks, withDecisions } from './review.mjs';
 import { codePaths } from './screen.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 const cell = (s) => (s || '—').replace(/\|/g, '/').replace(/\s+/g, ' ').trim();
 
 // Снятые находки — в протокол, раздел «Снято на ревью»: gate review отдаёт его ревьюеру, и тот их не поднимает.
@@ -43,6 +45,7 @@ function save(rv, decisions) {
 // Номера замечаний из ответа человека: «R3, R5», «3 и 5», «r3 r5».
 const pickedIds = (text) => [...new Set([...String(text).matchAll(/(?:^|[^\p{L}\d])R?\s*(\d+)(?!\d)/giu)].map((x) => `R${x[1]}`))];
 
+/** @param {Ctx} ctx */
 export function cmdTriage(ctx) {
   const { pos } = ctx.args;
   // Вывод triage — текст человеку; пути — кодом. Строку ⚙ добавляет choose (что дальше).

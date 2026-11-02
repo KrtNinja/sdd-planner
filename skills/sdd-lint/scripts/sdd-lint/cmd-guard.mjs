@@ -11,6 +11,9 @@ import { rel } from './md.mjs';
 import { resolveFeature, pickFeature } from './pick.mjs';
 import { snapPath, protectedParts, saveSnapshot, diffParts } from './snapshot.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
+/** @param {Ctx} ctx */
 export const targetFiles = (ctx, t) => {
   if (!t) pickFeature(ctx, 'Укажи файл или фичу', 0);
   if (!fs.existsSync(t)) {
@@ -21,6 +24,7 @@ export const targetFiles = (ctx, t) => {
   return fs.statSync(t).isDirectory() ? featureFiles(loadFeature(resolveFeature(t) || t)) : [path.resolve(t)];
 };
 
+/** @param {Ctx} ctx */
 export function cmdSnapshot(ctx) {
   const { pos } = ctx.args;
   const files = targetFiles(ctx, pos[0]);
@@ -28,6 +32,7 @@ export function cmdSnapshot(ctx) {
   ctx.io.log(`Снимок защищённых частей: ${files.map(rel).join(', ')}. После humanizer: ${lintCode('guard', pos[0])}`);
 }
 
+/** @param {Ctx} ctx */
 export function cmdGuard(ctx) {
   const { flags, pos } = ctx.args;
   const files = targetFiles(ctx, pos[0]);

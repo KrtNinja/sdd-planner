@@ -10,7 +10,10 @@ import { needDir, pickChoice } from './pick.mjs';
 import { G, screen } from './screen.mjs';
 import { acceptContext, addSources, renameFeature, researchList, sourcesOf, startFrom, taskOf } from './start.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Вывод — один следующий шаг для агента; код 0, даже когда шаг — вопрос человеку.
+/** @param {Ctx} ctx */
 export function cmdStart(ctx) {
   const { flags, pos } = ctx.args;
   let out;
@@ -37,6 +40,7 @@ function researchInput(m) {
   return { task: { line }, list: fromCtx || (inventory(m.name).empty ? [] : [REPO]) };
 }
 
+/** @param {Ctx} ctx */
 export function cmdResearch(ctx) {
   const { pos } = ctx.args;
   const what = pos[0];

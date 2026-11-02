@@ -6,6 +6,8 @@ import { CHOICES, SLOTS } from './args.mjs';
 import { code, lintCmd, skillCode, lintCode } from './config.mjs';
 import { rel } from './md.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 export const DOCS = 'docs';
 export const isDir = (d) => fs.existsSync(d) && fs.statSync(d).isDirectory();
 // Фичи в docs/: папки с протоколом или spec (adr — не фича).
@@ -29,7 +31,9 @@ export function resolveFeature(d) {
   return isDir(clean) ? clean : null;
 }
 // Аргументы до фичи в текущем вызове — чтобы предложить готовую команду.
+/** @param {import('./args.mjs').Args} args @param {number} n */
 const callPrefix = ({ cmd, pos }, n) => [cmd === 'check' ? null : cmd, ...pos.slice(0, n)].filter(Boolean);
+/** @param {Ctx} ctx */
 export function pickFeature(ctx, why, n) {
   const known = listFeatures();
   if (!known.length) {
@@ -41,6 +45,7 @@ export function pickFeature(ctx, why, n) {
   ctx.io.exit(2);
 }
 // Нет варианта (approve без spec|slices|adr) — показать варианты готовыми командами.
+/** @param {Ctx} ctx */
 export function pickChoice(ctx, name, n = 0) {
   const { pos } = ctx.args;
   const ex = pos[n + 1] && resolveFeature(pos[n + 1]) ? pos[n + 1] : listFeatures()[0] || '<feature>';
@@ -52,6 +57,7 @@ export function pickChoice(ctx, name, n = 0) {
   ctx.io.error(`${bad}:\n\n${opts.map(([, d], i) => `- ${code(cmdsList[i])} — ${d}`).join('\n')}`);
   ctx.io.exit(2);
 }
+/** @param {Ctx} ctx */
 export function needDir(ctx, d, n = 0) {
   if (!d) pickFeature(ctx, 'Укажи фичу', n);
   const found = resolveFeature(d);

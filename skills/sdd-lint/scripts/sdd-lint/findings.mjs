@@ -3,6 +3,8 @@ import { cmds } from './config.mjs';
 import { rel, uniq } from './md.mjs';
 import { RULES } from './rules.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 export const findings = [];
 export const hasErrors = () => findings.some((x) => x.level === 'err');
 export const add = (rule, file, line, msg) => {
@@ -14,6 +16,7 @@ export const add = (rule, file, line, msg) => {
 const LEVEL = { err: 'ОШИБКА', warn: 'ВНИМАНИЕ', info: 'ИНФО' };
 export const line = (x) => `**${LEVEL[x.level]}** \`${x.rule}\` \`${x.file}${x.line ? `:${x.line}` : ''}\` — ${x.msg}`;
 export const item = (x) => `- ${line(x)}`;
+/** @param {Ctx} ctx */
 export function report(ctx, extra = {}) {
   const order = { err: 0, warn: 1, info: 2 };
   findings.sort((a, b) => order[a.level] - order[b.level] || a.file.localeCompare(b.file) || (a.line || 0) - (b.line || 0));

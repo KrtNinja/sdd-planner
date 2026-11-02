@@ -18,6 +18,8 @@ import { moveLegacy } from './work.mjs';
 import { hasProtocolTraces } from './sources.mjs';
 import { printTip, stageOf, stageText, tipLine } from './stage.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Модель пишет «FR-?» и «AC-003-B?», номера строк не считает, README и ссылки не трогает:
 // всё это скрипт делает здесь, затем проверяет фичу и сверяет её с git.
 const PH_REQ = /^(\s*)(N?FR)-\?(?=\s|$)/;
@@ -62,6 +64,7 @@ function numberPlaceholders(m) {
 }
 // Вся механика fix: кириллица в ID, номера, ссылки, README, сброс одобрения правленого; затем проверки
 // и сверка с git. Находки остаются в findings — их печатают fix и done.
+/** @param {Ctx} ctx */
 export function fixFeature(ctx, dir, { snapshot = false } = {}) {
   const files = (m) => uniq([...featureFiles(m), m.readmeFile, m.planFile].map((f) => path.resolve(f)));
   let m = loadFeature(dir);
@@ -116,6 +119,7 @@ export function fixFeature(ctx, dir, { snapshot = false } = {}) {
 }
 export const fixedText = (changed) => (changed.length ? `Скрипт поправил:\n${changed.map((x) => `- ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');
 
+/** @param {Ctx} ctx */
 export function cmdFix(ctx) {
   const { flags, pos } = ctx.args;
   const { m, changed, notes } = fixFeature(ctx, needDir(ctx, pos[0]), { snapshot: flags.snapshot });
