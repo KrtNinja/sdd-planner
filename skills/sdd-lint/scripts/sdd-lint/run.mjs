@@ -56,7 +56,8 @@ function dispatch(ctx) {
  * @param {{ write?: (fd: 1 | 2, text: string) => void }} [opts]
  */
 export function run(argv, { write } = {}) {
-  const ctx = { args: parseArgs(argv), io: createIo(write) };
+  // lint — вложенный вызов для choose: та же функция, без нового процесса и без импорта run.mjs в команды.
+  const ctx = { args: parseArgs(argv), io: createIo(write), lint: (/** @type {string[]} */ a) => run(a) };
   // Находки пока копятся в общем массиве модуля (уйдёт в шаге 5): каждый вызов начинает с чистого.
   findings.length = 0;
   try {

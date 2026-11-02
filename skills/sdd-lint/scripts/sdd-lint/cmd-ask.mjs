@@ -1,10 +1,8 @@
 // Команды ask и choose.
-import { execFileSync } from 'node:child_process';
-
 import { askOf, askView } from './ask.mjs';
 import { closeOptions } from './close.mjs';
 import { targetFiles } from './cmd-guard.mjs';
-import { SELF, skillPrompt } from './cmd-prompt.mjs';
+import { skillPrompt } from './cmd-prompt.mjs';
 import { loadFeature } from './feature.mjs';
 import { rel } from './md.mjs';
 import { needDir } from './pick.mjs';
@@ -23,11 +21,16 @@ export function cmdAsk(ctx) {
   ctx.io.exit(0);
 }
 
-function runLint(args) {
+// Команда lint для выбранного варианта — тем же run(), что и CLI, без нового процесса. Вывод как у
+// процесса: при успехе только stdout, при ошибке stdout и stderr; падение — код 1 и стек.
+/** @param {Ctx} ctx @param {string[]} args */
+function runLint(ctx, args) {
   try {
-    return { out: execFileSync(process.execPath, [SELF, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }), code: 0 };
+    const { code, chunks } = ctx.lint(args);
+    const text = (/** @type {1 | 2} */ fd) => chunks.filter(([f]) => f === fd).map(([, t]) => t).join('');
+    return { out: code ? text(1) + text(2) : text(1), code };
   } catch (e) {
-    return { out: `${e.stdout || ''}${e.stderr || ''}`, code: typeof e.status === 'number' ? e.status : 1 };
+    return { out: String(e instanceof Error ? e.stack : e), code: 1 };
   }
 }
 // Одно исполнение для всех действий: выбранного варианта и ответа человека на wait.
@@ -38,7 +41,7 @@ function act(ctx, m, a, { id, asked = null }) {
   const d = rel(m.dir);
   const next = a.next || ['ask', d];
   if (a.lint) {
-    const { out, code } = runLint(a.lint);
+    const { out, code } = runLint(ctx, a.lint);
     const { card, gear } = splitGear(out);
     if (code === 2 && a.retry && asked) {
       ctx.io.log(waitText(blocks(card, asked.wait), asked.then));
