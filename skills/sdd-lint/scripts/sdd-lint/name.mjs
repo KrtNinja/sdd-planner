@@ -1,4 +1,5 @@
 // Имя папки фичи на старте /sdd-grill: вопрос «Автоматически» или «Своё», имя от человека, проверка и «занято».
+// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -12,11 +13,14 @@ import { A, G, blocks, screen } from './screen.mjs';
 export const NAME_AUTO = 'name:auto';
 export const NAME_OWN = 'name:own';
 const RULE = `латиница, цифры и дефис, до ${SLUG_MAX} знаков`;
+/** @typedef {import('./input.mjs').Input & { kind: 'task' }} TaskInput */
+/** @param {string} raw @param {string} v */
 const nameArgs = (raw, v) => ['start', raw, '--name', v];
 // «авто», «автоматически», «сам придумай» — словами вместо варианта 1.
 const AUTO_WORDS = /^(?:авто\p{L}*|сам[аи]?\s+придумай|придумай(?:\s+сам)?|auto)$/iu;
 
 // Человек не назвал папку: «Автоматически» (рекомендую) или «Своё»; имя можно написать сразу, вместо номера.
+/** @param {TaskInput} c @param {string} raw @param {string | null} fileSlug */
 function nameQuestion(c, raw, fileSlug) {
   const auto = {
     id: NAME_AUTO,
@@ -29,14 +33,19 @@ function nameQuestion(c, raw, fileSlug) {
   return pickText(null, q, nameArgs(raw, '<id>'));
 }
 // why — почему переспрашиваем: имя не подошло или папка занята.
+/** @param {string} raw @param {string | null} [why] */
 const askName = (raw, why = null) =>
   waitText(why ? blocks(why, 'Какое имя взять?') : `Как назвать папку фичи? ${RULE.charAt(0).toUpperCase()}${RULE.slice(1)} — например, \`user-settings\` или \`PROJECT-4567\`.`, nameArgs(raw, ANSWER));
 
 // Имя новой папки. slug — придумал агент после «Автоматически» или человек написал «/sdd-grill my-feature "…"»;
 // name — ответ на вопрос: id варианта или имя словами. { slug, own, from } — создавать (from — ответ человека,
 // если скрипт его поправил: человеку об этом скажут); { text } — сначала этот шаг.
+/**
+ * @param {TaskInput} c @param {string} raw @param {string | null} slug @param {string | null} name
+ * @returns {{ slug: string, own: boolean, from?: string | null, text?: undefined } | { text: string, slug?: undefined, own?: undefined, from?: undefined }}
+ */
 export function folderName(c, raw, slug, name) {
-  if (slug || c.slug) return { slug: slug || c.slug, own: false };
+  if (slug || c.slug) return { slug: /** @type {string} */ (slug || c.slug), own: false };
   const fileSlug = c.task.file ? slugFromFile(c.task.file) : null;
   if (name == null) return { text: nameQuestion(c, raw, fileSlug) };
   const answer = name.trim();
@@ -57,6 +66,7 @@ export function folderName(c, raw, slug, name) {
 
 // Имя не подходит или папка занята — что сказать; null — можно создавать.
 // own — имя дал человек: переспросить его, а не поручать агенту.
+/** @param {string} slug @param {string} raw @param {boolean} own */
 export function nameTrouble(slug, raw, own) {
   const problem = slugProblem(slug);
   if (problem) return own ? askName(raw, `Имя ${problem}.`) : screen(null, `имя папки ${problem} — придумай другое → ${A(['start', raw, '--slug', '<имя>'])}`);

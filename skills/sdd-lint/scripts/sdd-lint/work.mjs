@@ -19,7 +19,7 @@ const WORK_REF = new RegExp(`(?<![\\w.\\-])${WORK_DIR}/`);
 export const legacyPaths = (m) => ({ review: path.join(m.dir, 'review'), plan: path.join(m.slicesDir, 'plan.md') });
 
 // Файлы в _work/ списком относительных путей — что именно удалит close.
-/** @param {Feature} m */
+/** @param {Pick<Feature, 'workDir'>} m */
 export function workFiles(m) {
   /** @type {string[]} */
   const out = [];
