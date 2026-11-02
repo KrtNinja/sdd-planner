@@ -3,7 +3,6 @@
 // П<n> / «исправлено» — решение провёл /sdd-decide; remarks — какие замечания разбирать, остальные снять.
 import fs from 'node:fs';
 
-import { LEGACY, pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { loadFeature } from './feature.mjs';
 import { hasSection, inSection, plural, rel, scan, tables, today } from './md.mjs';
@@ -13,12 +12,6 @@ import { DROPPED_RE, DROPPED_TITLE } from './protocol.mjs';
 import { DECISION, findRow, untriagedRemarks, withDecisions } from './review.mjs';
 import { codePaths } from './screen.mjs';
 
-// Вывод triage — текст человеку; пути — кодом. Строку ⚙ добавляет choose (что дальше).
-const say = (msg) => console.log(codePaths(msg));
-const fail = (msg) => {
-  say(msg);
-  process.exit(2);
-};
 const cell = (s) => (s || '—').replace(/\|/g, '/').replace(/\s+/g, ' ').trim();
 
 // Снятые находки — в протокол, раздел «Снято на ревью»: gate review отдаёт его ревьюеру, и тот их не поднимает.
@@ -50,10 +43,17 @@ function save(rv, decisions) {
 // Номера замечаний из ответа человека: «R3, R5», «3 и 5», «r3 r5».
 const pickedIds = (text) => [...new Set([...String(text).matchAll(/(?:^|[^\p{L}\d])R?\s*(\d+)(?!\d)/giu)].map((x) => `R${x[1]}`))];
 
-export function cmdTriage() {
-  const m = loadFeature(needDir(LEGACY, pos[0]));
+export function cmdTriage(ctx) {
+  const { pos } = ctx.args;
+  // Вывод triage — текст человеку; пути — кодом. Строку ⚙ добавляет choose (что дальше).
+  const say = (msg) => ctx.io.log(codePaths(msg));
+  const fail = (msg) => {
+    say(msg);
+    ctx.io.exit(2);
+  };
+  const m = loadFeature(needDir(ctx, pos[0]));
   const [ref, verb, ...rest] = pos.slice(1);
-  if (!ref || !verb) usage(LEGACY, 'Укажи находку и решение: triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>');
+  if (!ref || !verb) usage(ctx, 'Укажи находку и решение: triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>');
   const [key, rid] = ref.split(':');
   const rv = m.reviews.get(key);
   if (!rv) fail(`Ревью «${key}» нет. Есть: ${[...m.reviews.keys()].join(', ') || 'файлов ревью нет'}.`);
@@ -81,7 +81,7 @@ export function cmdTriage() {
     if (take.length) out.push(`К разбору: ${take.join(', ')} — по одному.`);
     if (drop.length) out.push(`Сняты: ${drop.map((r) => r.id).join(', ')} — «отклонено» в ${file}${logged ? `, ${plural(drop.length, 'строка', 'строки', 'строк')} в «${DROPPED_TITLE}» протокола: повторное ревью их не поднимет` : ''}.`);
     say(out.join('\n\n'));
-    process.exit(0);
+    ctx.io.exit(0);
   }
 
   const r = findRow(rv, rid);
@@ -103,5 +103,5 @@ export function cmdTriage() {
     save(rv, new Map([[r.id, verb]]));
     say(`${r.id}: «Решение» — ${verb} (${file}).`);
   } else fail(`Решение «${verb}» не бывает: open, ignore, П<n> или «исправлено».`);
-  process.exit(0);
+  ctx.io.exit(0);
 }

@@ -4,7 +4,6 @@ import path from 'node:path';
 
 import { pendingAdrs } from './adr.mjs';
 import { fingerprint, approvalMds } from './approval.mjs';
-import { LEGACY, pos } from './legacy.mjs';
 import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { findings, add, report } from './findings.mjs';
@@ -17,15 +16,16 @@ import { printTip, stageOf, stageText } from './stage.mjs';
 // Ставит «одобрено <дата>» / «принято <дата>», если артефакт чист: lint без ошибок
 // (с учётом нового статуса — например, SP-06 «одобрено с открытыми вопросами»)
 // и защищённые части совпадают со снимком, если он есть.
-export function cmdApprove() {
+export function cmdApprove(ctx) {
+  const { pos } = ctx.args;
   const what = pos[0];
-  if (!['spec', 'slices', 'adr'].includes(what)) pickChoice(LEGACY, 'approve');
-  const d = needDir(LEGACY, pos[1], 1);
+  if (!['spec', 'slices', 'adr'].includes(what)) pickChoice(ctx, 'approve');
+  const d = needDir(ctx, pos[1], 1);
   const m = loadFeature(d);
   const dir = rel(m.dir);
   const refuse = (msg, code = 3) => {
-    console.log(`НЕ ОДОБРЕНО: ${msg}`);
-    process.exit(code);
+    ctx.io.log(`НЕ ОДОБРЕНО: ${msg}`);
+    ctx.io.exit(code);
   };
   let target;
   let scope;
@@ -63,8 +63,8 @@ export function cmdApprove() {
   // Статус после проверки отпечатка: «одобрено» руками или после правки — не одобрено, approve ставит заново.
   const cur = what === 'spec' ? m.spec.status : what === 'slices' ? m.slicesStatus : m.adrs.find((a) => a.file === target).status;
   if (approved(cur)) {
-    console.log(`${rel(target)}: уже «${cur}».`);
-    process.exit(0);
+    ctx.io.log(`${rel(target)}: уже «${cur}».`);
+    ctx.io.exit(0);
   }
   const date = today();
   const fp = fingerprint(approvalMds(m, what, target));
@@ -89,16 +89,16 @@ export function cmdApprove() {
     for (const x of diffParts(before, protectedParts(fs.readFileSync(f, 'utf8')))) add('HG-01', f, null, `(против: снимок) ${x}`);
   }
   if (findings.length) {
-    report(LEGACY);
+    report(ctx);
     const hg = findings.some((x) => x.rule === 'HG-01');
-    console.log(`\nНЕ ОДОБРЕНО: ${rel(target)} остаётся «${cur}».`);
-    if (hg) console.log(`\nЕсли защищённые части поменяли вы сами — снимите новый снимок (${lintCode('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`);
-    process.exit(1);
+    ctx.io.log(`\nНЕ ОДОБРЕНО: ${rel(target)} остаётся «${cur}».`);
+    if (hg) ctx.io.log(`\nЕсли защищённые части поменяли вы сами — снимите новый снимок (${lintCode('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`);
+    ctx.io.exit(1);
   }
   fs.writeFileSync(target, next);
-  console.log(`${rel(target)}: Статус: ${word} ${date} · ${fp}`);
+  ctx.io.log(`${rel(target)}: Статус: ${word} ${date} · ${fp}`);
   const st = stageOf(loadFeature(d));
-  console.log(`\n${stageText(st)}`);
-  printTip(LEGACY, st);
-  process.exit(0);
+  ctx.io.log(`\n${stageText(st)}`);
+  printTip(ctx, st);
+  ctx.io.exit(0);
 }

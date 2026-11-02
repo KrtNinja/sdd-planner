@@ -2,7 +2,6 @@
 // Без --yes ничего не удаляет: показывает, что уйдёт и чем это грозит, и задаёт второй вопрос.
 import fs from 'node:fs';
 
-import { LEGACY, flags, pos } from './legacy.mjs';
 import { chooseFeature } from './guide.mjs';
 import { closeSummary, closeQuestion, closePreview } from './close.mjs';
 import { skillCode, lintCode } from './config.mjs';
@@ -18,27 +17,28 @@ import { legacyPaths } from './work.mjs';
 
 // После PR остаются spec, slices и ADR. Протокол и _work/ — временные артефакты: решения из них уже
 // в FR и AC, история — в git. Ссылки spec на протокол убирает genLinks.
-export function cmdClose() {
+export function cmdClose(ctx) {
+  const { flags, pos } = ctx.args;
   let target = pos[0];
   if (!target) {
     const c = chooseFeature('close', (f) => ['close', f, ...(flags.json ? ['--json'] : [])]);
     if (!c.dir) {
-      console.log(c.text);
-      process.exit(2);
+      ctx.io.log(c.text);
+      ctx.io.exit(2);
     }
     target = c.dir;
   }
-  const m = loadFeature(needDir(LEGACY, target));
+  const m = loadFeature(needDir(ctx, target));
   const dir = rel(m.dir);
   if (!tempArtifacts(m).length) {
-    console.log(screen(`Временных артефактов нет: ${dir} уже закрыта.`, G.stop));
-    process.exit(0);
+    ctx.io.log(screen(`Временных артефактов нет: ${dir} уже закрыта.`, G.stop));
+    ctx.io.exit(0);
   }
   const s = closeSummary(m);
   if (!flags.yes) {
-    if (flags.json) console.log(viewText(questionsView(dir, `Закрытие ${dir}`, [closeQuestion(m, s)])));
-    else console.log(blocks(closePreview(s), `Подтвердить: ${lintCode('close', dir, '--yes')}`));
-    process.exit(0);
+    if (flags.json) ctx.io.log(viewText(questionsView(dir, `Закрытие ${dir}`, [closeQuestion(m, s)])));
+    else ctx.io.log(blocks(closePreview(s), `Подтвердить: ${lintCode('close', dir, '--yes')}`));
+    ctx.io.exit(0);
   }
 
   const gone = tempArtifacts(m);
@@ -48,11 +48,11 @@ export function cmdClose() {
   fs.rmSync(old.plan, { force: true });
   findings.length = 0;
   // Без spec ссылок на протокол нет — чинить нечего (genLinks без spec останавливается).
-  if (m.spec) genLinks(LEGACY, loadFeature(m.dir));
+  if (m.spec) genLinks(ctx, loadFeature(m.dir));
   findings.length = 0;
   runChecks(loadFeature(m.dir));
-  const c = report(LEGACY);
-  console.log(
+  const c = report(ctx);
+  ctx.io.log(
     (findings.length ? '\n' : '') +
     blocks(
       `Удалено: ${gone.map(codePaths).join(', ')}. В spec нет ссылок на протокол, ссылки на FR в slices обновлены.`,
@@ -60,5 +60,5 @@ export function cmdClose() {
       `Закоммитьте удаление вместе с остальными документами. Решения дальше — ${skillCode('sdd-decide', m.name)}: правит FR и AC напрямую.`,
     ),
   );
-  process.exit(c.err ? 1 : 0);
+  ctx.io.exit(c.err ? 1 : 0);
 }
