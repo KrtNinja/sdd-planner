@@ -271,7 +271,7 @@ test('done: ошибки — исправить и снова done; предуп
 });
 
 // ---------- fallback: MCP-сервер не отвечает ----------
-const BLOCK = 'Нет `sdd_lint` или он не отвечает — остановись и задай вопрос из «Если sdd_lint не отвечает» в правилах планирования. Скрипт для вариантов 2 и 3 — `../sdd-lint/scripts/sdd-lint.mjs` от папки этого скилла.';
+const BLOCK = 'Не видишь `sdd_lint` — найди его поиском инструментов, пробуя разные запросы. Вызов не удался — остановись и задай вопрос из «Если sdd_lint не отвечает» в правилах планирования. Скрипт для вариантов 2 и 3 — `../sdd-lint/scripts/sdd-lint.mjs` от папки этого скилла.';
 test('скиллы: один и тот же блок про sdd_lint, вызовы — в форме sdd_lint [...]', () => {
   for (const d of fs.readdirSync(path.join(root, 'skills')).filter((x) => x.startsWith('sdd-'))) {
     const md = fs.readFileSync(path.join(root, 'skills', d, 'SKILL.md'), 'utf8');
@@ -285,10 +285,11 @@ test('правила: при недоступном sdd_lint — вопрос с
   const sec = md.slice(md.indexOf('### Если sdd_lint не отвечает'));
   assert.ok(sec.length > 30, 'нет раздела');
   assert.match(sec, /без строки «\[код выхода: N\]»/);
+  assert.match(sec, /найди его поиском инструментов/);
   assert.match(sec, /1\. «Подожди, сейчас перезапущу его» \(рекомендую\)/);
   assert.match(sec, /2\. «Попробуй из корня»/);
   assert.match(sec, /3\. «Покажи команду — запущу сам»/);
-  assert.match(sec, /Этап сам не выполняй/);
+  assert.match(sec, /[Ээ]тап сам не выполняй/);
 });
 test('MCP: ответ сервера всегда с кодом выхода — по нему агент отличает сбой сервера', () => {
   const cwd = planWorkspace(null);
@@ -299,7 +300,7 @@ test('MCP: ответ сервера всегда с кодом выхода —
 });
 test('prompt: в шапке — вопрос из правил и абсолютный путь к скрипту для вариантов 2 и 3', () => {
   const r = run(workspace(), 'prompt', 'sdd-slices', 'comments');
-  assert.match(r.out, /Нет его или не отвечает — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `\/[^`]+sdd-lint\.mjs`/);
+  assert.match(r.out, /Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — `\/[^`]+sdd-lint\.mjs`/);
   assert.match(r.out, /Файл скилла assets\/plan\.md:/);
 });
 test('Р1 — ADR: <тема>: вопрос «Нужен ADR», ворота build закрыты, пока ADR не затрагивает slice', () => {
