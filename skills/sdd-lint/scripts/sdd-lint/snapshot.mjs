@@ -7,8 +7,9 @@ import crypto from 'node:crypto';
 import { scan, numbers, quotes } from './md.mjs';
 import { SRC_RE, srcRefs } from './sources.mjs';
 
-const snapDir = path.join(os.tmpdir(), 'sdd-lint-snapshots');
-export const snapPath = (f) => path.join(snapDir, `${crypto.createHash('sha1').update(fs.realpathSync(f)).digest('hex')}.json`);
+// Папка — от os.tmpdir() на каждый вызов: TMPDIR может меняться между вызовами run() в одном процессе.
+const snapDir = () => path.join(os.tmpdir(), 'sdd-lint-snapshots');
+export const snapPath = (f) => path.join(snapDir(), `${crypto.createHash('sha1').update(fs.realpathSync(f)).digest('hex')}.json`);
 export function protectedParts(md) {
   const sc = scan(md);
   const outside = sc.lines.filter((l) => !l.inCode);
@@ -26,7 +27,7 @@ export function protectedParts(md) {
   };
 }
 export function saveSnapshot(f) {
-  fs.mkdirSync(snapDir, { recursive: true });
+  fs.mkdirSync(snapDir(), { recursive: true });
   fs.writeFileSync(snapPath(f), JSON.stringify({ file: fs.realpathSync(f), time: new Date().toISOString(), parts: protectedParts(fs.readFileSync(f, 'utf8')) }));
 }
 export function diffParts(before, after) {

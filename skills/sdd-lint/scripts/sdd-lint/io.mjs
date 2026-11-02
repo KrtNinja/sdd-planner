@@ -12,7 +12,10 @@ export class Exit extends Error {
 }
 
 /** @typedef {ReturnType<typeof createIo>} Io */
-/** @typedef {{ args: import('./args.mjs').Args, io: Io }} Ctx — аргументы вызова и вывод; первым параметром у команд и помощников вывода */
+/**
+ * Аргументы вызова, вывод и вложенный вызов lint; первым параметром у команд и помощников вывода.
+ * @typedef {{ args: import('./args.mjs').Args, io: Io, lint: (argv: string[]) => { code: number, chunks: [1 | 2, string][] } }} Ctx
+ */
 
 // write(fd, text) — куда идёт вывод (1 — stdout, 2 — stderr). Без него — в буфер chunks: [[fd, text], …]
 // в порядке записи, чтобы вызывающий восстановил вывод как в терминале.

@@ -8,7 +8,7 @@
 //
 // Карточка устойчива к любому markdown-рендеру: абзацы через пустую строку, поля и перечни —
 // списком, без отступов пробелами. Проверка — mdProblems: её гоняют тесты на всех выводах.
-import { LINT_CMD } from './config.mjs';
+import { lintBase } from './config.mjs';
 
 export const GEAR = '⚙ sdd:';
 // args для sdd_lint в строке ⚙ — массив JSON, как его передают в инструмент.
@@ -61,11 +61,10 @@ export const codePaths = (s) => outsideCode(s, (x) => x.replace(PATH_RE, '`$1`')
 // Команды скиллов и lint в описаниях вариантов — inline-кодом: в карточке их видно, в инструменте
 // выбора описание остаётся текстом без бэктиков.
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const CMD_RE = new RegExp(
-  `(?<![\\w/\`])((?:\\/(?:sdd-[a-z]+|humanizer)\\b|${esc(LINT_CMD)}(?=\\s|$))(?: (?:"[^"]*"|[A-Za-z0-9_.@/:|<>-]+))*)`,
-  'g',
-);
-export const cmdCode = (s) => outsideCode(s, (x) => x.replace(CMD_RE, '`$1`'));
+// Команда lint берётся из окружения на каждый вызов — регулярное выражение тоже.
+const cmdRe = () =>
+  new RegExp(`(?<![\\w/\`])((?:\\/(?:sdd-[a-z]+|humanizer)\\b|${esc(lintBase())}(?=\\s|$))(?: (?:"[^"]*"|[A-Za-z0-9_.@/:|<>-]+))*)`, 'g');
+export const cmdCode = (s) => outsideCode(s, (x) => x.replace(cmdRe(), '`$1`'));
 
 // Где markdown развалится: строка с отступом без маркера списка, абзац сразу после пункта списка
 // (ленивое продолжение приклеит его к пункту), строки абзаца подряд без пустой строки.

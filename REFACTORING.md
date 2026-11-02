@@ -29,9 +29,10 @@ npm --prefix tools run gate    # тесты с покрытием + все за�
 npm --prefix tools run metrics:fast   # без тестов: сложность, ESLint, tsc, повторы — секунды
 ```
 
-Покрытие берётся из `NODE_V8_COVERAGE`, а не из `--experimental-test-coverage`: тесты запускают
-`sdd-lint` дочерним процессом, встроенное покрытие его не видит: `scaffold.mjs` у него 18%,
-`start.mjs` — 20%, а на деле 95% и 92%. В CI для crapper тот же эффект даёт `c8`.
+Покрытие для `crap.mjs` берётся из `NODE_V8_COVERAGE`. До шага 4 тесты запускали `sdd-lint` дочерним
+процессом, и встроенное `--experimental-test-coverage` его не видело (`scaffold.mjs` — 18% вместо 95%).
+С шага 4 тесты зовут `run()` в своём процессе, и LCOV для crapper в CI даёт сам `node --test`
+(`npm --prefix tools run lcov`); `c8` больше не нужен.
 
 **Гейт — «не хуже базовой линии».** `tools/metrics/baseline.json` и `ub-baseline.json` хранят числа
 на старте. Гейт падает, если появилась новая функция с CRAP ≥ 10, старая стала хуже, выросло число

@@ -90,8 +90,12 @@ if (process.argv.includes('--baseline')) {
 } else if (fs.existsSync(BASELINE)) {
   const base = JSON.parse(fs.readFileSync(BASELINE, 'utf8'));
   const bad = compare(now, base);
-  if (bad.length) { console.log(`\nГЕЙТ НЕ ПРОЙДЕН:\n${bad.map((x) => `- ${x}`).join('\n')}`); process.exitCode = 1; }
-  else console.log('\nГейт пройден: не хуже базовой линии.');
+  if (bad.length) {
+    console.log(`\nГЕЙТ НЕ ПРОЙДЕН:\n${bad.map((x) => `- ${x}`).join('\n')}`);
+    process.exitCode = 1;
+    // Хуже бывает и не из-за кода (сменился инструмент замера) — тогда базовую линию меняет человек, осознанно.
+    printBaseline('Если ухудшение ожидаемо и решено принять — новая базовая линия');
+  } else console.log('\nГейт пройден: не хуже базовой линии.');
   const count = (x) => [x.crap?.over10, x.dry?.candidates, x.mutate?.survivedForms].map((n) => n ?? 0);
   if (!bad.length && count(now).some((n, i) => n < count(base)[i])) printBaseline('Стало лучше базовой линии — её можно обновить');
 } else printBaseline(`Базовой линии нет (${rel(BASELINE)}) — только сводка`);

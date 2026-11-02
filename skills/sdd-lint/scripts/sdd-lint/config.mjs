@@ -2,10 +2,11 @@
 
 // Подсказки печатаются готовыми командами со slug фичи, чтобы их можно было скопировать.
 // Ветки-адаптеры меняют здесь значения по умолчанию; переменные окружения переопределяют их.
-const SKILL_PREFIX = process.env.SDD_SKILL_PREFIX ?? '/';
-export const LINT_CMD = process.env.SDD_LINT_CMD ?? '/sdd-lint';
-export const skill = (name, ...args) => [`${SKILL_PREFIX}${name}`, ...args].join(' ');
-export const lintCmd = (...args) => [LINT_CMD, ...args].join(' ');
+// Читаются на каждый вызов, а не при загрузке модуля: в одном процессе run() зовут с разным окружением.
+const skillPrefix = () => process.env.SDD_SKILL_PREFIX ?? '/';
+export const lintBase = () => process.env.SDD_LINT_CMD ?? '/sdd-lint';
+export const skill = (name, ...args) => [`${skillPrefix()}${name}`, ...args].join(' ');
+export const lintCmd = (...args) => [lintBase(), ...args].join(' ');
 // Команда в тексте для человека — inline-кодом: агент выводит текст скрипта как есть, и markdown
 // подсвечивает команду всегда, а не когда модель сама догадалась поставить бэктики.
 // Сырые skill()/lintCmd() — для аргументов, JSON-действий и строки Tip.

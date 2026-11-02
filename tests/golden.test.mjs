@@ -13,7 +13,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { STATES, GIT_ENV } from './golden/states.mjs';
-import { root, LINT, MCP, SCREEN_ENV, tmpDir } from './helpers.mjs';
+import { root, LINT, MCP, SCREEN_ENV, tmpDir, runner } from './helpers.mjs';
 
 const DIR = path.join(root, 'tests/golden');
 const SCENARIOS = JSON.parse(fs.readFileSync(path.join(DIR, 'scenarios.json'), 'utf8'));
@@ -35,9 +35,10 @@ function spawnOut(cmd, args, cwd, input) {
   return new Promise((resolve) => {
     const p = spawn(cmd, args, { cwd, env: { ...process.env, ...SCREEN_ENV, ...GIT_ENV, TMPDIR: path.join(cwd, '.tmp') } });
     let out = '';
+    let err = '';
     p.stdout.on('data', (d) => { out += d; });
-    p.stderr.on('data', (d) => { out += d; });
-    p.on('close', (code) => resolve({ code, out }));
+    p.stderr.on('data', (d) => { err += d; });
+    p.on('close', (code) => resolve({ code, out: out + err, stdout: out, stderr: err }));
     if (input) p.stdin.end(input);
   });
 }
@@ -52,12 +53,20 @@ async function mcpCall(cwd, args) {
   return { code: r.code, out: `${reply.result.isError ? 'isError\n' : ''}${reply.result.content.map((c) => c.text).join('\n')}` };
 }
 
-async function runOne(state, args) {
+// Сценарий вызывается функцией run() в этом процессе; через CLI — выборка в тесте «CLI = run()» ниже.
+const inProcess = runner({ ...SCREEN_ENV, ...GIT_ENV });
+// stdout, затем stderr — так же склеивает и CLI-проверка: порядок прихода из двух потоков не детерминирован.
+const viaCli = async (cwd, args) => {
+  const r = await spawnOut('node', [LINT, ...args], cwd);
+  return { code: r.code, out: r.stdout + r.stderr };
+};
+
+async function runOne(state, args, how = 'run') {
   const cwd = tmpDir('sdd-golden-');
   const isMcp = state === 'mcp';
   STATES[isMcp ? 'good' : state](cwd);
   const dirs = [fs.realpathSync(cwd), cwd];
-  const r = isMcp ? await mcpCall(cwd, args) : await spawnOut('node', [LINT, ...args], cwd);
+  const r = isMcp ? await mcpCall(cwd, args) : how === 'cli' ? await viaCli(cwd, args) : inProcess(cwd, ...args);
   fs.rmSync(cwd, { recursive: true, force: true });
   return { args, code: r.code, out: normalize(r.out, dirs) };
 }
@@ -95,3 +104,13 @@ for (const state of Object.keys(SCENARIOS)) {
     assert.equal(now, was);
   });
 }
+
+// Точка входа CLI печатает то же, что run(): каждый десятый сценарий каждого состояния — отдельным процессом.
+test('golden: CLI = run()', async () => {
+  for (const state of Object.keys(SCENARIOS).filter((x) => x !== 'mcp')) {
+    for (const args of SCENARIOS[state].filter((_, i) => i % 10 === 0)) {
+      const [cli, fn] = [await runOne(state, args, 'cli'), await runOne(state, args)];
+      assert.deepEqual(cli, fn, `${state}: sdd-lint ${args.join(' ')}`);
+    }
+  }
+});
