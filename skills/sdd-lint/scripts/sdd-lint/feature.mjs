@@ -15,7 +15,8 @@ import { checkReadSize } from './read-size.mjs';
 import { parseReview, checkReviews } from './review.mjs';
 import { checkSlices } from './slice-rules.mjs';
 import { parseSlice } from './slices.mjs';
-import { parseSpec, checkSpec } from './spec.mjs';
+import { checkSpec } from './spec-rules.mjs';
+import { parseSpec } from './spec.mjs';
 import { checkWork } from './work.mjs';
 
 export function loadFeature(dir, readFn = read, listFn = null) {
