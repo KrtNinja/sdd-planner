@@ -13,6 +13,9 @@ import { G, blocks, screen } from './screen.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 import { printTip, stageOf, stageText, tipLine } from './stage.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
+/** @param {Ctx} ctx */
 export function cmdCheck(ctx) {
   const { flags, pos } = ctx.args;
   const m = loadFeature(needDir(ctx, pos[0]));
@@ -58,11 +61,13 @@ export function gateClosed(m, stage) {
   return closed;
 }
 
+const GATES = ['spec', 'slices', 'adr', 'decide', 'review', 'build'];
+
+/** @param {Ctx} ctx */
 export function cmdGate(ctx) {
   const { pos } = ctx.args;
   const stage = pos[0];
-  const gates = ['spec', 'slices', 'adr', 'decide', 'review', 'build'];
-  if (!gates.includes(stage)) pickChoice(ctx, 'gate');
+  if (!GATES.includes(stage)) pickChoice(ctx, 'gate');
   let target = pos[1];
   let note = null;
   // Фичу не назвали — выбирает скрипт: одна подходит — она, несколько — вопрос человеку.

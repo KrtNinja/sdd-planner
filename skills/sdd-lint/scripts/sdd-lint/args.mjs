@@ -61,29 +61,38 @@ export const SLOTS = {
 export const FLAGS = { start: ['--slug', '--name', '--sources', '--accept', '--rename'], check: ['--json', '--snapshot'], fix: ['--json', '--snapshot'], diff: ['--json', '--base'], guard: ['--json', '--base'], close: ['--json', '--yes'], prompt: ['--sub', '--note'], choose: ['--fallback'] };
 export const COMMANDS = Object.keys(CMD_INFO);
 
+// Флаги: булевы — есть или нет; со значением — «--имя значение» или «--имя=значение».
+// start: --slug — имя придумал агент, --name — ответ человека на «Как назвать папку?» (id варианта или имя),
+// --sources и --rename — ответы человека; prompt: --sub — задача сабагенту, --note — уточнение к ней;
+// choose --fallback — вариант без сабагентов.
+const BOOL_FLAGS = ['json', 'snapshot', 'yes', 'accept', 'sub', 'fallback'];
+// Значение по умолчанию у флага без значения: --base — null (в git — HEAD), остальные — пустая строка.
+/** @type {Record<string, string | null>} */
+const VALUE_FLAGS = { base: null, slug: '', name: '', sources: '', rename: '', note: '' };
+
+/**
+ * @typedef {{ json: boolean, snapshot: boolean, yes: boolean, accept: boolean, sub: boolean, fallback: boolean,
+ *   base: string | null, slug: string | null, name: string | null, sources: string | null, rename: string | null, note: string | null }} Flags
+ * @typedef {{ argv: string[], flags: Flags, pos: string[], cmd: string }} Args
+ */
 // argv — то, что пришло после имени скрипта. Возвращает { argv, flags, pos, cmd }; ничего не читает из процесса.
+/** @param {string[]} argv @returns {Args} */
 export function parseArgs(argv) {
-  const flags = { json: false, snapshot: false, yes: false, base: null, slug: null, name: null, sources: null, accept: false, rename: null, sub: false, note: null, fallback: false };
+  /** @type {Record<string, boolean | string | null>} */
+  const flags = { ...Object.fromEntries(BOOL_FLAGS.map((k) => [k, false])), ...Object.fromEntries(Object.keys(VALUE_FLAGS).map((k) => [k, null])) };
   const pos = [];
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--json') flags.json = true;
-    else if (a === '--snapshot') flags.snapshot = true;
-    else if (a === '--yes') flags.yes = true;
-    else if (a === '--base') flags.base = argv[++i];
-    else if (a.startsWith('--base=')) flags.base = a.slice(7);
-    // start: значения — ответы человека и имя папки, по одному элементу args.
-    // --slug — имя придумал агент, --name — ответ человека на «Как назвать папку?» (id варианта или имя).
-    else if (a === '--slug' || a === '--name' || a === '--sources' || a === '--rename') flags[a.slice(2)] = argv[++i] ?? '';
-    else if (/^--(slug|name|sources|rename)=/.test(a)) flags[a.slice(2, a.indexOf('='))] = a.slice(a.indexOf('=') + 1);
-    else if (a === '--accept') flags.accept = true;
-    // prompt: --sub — задача сабагенту, --note — уточнение к ней; choose --fallback — вариант без сабагентов.
-    else if (a === '--sub') flags.sub = true;
-    else if (a === '--note') flags.note = argv[++i] ?? '';
-    else if (a === '--fallback') flags.fallback = true;
+    const [, name, inline] = argv[i].match(/^--([a-z]+)(?:=(.*))?$/s) || [];
+    if (BOOL_FLAGS.includes(name) && inline === undefined) flags[name] = true;
+    else if (name in VALUE_FLAGS) flags[name] = inline ?? argv[++i] ?? VALUE_FLAGS[name];
     // «@docs/comments/» — так путь дописывает Tab в строке GigaCode.
-    else pos.push(a.replace(/^@(?=.)/, ''));
+    else pos.push(argv[i].replace(/^@(?=.)/, ''));
   }
-  const cmd = argv[0] === '__complete' ? '__complete' : COMMANDS.includes(pos[0]) ? pos.shift() : 'check';
-  return { argv, flags, pos, cmd };
+  return { argv, flags: /** @type {Flags} */ (flags), pos, cmd: commandOf(argv, pos) };
+}
+// Команда — первое позиционное, если это команда (её убираем из pos); иначе check. __complete — служебная.
+/** @param {string[]} argv @param {string[]} pos */
+function commandOf(argv, pos) {
+  if (argv[0] === '__complete') return '__complete';
+  return COMMANDS.includes(pos[0]) ? /** @type {string} */ (pos.shift()) : 'check';
 }
