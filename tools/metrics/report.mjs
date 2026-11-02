@@ -19,6 +19,9 @@ const OUT = path.join(TOOLS, 'metrics/.out');
 const BASELINE = path.join(TOOLS, 'metrics/baseline.json');
 // ub-mode: «Reduce each function under CRAP 10» — нарушение с 10 включительно.
 const CRAP_MAX = 10;
+// Окно поиска повторов. В тестах однотипные проверки с разными данными (run → code → match) при окне 50
+// совпадают по токенам и считаются копиями; окно 75 оставляет только скопированные блоки.
+const CLONE_WINDOW = { code: 50, tests: 75 };
 // Где можно печатать и завершать процесс: точка входа CLI и MCP-сервер.
 const IO_ALLOWED = new Set(['skills/sdd-lint/scripts/sdd-lint.mjs', 'skills/sdd-lint/scripts/mcp.mjs']);
 
@@ -128,8 +131,8 @@ async function main() {
     eslint: await eslint(),
     tsc: tsc(),
     deps: deps(CODE, TESTS),
-    clonesCode: clones(CODE, 50),
-    clonesTests: clones(TESTS, 50),
+    clonesCode: clones(CODE, CLONE_WINDOW.code),
+    clonesTests: clones(TESTS, CLONE_WINDOW.tests),
     sideEffects: sideEffects(),
   };
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(r, null, 1));
