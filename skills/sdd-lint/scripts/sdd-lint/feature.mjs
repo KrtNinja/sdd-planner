@@ -13,7 +13,8 @@ import { parsePlan, checkPlan } from './plan.mjs';
 import { parseProtocol, checkProtocol } from './protocol.mjs';
 import { checkReadSize } from './read-size.mjs';
 import { parseReview, checkReviews } from './review.mjs';
-import { parseSlice, checkSlices } from './slices.mjs';
+import { checkSlices } from './slice-rules.mjs';
+import { parseSlice } from './slices.mjs';
 import { parseSpec, checkSpec } from './spec.mjs';
 import { checkWork } from './work.mjs';
 

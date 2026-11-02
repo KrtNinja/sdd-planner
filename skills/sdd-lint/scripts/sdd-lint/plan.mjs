@@ -1,6 +1,7 @@
 // План нарезки _work/plan.md: разбор, проверки PL-*, превью для человека в вопросе этапа.
 import { adrNums, adrTopic, reason, stubLines } from './cut.mjs';
 import { collect } from './findings.mjs';
+import { dependencyCycles } from './graph.mjs';
 import { rel, uniq, approved, scan, reqIds } from './md.mjs';
 import { layers } from './readme.mjs';
 import { registry, parseHalves, halvesProblem } from './services.mjs';
@@ -112,19 +113,7 @@ export function checkPlan(m) {
       }
     if (nfrOnly(s)) add('PL-11', f, at('Основание'), `${s.num}: только ${[...s.basis].join(', ')}`);
   }
-  const state = new Map();
-  const items = new Map(p.slices.map((s) => [s.num, s]));
-  const visit = (num, stack) => {
-    if (state.get(num) === 'done') return;
-    if (state.get(num) === 'visiting') {
-      add('PL-07', f, null, `цикл зависимостей: ${[...stack, num].join(' → ')}`);
-      return;
-    }
-    state.set(num, 'visiting');
-    for (const d of items.get(num).deps) if (items.has(d) && d !== num) visit(d, [...stack, num]);
-    state.set(num, 'done');
-  };
-  for (const num of items.keys()) visit(num, []);
+  for (const { path } of dependencyCycles(new Map(p.slices.map((s) => [s.num, s])))) add('PL-07', f, null, `цикл зависимостей: ${path.join(' → ')}`);
   if (m.spec) {
     const covered = new Set(p.slices.flatMap((s) => [...s.basis]));
     const missing = [...m.spec.reqs.values()].filter((r) => !r.deleted && !covered.has(r.id)).map((r) => r.id);
