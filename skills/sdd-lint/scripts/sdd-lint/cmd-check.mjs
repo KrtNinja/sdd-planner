@@ -1,6 +1,6 @@
 // Команды check и gate.
 import { pendingAdrs } from './adr.mjs';
-import { flags, pos } from './legacy.mjs';
+import { LEGACY, flags, pos } from './legacy.mjs';
 import { slicesBrief } from './brief.mjs';
 import { neededAdrs } from './cut.mjs';
 import { skillCode, lintCode } from './config.mjs';
@@ -15,16 +15,16 @@ import { saveSnapshot } from './snapshot.mjs';
 import { printTip, stageOf, stageText, tipLine } from './stage.mjs';
 
 export function cmdCheck() {
-  const m = loadFeature(needDir(pos[0]));
+  const m = loadFeature(needDir(LEGACY, pos[0]));
   runChecks(m);
   if (flags.snapshot) for (const f of featureFiles(m)) saveSnapshot(f);
   const st = stageOf(m);
-  const c = report({ stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip) });
+  const c = report(LEGACY, { stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip) });
   if (!flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
     console.log(`\n${stageText(st)}`);
     console.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
-    if (!c.err) printTip(st);
+    if (!c.err) printTip(LEGACY, st);
   }
   process.exit(c.err ? 1 : 0);
 }
@@ -61,7 +61,7 @@ export function gateClosed(m, stage) {
 export function cmdGate() {
   const stage = pos[0];
   const gates = ['spec', 'slices', 'adr', 'decide', 'review', 'build'];
-  if (!gates.includes(stage)) pickChoice('gate');
+  if (!gates.includes(stage)) pickChoice(LEGACY, 'gate');
   let target = pos[1];
   let note = null;
   // Фичу не назвали — выбирает скрипт: одна подходит — она, несколько — вопрос человеку.
@@ -73,7 +73,7 @@ export function cmdGate() {
     }
     [target, note] = [c.dir, c.note];
   }
-  const m = loadFeature(needDir(target, 1));
+  const m = loadFeature(needDir(LEGACY, target, 1));
   runChecks(m);
   const closed = gateClosed(m, stage);
   if (closed) {

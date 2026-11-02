@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { CMD_INFO, CHOICES, SLOTS, FLAGS, COMMANDS } from './args.mjs';
-import { pos } from './legacy.mjs';
+import { LEGACY, pos } from './legacy.mjs';
 import { askOf } from './ask.mjs';
 import { promptSkills } from './cmd-prompt.mjs';
 import { code, lintCmd, skillCode, lintCode } from './config.mjs';
@@ -142,7 +142,7 @@ export function complete(words) {
 // Скрипт для bash / zsh с путём к этому файлу: работает и через alias, и через ссылку в PATH.
 export function cmdCompletion() {
   const shell = pos[0];
-  if (!['bash', 'zsh'].includes(shell)) pickChoice('completion');
+  if (!['bash', 'zsh'].includes(shell)) pickChoice(LEGACY, 'completion');
   const self = fs.realpathSync(process.argv[1]).replace(/'/g, `'\\''`);
   const run = `node '${self}' __complete`;
   if (shell === 'bash') {

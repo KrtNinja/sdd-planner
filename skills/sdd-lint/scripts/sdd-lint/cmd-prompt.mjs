@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { flags, pos } from './legacy.mjs';
+import { LEGACY, flags, pos } from './legacy.mjs';
 import { lintCmd } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { read, uniq } from './md.mjs';
@@ -81,7 +81,7 @@ export function cmdPrompt() {
   }
   const args = pos.slice(1);
   if (args.length) {
-    const m = loadFeature(needDir(args[0], 1));
+    const m = loadFeature(needDir(LEGACY, args[0], 1));
     args[0] = m.name;
     if (name === 'sdd-review') {
       if (!['spec', 'slices', 'adr'].includes(args[1])) {
@@ -99,7 +99,7 @@ export function cmdPrompt() {
         args[2] = num;
       }
     }
-  } else if (name !== 'sdd-grill') pickFeature('Укажи фичу', 1);
+  } else if (name !== 'sdd-grill') pickFeature(LEGACY, 'Укажи фичу', 1);
   console.log(skillPrompt(name, args));
   process.exit(0);
 }

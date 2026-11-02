@@ -113,7 +113,7 @@ export function stageText({ now, next }) {
 export { tipOk, tipLine } from './config.mjs';
 // Последней строкой вывода: агент переносит её в конец ответа дословно (правило в SKILL.md sdd-lint).
 // При ошибках lint check и fix строку не печатают: сначала исправить, одобрять или ревьюить рано.
-export function printTip(st) {
+export function printTip(ctx, st) {
   const t = tipLine(st.tip);
-  if (t) console.log(`\n${t}`);
+  if (t) ctx.io.log(`\n${t}`);
 }

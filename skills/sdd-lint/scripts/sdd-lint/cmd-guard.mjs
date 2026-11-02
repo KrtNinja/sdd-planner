@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { flags, pos } from './legacy.mjs';
+import { LEGACY, flags, pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { code, lintCode } from './config.mjs';
 import { loadFeature, featureFiles } from './feature.mjs';
@@ -13,10 +13,10 @@ import { resolveFeature, pickFeature } from './pick.mjs';
 import { snapPath, protectedParts, saveSnapshot, diffParts } from './snapshot.mjs';
 
 export const targetFiles = (t) => {
-  if (!t) pickFeature('Укажи файл или фичу', 0);
+  if (!t) pickFeature(LEGACY, 'Укажи файл или фичу', 0);
   if (!fs.existsSync(t)) {
     const f = resolveFeature(t);
-    if (!f) usage(`Нет файла или папки ${t}`);
+    if (!f) usage(LEGACY, `Нет файла или папки ${t}`);
     t = f;
   }
   return fs.statSync(t).isDirectory() ? featureFiles(loadFeature(resolveFeature(t) || t)) : [path.resolve(t)];
@@ -58,7 +58,7 @@ export function cmdGuard() {
     bad += 1;
     for (const d of diffs) add('HG-01', f, null, `(против: ${from}) ${d}`);
   }
-  report({ noBase: noBase.map(rel) });
+  report(LEGACY, { noBase: noBase.map(rel) });
   if (!flags.json) {
     const ok = files.length - bad - noBase.length;
     const out = [];

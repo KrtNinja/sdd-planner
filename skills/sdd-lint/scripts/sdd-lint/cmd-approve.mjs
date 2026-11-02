@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { pendingAdrs } from './adr.mjs';
 import { fingerprint, approvalMds } from './approval.mjs';
-import { pos } from './legacy.mjs';
+import { LEGACY, pos } from './legacy.mjs';
 import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { findings, add, report } from './findings.mjs';
@@ -19,8 +19,8 @@ import { printTip, stageOf, stageText } from './stage.mjs';
 // и защищённые части совпадают со снимком, если он есть.
 export function cmdApprove() {
   const what = pos[0];
-  if (!['spec', 'slices', 'adr'].includes(what)) pickChoice('approve');
-  const d = needDir(pos[1], 1);
+  if (!['spec', 'slices', 'adr'].includes(what)) pickChoice(LEGACY, 'approve');
+  const d = needDir(LEGACY, pos[1], 1);
   const m = loadFeature(d);
   const dir = rel(m.dir);
   const refuse = (msg, code = 3) => {
@@ -89,7 +89,7 @@ export function cmdApprove() {
     for (const x of diffParts(before, protectedParts(fs.readFileSync(f, 'utf8')))) add('HG-01', f, null, `(против: снимок) ${x}`);
   }
   if (findings.length) {
-    report();
+    report(LEGACY);
     const hg = findings.some((x) => x.rule === 'HG-01');
     console.log(`\nНЕ ОДОБРЕНО: ${rel(target)} остаётся «${cur}».`);
     if (hg) console.log(`\nЕсли защищённые части поменяли вы сами — снимите новый снимок (${lintCode('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`);
@@ -99,6 +99,6 @@ export function cmdApprove() {
   console.log(`${rel(target)}: Статус: ${word} ${date} · ${fp}`);
   const st = stageOf(loadFeature(d));
   console.log(`\n${stageText(st)}`);
-  printTip(st);
+  printTip(LEGACY, st);
   process.exit(0);
 }

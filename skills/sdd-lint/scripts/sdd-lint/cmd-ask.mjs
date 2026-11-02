@@ -1,7 +1,7 @@
 // Команды ask и choose.
 import { execFileSync } from 'node:child_process';
 
-import { flags, pos } from './legacy.mjs';
+import { LEGACY, flags, pos } from './legacy.mjs';
 import { askOf, askView } from './ask.mjs';
 import { closeOptions } from './close.mjs';
 import { targetFiles } from './cmd-guard.mjs';
@@ -16,7 +16,7 @@ import { tempArtifacts } from './stage.mjs';
 import { startQuestion } from './start.mjs';
 
 export function cmdAsk() {
-  const m = loadFeature(needDir(pos[0]));
+  const m = loadFeature(needDir(LEGACY, pos[0]));
   console.log(viewText(askView(m)));
   process.exit(0);
 }
@@ -64,7 +64,7 @@ function run(m, a, id, asked = null) {
 }
 
 export function cmdChoose() {
-  const m = loadFeature(needDir(pos[0]));
+  const m = loadFeature(needDir(LEGACY, pos[0]));
   const d = rel(m.dir);
   const [id, answer] = [pos[1], pos[2]];
   // Подтверждение close задаёт сам close, поэтому его варианта в askOf нет: добавляем, пока есть что удалять.

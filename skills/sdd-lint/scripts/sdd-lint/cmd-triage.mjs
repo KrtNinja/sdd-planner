@@ -3,7 +3,7 @@
 // П<n> / «исправлено» — решение провёл /sdd-decide; remarks — какие замечания разбирать, остальные снять.
 import fs from 'node:fs';
 
-import { pos } from './legacy.mjs';
+import { LEGACY, pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { loadFeature } from './feature.mjs';
 import { hasSection, inSection, plural, rel, scan, tables, today } from './md.mjs';
@@ -51,9 +51,9 @@ function save(rv, decisions) {
 const pickedIds = (text) => [...new Set([...String(text).matchAll(/(?:^|[^\p{L}\d])R?\s*(\d+)(?!\d)/giu)].map((x) => `R${x[1]}`))];
 
 export function cmdTriage() {
-  const m = loadFeature(needDir(pos[0]));
+  const m = loadFeature(needDir(LEGACY, pos[0]));
   const [ref, verb, ...rest] = pos.slice(1);
-  if (!ref || !verb) usage('Укажи находку и решение: triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>');
+  if (!ref || !verb) usage(LEGACY, 'Укажи находку и решение: triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>');
   const [key, rid] = ref.split(':');
   const rv = m.reviews.get(key);
   if (!rv) fail(`Ревью «${key}» нет. Есть: ${[...m.reviews.keys()].join(', ') || 'файлов ревью нет'}.`);

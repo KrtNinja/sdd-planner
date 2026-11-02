@@ -1,5 +1,5 @@
 // Команда export: требования фичи в JSON для зоны реализации — единственный интерфейс между зонами.
-import { pos } from './legacy.mjs';
+import { LEGACY, pos } from './legacy.mjs';
 import { gateClosed } from './cmd-check.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { rel } from './md.mjs';
@@ -28,7 +28,7 @@ function acOf(feature, ac) {
 }
 
 export function cmdExport() {
-  const m = loadFeature(needDir(pos[0]));
+  const m = loadFeature(needDir(LEGACY, pos[0]));
   runChecks(m);
   const closed = gateClosed(m, 'build');
   const layerOf = new Map(layers(m).flatMap((ls, i) => ls.map((n) => [n, i + 1])));

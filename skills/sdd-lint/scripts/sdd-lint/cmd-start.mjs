@@ -1,5 +1,5 @@
 // Команды start (скилл /sdd-grill: задача, папка, источники по шагам) и research (задания сабагенту на любом этапе, проверка контекста).
-import { flags, pos } from './legacy.mjs';
+import { LEGACY, flags, pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { contextFindings, factTask, loadContext, markContext, researchTask, syncContext } from './context.mjs';
 import { loadFeature } from './feature.mjs';
@@ -15,7 +15,7 @@ import { acceptContext, addSources, renameFeature, researchList, sourcesOf, star
 export function cmdStart() {
   let out;
   if (flags.sources != null || flags.accept || flags.rename) {
-    const dir = needDir(pos[0]);
+    const dir = needDir(LEGACY, pos[0]);
     out = flags.rename ? renameFeature(dir, flags.rename) : flags.sources != null ? addSources(dir, flags.sources) : acceptContext(dir);
   } else out = startFrom(pos.join(' '), flags.slug, flags.name);
   console.log(out);
@@ -39,8 +39,8 @@ function researchInput(m) {
 
 export function cmdResearch() {
   const what = pos[0];
-  if (!['context', 'fact', 'check'].includes(what)) pickChoice('research');
-  const m = loadFeature(needDir(pos[1], 1));
+  if (!['context', 'fact', 'check'].includes(what)) pickChoice(LEGACY, 'research');
+  const m = loadFeature(needDir(LEGACY, pos[1], 1));
   const { task, list } = researchInput(m);
   const stage = stageName(m);
   if (what === 'context') {
@@ -49,13 +49,13 @@ export function cmdResearch() {
   }
   if (what === 'fact') {
     const q = pos.slice(2).join(' ').trim();
-    if (!q) usage('Укажи вопрос: research fact docs/<feature> "<вопрос>"');
+    if (!q) usage(LEGACY, 'Укажи вопрос: research fact docs/<feature> "<вопрос>"');
     console.log(factTask(m, list, task.line, q, stage));
     process.exit(0);
   }
   const { ctx } = syncContext(m, list.join('; '), task.line);
   findings.push(...contextFindings(ctx));
-  const c = report();
+  const c = report(LEGACY);
   if (c.err) {
     console.log(`\n${screen(`Ошибок в \`${rel(ctx.file)}\`: ${c.err}.`, `исправь ${rel(ctx.file)}`, G.then(['research', 'check', rel(m.dir)]))}`);
     process.exit(1);

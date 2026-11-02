@@ -117,8 +117,8 @@ export function checkReadme(m) {
   }
 }
 
-export function genReadme(m, quiet = false) {
-  if (!m.slices.size) usage('В slices/ нет файлов NNN-*.md');
+export function genReadme(ctx, m, quiet = false) {
+  if (!m.slices.size) usage(ctx, 'В slices/ нет файлов NNN-*.md');
   const link = (text) => (m.spec ? linkReqs(text, m.readmeFile, m.spec) : text);
   const row = (sl) =>
     `| [${sl.num} ${sl.title || sl.name}](${sl.name}) | ${sl.type || '—'} | ${sl.halves || '—'} | ${basisPlain(sl.basisRaw) || '—'} | ${sl.deps.join(', ') || '—'} | ${sl.why || '—'} |`;
@@ -181,5 +181,5 @@ export function genReadme(m, quiet = false) {
     md = replaceSection(md, /^Порядок/, 'Порядок работ', orderText);
   }
   fs.writeFileSync(m.readmeFile, md.endsWith('\n') ? md : `${md}\n`);
-  if (!quiet) console.log(`${rel(m.readmeFile)}: таблица slices, «Покрытие Dev Spec», «Порядок работ» собраны из файлов slices. Порядок: ${order}`);
+  if (!quiet) ctx.io.log(`${rel(m.readmeFile)}: таблица slices, «Покрытие Dev Spec», «Порядок работ» собраны из файлов slices. Порядок: ${order}`);
 }

@@ -1,7 +1,7 @@
 // Команды plan и done: проверка плана нарезки и конец этапа одной командой — с лимитом прогонов.
 import fs from 'node:fs';
 
-import { pos } from './legacy.mjs';
+import { LEGACY, pos } from './legacy.mjs';
 import { askOf } from './ask.mjs';
 import { gateClosed } from './cmd-check.mjs';
 import { closedScreen } from './guide.mjs';
@@ -20,7 +20,7 @@ const exitWith = (code) => process.exit(code);
 
 // План проверяет скрипт, а не модель: покрытие, причины, зависимости, сервисы.
 export function cmdPlan() {
-  const m = loadFeature(needDir(pos[0]));
+  const m = loadFeature(needDir(LEGACY, pos[0]));
   const dir = rel(m.dir);
   if (!m.plan) {
     console.log(screen(`Плана нарезки ещё нет: ${rel(m.planFile)}.`, `запиши ${rel(m.planFile)} по шаблону assets/plan.md скилла sdd-slices`, G.then(['plan', dir])));
@@ -35,7 +35,7 @@ export function cmdPlan() {
   const own = findings.filter((x) => x.rule.startsWith('PL'));
   findings.length = 0;
   findings.push(...own);
-  const c = report();
+  const c = report(LEGACY);
   const { runs } = bump(m.dir, 'plan');
   if (c.err) {
     if (runs < MAX_RUNS) console.log(`\n${screen(`План нарезки не готов: ошибок ${c.err}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, `исправь ${rel(m.planFile)}`, G.then(['plan', dir]))}`);
@@ -66,7 +66,7 @@ function promote(m) {
 // Конец этапа: fix → (ошибки — исправить и снова done) → «на ревью», снимок для guard, вопрос этапа.
 // Предупреждения агент правит один раз; что осталось, видит человек.
 export function cmdDone() {
-  const { m, changed, notes } = fixFeature(needDir(pos[0]));
+  const { m, changed, notes } = fixFeature(needDir(LEGACY, pos[0]));
   const dir = rel(m.dir);
   const errs = findings.filter((x) => x.level === 'err');
   const warns = findings.filter((x) => x.level === 'warn');
@@ -76,7 +76,7 @@ export function cmdDone() {
 
   if (errs.length) {
     console.log('');
-    report();
+    report(LEGACY);
     if (runs < MAX_RUNS) console.log(`\n${screen(`Этап не готов: ошибок ${errs.length}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, 'исправь ошибки', G.then(['done', dir]))}`);
     else {
       reset(m.dir, 'done');
@@ -87,7 +87,7 @@ export function cmdDone() {
   if (warns.length && !prev?.warnTried) {
     mark(m.dir, 'done', { warnTried: true });
     console.log('');
-    report();
+    report(LEGACY);
     console.log(
       `\n${screen(`Ошибок нет, предупреждений ${warns.length} — поправлю те, что можно без вашего решения.`, 'исправь предупреждения, которые не требуют решения человека; остальные не трогай', G.then(['done', dir]))}`,
     );

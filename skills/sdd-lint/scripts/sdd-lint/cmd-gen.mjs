@@ -1,5 +1,5 @@
 // Команды gen, next и trace.
-import { pos } from './legacy.mjs';
+import { LEGACY, pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { lintCode } from './config.mjs';
 import { impact } from './gate-extra.mjs';
@@ -13,7 +13,7 @@ import { codePaths } from './screen.mjs';
 
 // Протокол → куда ушла каждая строка: для ревью смысла трассировки.
 export function cmdTrace() {
-  const m = loadFeature(needDir(pos[0]));
+  const m = loadFeature(needDir(LEGACY, pos[0]));
   // trace <фича> FR-3 AC-002-B1: что держится на требовании — без поиска моделью по файлам.
   const ids = pos.slice(1).filter((x) => /^(N?FR-\d+|AC-\d{3}-[BF]?\d+)$/.test(x));
   if (ids.length) {
@@ -22,7 +22,7 @@ export function cmdTrace() {
   }
   const s = m.spec;
   const p = m.protocol;
-  if (!s || !p) usage('Нужны brainstorming.md и spec.md');
+  if (!s || !p) usage(LEGACY, 'Нужны brainstorming.md и spec.md');
   if (s.oldTraceLine) {
     console.log(`В ${rel(s.file)} старый раздел «Трассировка»: ${lintCode('fix', pos[0])}`);
     process.exit(1);
@@ -48,17 +48,17 @@ export function cmdTrace() {
 
 export function cmdGen() {
   const what = pos[0];
-  if (!['readme', 'links', 'slices'].includes(what)) pickChoice('gen');
-  const m = loadFeature(needDir(pos[1], 1));
-  if (what === 'slices') genSlices(m);
-  else if (what === 'readme') genReadme(m);
-  else genLinks(m);
+  if (!['readme', 'links', 'slices'].includes(what)) pickChoice(LEGACY, 'gen');
+  const m = loadFeature(needDir(LEGACY, pos[1], 1));
+  if (what === 'slices') genSlices(LEGACY, m);
+  else if (what === 'readme') genReadme(LEGACY, m);
+  else genLinks(LEGACY, m);
 }
 
 export function cmdNext() {
   const kind = (pos[0] || '').toLowerCase();
-  if (!['fr', 'nfr', 'ac', 'slice', 'adr'].includes(kind)) pickChoice('next');
-  const m = loadFeature(needDir(pos[1], 1));
+  if (!['fr', 'nfr', 'ac', 'slice', 'adr'].includes(kind)) pickChoice(LEGACY, 'next');
+  const m = loadFeature(needDir(LEGACY, pos[1], 1));
   const max = (arr) => arr.reduce((a, b) => Math.max(a, b), 0);
   if (kind === 'fr' || kind === 'nfr') {
     const pre = kind.toUpperCase();
@@ -66,7 +66,7 @@ export function cmdNext() {
     console.log(`${pre}-${n + 1}`);
   } else if (kind === 'ac') {
     const num = pos[2];
-    if (!/^\d{3}$/.test(num || '')) usage('next AC docs/<feature> <NNN> [B|F]');
+    if (!/^\d{3}$/.test(num || '')) usage(LEGACY, 'next AC docs/<feature> <NNN> [B|F]');
     const side = (pos[3] || '').toUpperCase().replace(/[^BF]/g, '');
     const all = [...m.slices.values()].flatMap((s) => s.acs).filter((a) => a.acNum === num && a.side === side);
     console.log(`AC-${num}-${side}${max(all.map((a) => a.k)) + 1}`);
@@ -74,5 +74,5 @@ export function cmdNext() {
     console.log(String(max([...m.slices.keys()].map(Number)) + 1).padStart(3, '0'));
   } else if (kind === 'adr') {
     console.log(String(max(m.adrs.map((a) => Number(a.num))) + 1).padStart(4, '0'));
-  } else usage('next FR | NFR | AC | slice | adr');
+  } else usage(LEGACY, 'next FR | NFR | AC | slice | adr');
 }

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { ownApprovals, approveCmd } from './approval.mjs';
-import { flags, pos } from './legacy.mjs';
+import { LEGACY, flags, pos } from './legacy.mjs';
 import { diffChecks } from './cmd-diff.mjs';
 import { skillCode } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
@@ -94,7 +94,7 @@ export function fixFeature(dir, { snapshot = false } = {}) {
   m = loadFeature(dir);
   if (m.spec) for (const sl of m.slices.values()) linkSlice(sl, m.spec);
   m = loadFeature(dir);
-  if (m.slices.size) genReadme(m, true);
+  if (m.slices.size) genReadme(LEGACY, m, true);
   // Одобрение давалось прошлой версии — статус «на ревью», одобрять заново человеку.
   m = loadFeature(dir);
   for (const x of ownApprovals(m).filter((a) => a.state === 'changed')) {
@@ -118,19 +118,19 @@ export function fixFeature(dir, { snapshot = false } = {}) {
 export const fixedText = (changed) => (changed.length ? `Скрипт поправил:\n${changed.map((x) => `- ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');
 
 export function cmdFix() {
-  const { m, changed, notes } = fixFeature(needDir(pos[0]), { snapshot: flags.snapshot });
+  const { m, changed, notes } = fixFeature(needDir(LEGACY, pos[0]), { snapshot: flags.snapshot });
   const st = stageOf(m);
   if (!flags.json) {
     console.log(fixedText(changed));
     for (const n of notes) console.log(`\n${n}`);
     if (findings.length) console.log('');
   }
-  const c = report({ stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip), fixed: changed, notes });
+  const c = report(LEGACY, { stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip), fixed: changed, notes });
   if (!flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
     console.log(`\n${stageText(st)}`);
     console.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
-    if (!c.err) printTip(st);
+    if (!c.err) printTip(LEGACY, st);
   }
   process.exit(c.err ? 1 : 0);
 }

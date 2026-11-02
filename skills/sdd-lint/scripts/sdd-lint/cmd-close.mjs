@@ -2,7 +2,7 @@
 // Без --yes ничего не удаляет: показывает, что уйдёт и чем это грозит, и задаёт второй вопрос.
 import fs from 'node:fs';
 
-import { flags, pos } from './legacy.mjs';
+import { LEGACY, flags, pos } from './legacy.mjs';
 import { chooseFeature } from './guide.mjs';
 import { closeSummary, closeQuestion, closePreview } from './close.mjs';
 import { skillCode, lintCode } from './config.mjs';
@@ -28,7 +28,7 @@ export function cmdClose() {
     }
     target = c.dir;
   }
-  const m = loadFeature(needDir(target));
+  const m = loadFeature(needDir(LEGACY, target));
   const dir = rel(m.dir);
   if (!tempArtifacts(m).length) {
     console.log(screen(`Временных артефактов нет: ${dir} уже закрыта.`, G.stop));
@@ -48,10 +48,10 @@ export function cmdClose() {
   fs.rmSync(old.plan, { force: true });
   findings.length = 0;
   // Без spec ссылок на протокол нет — чинить нечего (genLinks без spec останавливается).
-  if (m.spec) genLinks(loadFeature(m.dir));
+  if (m.spec) genLinks(LEGACY, loadFeature(m.dir));
   findings.length = 0;
   runChecks(loadFeature(m.dir));
-  const c = report();
+  const c = report(LEGACY);
   console.log(
     (findings.length ? '\n' : '') +
     blocks(

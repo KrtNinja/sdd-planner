@@ -1,5 +1,4 @@
 // Справка и ошибки вызова.
-import { cmd } from './legacy.mjs';
 import { code, lintCmd } from './config.mjs';
 
 export const HELP = `sdd-lint — проверки артефактов планирования SDD
@@ -104,9 +103,10 @@ export const HELP = `sdd-lint — проверки артефактов план
 Форма команд в подсказках: SDD_SKILL_PREFIX (по умолчанию «/») и SDD_LINT_CMD
 (по умолчанию «/sdd-lint»).`;
 
-export const usage = (msg) => {
-  console.error(msg ? `${msg}\nСправка: ${code(lintCmd('help', cmd === 'check' ? '' : cmd).trim())}` : HELP);
-  process.exit(2);
+export const usage = (ctx, msg) => {
+  const { cmd } = ctx.args;
+  ctx.io.error(msg ? `${msg}\nСправка: ${code(lintCmd('help', cmd === 'check' ? '' : cmd).trim())}` : HELP);
+  ctx.io.exit(2);
 };
 // Справка по одной команде — её блок из HELP.
 export function helpFor(name) {
