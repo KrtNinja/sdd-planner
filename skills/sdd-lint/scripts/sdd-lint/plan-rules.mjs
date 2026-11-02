@@ -8,7 +8,7 @@ import { registry, halvesProblem } from './services.mjs';
 
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок правил — порядок находок: шапка плана, затем по каждому slice, затем связи между slices.
-/** @typedef {import('./findings.mjs').Finding} Finding */
+/** @typedef {import('./model.mjs').Finding} Finding */
 /** @typedef {NonNullable<ReturnType<typeof import('./plan.mjs').parsePlan>>} Plan */
 /** @typedef {Plan['slices'][number]} PlanSlice */
 /**

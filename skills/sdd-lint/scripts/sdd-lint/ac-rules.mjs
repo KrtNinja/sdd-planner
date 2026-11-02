@@ -3,9 +3,9 @@ import { unknownNames } from './data.mjs';
 import { finding } from './findings.mjs';
 import { quotes, rel, word } from './md.mjs';
 
-/** @typedef {import('./findings.mjs').Finding} Finding */
-/** @typedef {import('./slices.mjs').Slice} Slice */
-/** @typedef {import('./slices.mjs').Ac} Ac */
+/** @typedef {import('./model.mjs').Finding} Finding */
+/** @typedef {import('./model.mjs').Slice} Slice */
+/** @typedef {import('./model.mjs').Ac} Ac */
 /** @typedef {import('./slice-rules.mjs').SliceContext} SliceContext */
 /** @typedef {{ ids: string[], check: (ac: Ac, sl: Slice, c: SliceContext) => Finding[] }} AcRule */
 

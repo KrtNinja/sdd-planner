@@ -5,8 +5,8 @@ import { rel, uniq, approved, inSection, hasSection, sectionText, header, reqIds
 
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок правил — порядок находок: сначала номера всех ADR, затем по каждому ADR фичи правила по очереди.
-/** @typedef {import('./findings.mjs').Finding} Finding */
-/** @typedef {import('./adr.mjs').Adr} Adr */
+/** @typedef {import('./model.mjs').Finding} Finding */
+/** @typedef {import('./model.mjs').Adr} Adr */
 /** @typedef {{ ids: string[], check: (a: Adr, m: any) => Finding[] }} AdrRule */
 
 const SECTIONS = ['Контекст', 'Варианты', 'Решение', 'Последствия', 'Не выяснено'];

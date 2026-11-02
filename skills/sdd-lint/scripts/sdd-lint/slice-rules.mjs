@@ -11,11 +11,11 @@ import { checkReadme } from './readme-rules.mjs';
 // Порядок правил — порядок находок: по каждому slice шапка, затем AC, затем хвост; потом фича целиком.
 // c — общие данные проверки (sliceContext): spec, slices, первый поведенческий slice, где AC определены.
 
-/** @typedef {import('./findings.mjs').Finding} Finding */
-/** @typedef {import('./slices.mjs').Slice} Slice */
+/** @typedef {import('./model.mjs').Finding} Finding */
+/** @typedef {import('./model.mjs').Slice} Slice */
 /**
  * @typedef {{ m: any, s: any, slices: Map<string, Slice>, firstBehaviour: string | undefined,
- *   prevDef: Map<import('./slices.mjs').Ac, string | undefined>, defs: Map<string, string> }} SliceContext
+ *   prevDef: Map<import('./model.mjs').Ac, string | undefined>, defs: Map<string, string> }} SliceContext
  * @typedef {{ ids: string[], check: (sl: Slice, c: SliceContext) => Finding[] }} SliceRule
  * @typedef {{ ids: string[], check: (c: SliceContext) => Finding[] }} FeatureRule
  */
@@ -172,7 +172,7 @@ const FEATURE = [
 export function checkSlices(m) {
   if (!m.slices.size) return [];
   const c = sliceContext(m);
-  const perAc = (/** @type {Slice} */ sl) => (/** @type {import('./slices.mjs').Ac} */ ac) => [
+  const perAc = (/** @type {Slice} */ sl) => (/** @type {import('./model.mjs').Ac} */ ac) => [
     ...AC_ANY.flatMap((r) => r.check(ac, sl, c)),
     ...(ac.deleted || ac.stub ? [] : AC_LIVE.flatMap((r) => r.check(ac, sl, c))),
   ];

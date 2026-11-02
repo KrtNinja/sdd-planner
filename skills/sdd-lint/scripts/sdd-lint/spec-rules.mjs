@@ -6,8 +6,8 @@ import { hasProtocolTraces, protoHref } from './sources.mjs';
 
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок правил — порядок находок: spec целиком, затем каждое живое требование, затем связь с протоколом.
-/** @typedef {import('./findings.mjs').Finding} Finding */
-/** @typedef {import('./spec.mjs').Spec} Spec */
+/** @typedef {import('./model.mjs').Finding} Finding */
+/** @typedef {import('./model.mjs').Spec} Spec */
 /** @typedef {Spec['reqs'] extends Map<string, infer R> ? R : never} Req */
 /** @typedef {Spec['sources'][number]} Source */
 /**
