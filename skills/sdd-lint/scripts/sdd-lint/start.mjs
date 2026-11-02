@@ -9,7 +9,7 @@ import { skillCode, lintCode } from './config.mjs';
 import { contextFindings, loadContext, markContext, syncContext } from './context.mjs';
 import { loadFeature } from './feature.mjs';
 import { item } from './findings.mjs';
-import { NEW_PROJECT, REPO, classify, inventory, outside, parseSourcesAnswer, requestOf, slugProblem, titleOf } from './input.mjs';
+import { NEW_PROJECT, REPO, caseTwin, classify, inventory, outside, parseSourcesAnswer, requestOf, slugProblem, titleOf } from './input.mjs';
 import { dropHeader, header, read, rel, setHeader, uniq } from './md.mjs';
 import { folderName, nameTrouble } from './name.mjs';
 import { DOCS, isDir, listFeatures } from './pick.mjs';
@@ -226,7 +226,9 @@ export function startFrom(raw, slug = null, name = null) {
   const n = folderName(c, raw, slug, name);
   if (n.text) return n.text;
   const r = createFeature(c, n.slug, raw, n.own);
-  return r.text || resume(r.dir, { created: true });
+  if (r.text) return r.text;
+  const note = n.from ? `Из ответа «${n.from}» взято имя папки \`${n.slug}\`.` : null;
+  return blocks(note, resume(r.dir, { created: true }));
 }
 
 // Ответ человека про источники: пути и ссылки дописываются, «нет» и «новый проект» — особые значения.
@@ -273,7 +275,9 @@ export function renameFeature(dir, slug) {
   if (problem) return waitText(`Имя папки ${problem}. Какое имя взять?`, ['start', d, '--rename', ANSWER]);
   if (m.spec || !m.protocol || /готов/i.test(m.protocol.status || '')) return screen(`Переименовать \`${d}\` можно только пока идёт brainstorming.`, G.stop);
   const to = path.join(path.dirname(m.dir), slug);
-  if (fs.existsSync(to)) return waitText(`\`${rel(to)}\` уже есть. Какое имя взять?`, ['start', d, '--rename', ANSWER]);
+  const twin = caseTwin(slug, m.name);
+  if (twin) return waitText(`\`${DOCS}/${twin}\` уже есть: имена, которые отличаются только регистром, на macOS и Windows — одна папка. Какое имя взять?`, ['start', d, '--rename', ANSWER]);
+  if (fs.existsSync(to) && slug.toLowerCase() !== m.name.toLowerCase()) return waitText(`\`${rel(to)}\` уже есть. Какое имя взять?`, ['start', d, '--rename', ANSWER]);
   fs.renameSync(m.dir, to);
   return blocks(`Папка \`${d}\` теперь \`${rel(to)}\`.`, resume(to));
 }

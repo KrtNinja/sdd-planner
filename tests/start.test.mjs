@@ -82,18 +82,48 @@ test('«Автоматически»: имя придумывает агент, 
   // «авто» словами — то же, что вариант 1.
   assert.match(run(repo(), 'start', 'панель настроек', '--name', 'автоматически').out, /^⚙ sdd: придумай имя папки/);
 });
-test('«Своё»: скрипт ждёт имя, нормализует его и создаёт папку', () => {
+test('«Своё»: скрипт ждёт имя, регистр не трогает, правит только то, без чего имя не годится, — и говорит об этом', () => {
   const cwd = repo();
   const w = run(cwd, 'start', 'добавить панель настроек пользователя', '--name', 'name:own');
-  assert.match(w.out, /^Как назвать папку фичи\? Латиница в нижнем регистре/);
+  assert.match(w.out, /^Как назвать папку фичи\? Латиница, цифры и дефис, до 40 знаков — например, `user-settings` или `PROJECT-4567`\./);
   assert.match(w.out, /\n⚙ sdd: жди ответ → \["start","добавить панель настроек пользователя","--name","<ответ человека>"\]\n$/);
-  run(cwd, 'start', 'добавить панель настроек пользователя', '--name', '`docs/User_Settings/`');
-  assert.match(read(cwd, 'docs/user-settings/brainstorming.md'), /^Запрос: «добавить панель настроек пользователя»$/m);
-  // Одно слово-имя среди прочих слов — берётся оно; «Buyer Profile» — через дефис.
-  run(cwd, 'start', 'возврат платежа покупателю', '--name', 'давай pay-123-refund');
-  assert.ok(fs.existsSync(path.join(cwd, 'docs/pay-123-refund/brainstorming.md')));
-  run(cwd, 'start', 'профиль покупателя в кабинете', '--name', 'Buyer Profile');
-  assert.ok(fs.existsSync(path.join(cwd, 'docs/buyer-profile/brainstorming.md')));
+  // Как написал — так и папка: ключ тикета в верхнем регистре.
+  const exact = run(cwd, 'start', 'возврат платежа покупателю', '--name', 'PROJECT-4567');
+  assert.ok(fs.existsSync(path.join(cwd, 'docs/PROJECT-4567/brainstorming.md')));
+  assert.doesNotMatch(exact.out, /Из ответа/);
+  // Пробелы и «_» — в дефис, обёртка из docs/ и бэктиков — прочь; регистр остаётся.
+  const fixed = run(cwd, 'start', 'добавить панель настроек пользователя', '--name', '`docs/User_Settings/`');
+  assert.match(read(cwd, 'docs/User-Settings/brainstorming.md'), /^Запрос: «добавить панель настроек пользователя»$/m);
+  assert.match(fixed.out, /^Из ответа «`docs\/User_Settings\/`» взято имя папки `User-Settings`\./);
+  // Одно слово-имя среди прочих слов — берётся оно.
+  const picked = run(cwd, 'start', 'профиль покупателя в кабинете', '--name', 'назови ABC-12 пожалуйста');
+  assert.ok(fs.existsSync(path.join(cwd, 'docs/ABC-12/brainstorming.md')));
+  assert.match(picked.out, /^Из ответа «назови ABC-12 пожалуйста» взято имя папки `ABC-12`\./);
+});
+test('имя, отличное от занятого только регистром, — занято: на macOS и Windows это одна папка', () => {
+  const cwd = repo();
+  run(cwd, 'start', 'возврат платежа покупателю', '--name', 'PROJECT-4567');
+  const own = run(cwd, 'start', 'другая задача совсем', '--name', 'project-4567');
+  assert.match(own.out, /^Папка `docs\/PROJECT-4567` уже есть: имена, которые отличаются только регистром/);
+  assert.match(own.out, /\n⚙ sdd: жди ответ → \["start","другая задача совсем","--name","<ответ человека>"\]\n$/);
+  const agent = run(cwd, 'start', 'другая задача совсем', '--slug', 'Project-4567');
+  assert.match(agent.out, /отличается только регистром — придумай другое имя/);
+  assert.match(run(cwd, 'start', 'панель', '--name', 'ADR').out, /«ADR» занято/);
+  // rename: в двойника нельзя, сменить регистр своей папки — можно.
+  run(cwd, 'start', 'профиль покупателя', '--name', 'buyer-profile');
+  assert.match(run(cwd, 'start', 'docs/buyer-profile', '--rename', 'project-4567').out, /уже есть: имена, которые отличаются только регистром/);
+  assert.match(run(cwd, 'start', 'docs/buyer-profile', '--rename', 'Buyer-Profile').out, /^Папка `docs\/buyer-profile` теперь `docs\/Buyer-Profile`/);
+  assert.deepEqual(fs.readdirSync(path.join(cwd, 'docs')).sort(), ['Buyer-Profile', 'PROJECT-4567']);
+});
+test('имя в команде: ключ тикета в верхнем регистре — имя; «E-mail …», «Wi-Fi …» — задача', () => {
+  const cwd = repo();
+  run(cwd, 'start', 'PROJECT-777 "Возврат платежа покупателю"');
+  assert.match(read(cwd, 'docs/PROJECT-777/brainstorming.md'), /^Запрос: «Возврат платежа покупателю»$/m);
+  for (const task of ['E-mail уведомления покупателю', 'Wi-Fi в офисе для гостей']) {
+    const q = json(run(cwd, 'start', task).out);
+    assert.equal(q.questions[0].question, 'Как назвать папку фичи?');
+    assert.equal(q.then[1], task);
+  }
 });
 test('«Своё»: имя не подошло или папка занята — переспросить человека, не поручать агенту', () => {
   const cwd = repo();
