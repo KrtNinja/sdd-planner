@@ -6,7 +6,7 @@ import { pendingAdrs } from './adr.mjs';
 import { fingerprint, approvalMds } from './approval.mjs';
 import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
-import { findings, add, report } from './findings.mjs';
+import { adder, finding, report } from './findings.mjs';
 import { read, rel, approved, header, today } from './md.mjs';
 import { pickChoice, needDir } from './pick.mjs';
 import { openBlockers, reviewKey } from './review.mjs';
@@ -76,15 +76,13 @@ export function cmdApprove(ctx) {
   // lint по будущему состоянию: ошибки в файлах артефакта блокируют одобрение
   const inScope = new Set(scope.map(rel));
   const after = loadFeature(d, (f) => (path.resolve(f) === path.resolve(target) ? next : read(f)));
-  findings.length = 0;
-  runChecks(after);
-  const errs = findings.filter((x) => x.level === 'err' && inScope.has(x.file));
-  findings.length = 0;
-  findings.push(...errs);
+  const findings = runChecks(after).filter((x) => x.level === 'err' && inScope.has(x.file));
+  const add = adder(findings);
 
   // блокеры последнего ревью этого артефакта
   const rv = m.reviews.get(reviewKey(what, what === 'adr' ? path.basename(target).slice(0, 4) : null));
-  for (const r of openBlockers(rv)) findings.push({ rule: 'RV-01', level: 'err', file: rel(rv.file), line: r.n, msg: `${r.id}: блокер без решения` });
+  // В общем lint RV-01 — предупреждение; одобрение он блокирует — здесь это ошибка.
+  for (const r of openBlockers(rv)) findings.push({ ...finding('RV-01', rv.file, r.n, `${r.id}: блокер без решения`), level: 'err' });
 
   // guard: защищённые части против снимка, если он снят
   for (const f of scope.filter((x) => fs.existsSync(x) && fs.existsSync(snapPath(x)))) {
@@ -92,7 +90,7 @@ export function cmdApprove(ctx) {
     for (const x of diffParts(before, protectedParts(fs.readFileSync(f, 'utf8')))) add('HG-01', f, null, `(против: снимок) ${x}`);
   }
   if (findings.length) {
-    report(ctx);
+    report(ctx, findings);
     const hg = findings.some((x) => x.rule === 'HG-01');
     ctx.io.log(`\nНЕ ОДОБРЕНО: ${rel(target)} остаётся «${cur}».`);
     if (hg) ctx.io.log(`\nЕсли защищённые части поменяли вы сами — снимите новый снимок (${lintCode('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`);

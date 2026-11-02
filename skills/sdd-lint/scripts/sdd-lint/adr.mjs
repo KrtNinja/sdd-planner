@@ -1,7 +1,7 @@
 // ADR: разбор и проверки AD-*.
 import path from 'node:path';
 
-import { add } from './findings.mjs';
+import { collect, noStatus } from './findings.mjs';
 import { rel, uniq, approved, scan, inSection, hasSection, sectionText, header, reqIds } from './md.mjs';
 
 // Ограничение — то, что в решении не обсуждается: решение компании, бюджет, ресурсы, сроки.
@@ -40,6 +40,7 @@ export function parseAdr(file, md) {
 }
 
 export function checkAdrs(m) {
+  const { found, add } = collect();
   const seen = new Map();
   for (const a of m.adrs) {
     if (seen.has(a.num)) add('AD-09', a.file, null, `номер ${a.num} уже у ${rel(seen.get(a.num))}`);
@@ -47,7 +48,7 @@ export function checkAdrs(m) {
   }
   for (const a of m.featureAdrs) {
     const f = a.file;
-    if (!a.status) add('AD-01', f, null, 'нет строки «Статус:»');
+    found.push(...noStatus('AD-01', f, a.status, null));
     if (a.headNum && a.headNum.padStart(4, '0') !== a.num) add('AD-09', f, 1, `файл ${a.num}, в заголовке ADR-${a.headNum}`);
     for (const sec of ['Контекст', 'Варианты', 'Решение', 'Последствия', 'Не выяснено'])
       if (!hasSection(a.sc, new RegExp(`^${sec}`))) add('AD-02', f, null, `нет раздела «${sec}»`);
@@ -83,6 +84,7 @@ export function checkAdrs(m) {
       if (!/блокир/i.test(l.text) && !/блокир/i.test(l.h2)) add('AD-08', f, l.n, 'не сказано, блокирует ли пункт slices');
     if (approved(m.slicesStatus) && !/принят/i.test(a.status || '')) add('AD-10', f, null, `статус «${a.status || '—'}», slices уже одобрены`);
   }
+  return found;
 }
 
 // Где фича и что делать дальше — готовыми командами со slug.

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { usage } from './cli.mjs';
 import { code, lintCode } from './config.mjs';
 import { loadFeature, featureFiles } from './feature.mjs';
-import { add, report } from './findings.mjs';
+import { collect, report } from './findings.mjs';
 import { gitInfo, gitShow } from './git.mjs';
 import { rel } from './md.mjs';
 import { resolveFeature, pickFeature } from './pick.mjs';
@@ -36,6 +36,7 @@ export function cmdSnapshot(ctx) {
 export function cmdGuard(ctx) {
   const { flags, pos } = ctx.args;
   const files = targetFiles(ctx, pos[0]);
+  const { found, add } = collect();
   let bad = 0;
   const noBase = [];
   for (const f of files) {
@@ -64,7 +65,7 @@ export function cmdGuard(ctx) {
     bad += 1;
     for (const d of diffs) add('HG-01', f, null, `(против: ${from}) ${d}`);
   }
-  report(ctx, { noBase: noBase.map(rel) });
+  report(ctx, found, { noBase: noBase.map(rel) });
   if (!flags.json) {
     const ok = files.length - bad - noBase.length;
     const out = [];

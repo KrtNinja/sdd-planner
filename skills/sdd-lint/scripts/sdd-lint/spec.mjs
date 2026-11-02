@@ -1,6 +1,6 @@
 // Dev Spec: разбор и проверки SP-*.
 import { parseData, mentionsData, unknownNames } from './data.mjs';
-import { add } from './findings.mjs';
+import { collect, noStatus } from './findings.mjs';
 import {
   uniq, approved, noneText, scan, isH2, inSection, sectionText, header, headerLine, tables, REQ_RE, numbers,
   word,
@@ -61,8 +61,9 @@ export function parseSpec(file, md) {
 const BOUND_RE = /(не длиннее|не короче|не больше|не более|не меньше|не менее|не позже|не раньше|максимум|минимум|до|от|≤|≥|<=|>=)\s+(\d+)(?![.,]\d)/giu;
 export function checkSpec(m) {
   const s = m.spec;
-  if (!s) return;
-  if (!s.status) add('SP-01', s.file, 1, 'нет строки «Статус:»');
+  if (!s) return [];
+  const { found, add } = collect();
+  found.push(...noStatus('SP-01', s.file, s.status));
   for (const o of s.outside) add('SP-02', s.file, o.n, `${o.id} вне блока кода`);
   for (const d of s.dups) add('SP-03', s.file, d.n, `${d.id} определён повторно`);
   for (const mb of s.multi) add('SP-19', s.file, mb.n, `в блоке кода ${mb.ids.length} требования: ${mb.ids.join(', ')}`);
@@ -118,11 +119,11 @@ export function checkSpec(m) {
   // откуда пришло: каждая строка протокола куда-то ушла, у каждого требования есть источник
   if (!p) {
     if (hasProtocolTraces(s.md)) add('SP-21', s.file, s.sources[0]?.n || headerLine(s.md, 'Протокол'), 'протокола нет, а spec на него ссылается');
-    return;
+    return found;
   }
   if (s.oldTraceLine) {
     add('SP-13', s.file, s.oldTraceLine, 'раздел «Трассировка» — старый формат');
-    return;
+    return found;
   }
   const byId = new Map([...p.rows, ...p.post].map((r) => [r.id, r]));
   const traced = new Set();
@@ -148,4 +149,5 @@ export function checkSpec(m) {
   }
   for (const r of [...p.rows, ...p.post]) if (!traced.has(r.id)) add('SP-14', p.file, r.n, `строка #${r.id} не указана ни в одном «Из протокола:» в spec.md`);
   for (const r of s.reqs.values()) if (!r.deleted && !sourced.has(r.id)) add('SP-16', s.file, r.n, `${r.id}: под блоком нет «Из протокола:»`);
+  return found;
 }

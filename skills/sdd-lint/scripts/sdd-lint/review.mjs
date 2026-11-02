@@ -1,5 +1,5 @@
 // Файлы ревью: разбор находок, их решения (колонка «Решение») и проверки RV-*.
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 import { isEmptyCell, scan, tables, col } from './md.mjs';
 
 // Находки /sdd-review: docs/<feature>/_work/review/<spec|slices|adr-NNNN>.md, таблица с колонкой «Решение».
@@ -53,6 +53,7 @@ export function withDecisions(rv, decisions) {
 }
 
 export function checkReviews(m) {
+  const { found, add } = collect();
   for (const [key, rv] of m.reviews) {
     if (!rv.table || !rv.rows.every((r) => /^R\d+$/.test(r.id))) {
       add('RV-02', rv.file, null, rv.table ? 'ID находок — R1, R2 …' : 'нет таблицы находок с колонкой «Решение»');
@@ -60,4 +61,5 @@ export function checkReviews(m) {
     }
     for (const r of openBlockers(rv)) add('RV-01', rv.file, r.n, `${r.id}: блокер без решения (ревью ${key})`);
   }
+  return found;
 }

@@ -5,19 +5,37 @@ import { RULES } from './rules.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
 
-export const findings = [];
-export const hasErrors = () => findings.some((x) => x.level === 'err');
-export const add = (rule, file, line, msg) => {
-  const [level] = RULES[rule];
-  findings.push({ rule, level, file: rel(file), line: line || null, msg });
+/** @typedef {{ rule: string, level: 'err' | 'warn' | 'info', file: string, line: number | null, msg: string }} Finding */
+
+// Находка правила rule: уровень — из каталога rules.mjs, путь — от корня репозитория.
+/** @param {string} rule @param {string} file @param {number | null | undefined} line @param {string} msg @returns {Finding} */
+export const finding = (rule, file, line, msg) => ({ rule, level: RULES[rule][0], file: rel(file), line: line || null, msg });
+// add для своего массива находок: adder(list)(rule, file, line, msg).
+/** @param {Finding[]} list @returns {(rule: string, file: string, line: number | null | undefined, msg: string) => void} */
+export const adder = (list) => (rule, file, line, msg) => {
+  list.push(finding(rule, file, line, msg));
 };
+// Сборщик находок одной проверки: const { found, add } = collect(); … return found.
+export function collect() {
+  /** @type {Finding[]} */
+  const found = [];
+  return { found, add: adder(found) };
+}
+// Общая проверка артефактов: нет строки «Статус:» (PR-01, SP-01, AD-01).
+/** @param {string} rule @param {string} file @param {string | null | undefined} status @param {number | null} [line] */
+export const noStatus = (rule, file, status, line = 1) => (status ? [] : [finding(rule, file, line, 'нет строки «Статус:»')]);
+/** @param {Finding[]} list */
+export const hasErrors = (list) => list.some((x) => x.level === 'err');
+/** @param {Finding[]} list */
+export const errorsOf = (list) => list.filter((x) => x.level === 'err');
 
 // Находка — пункт списка markdown: в выводе MCP его рендерит GigaCode, в терминале он тоже читается.
 const LEVEL = { err: 'ОШИБКА', warn: 'ВНИМАНИЕ', info: 'ИНФО' };
 export const line = (x) => `**${LEVEL[x.level]}** \`${x.rule}\` \`${x.file}${x.line ? `:${x.line}` : ''}\` — ${x.msg}`;
 export const item = (x) => `- ${line(x)}`;
-/** @param {Ctx} ctx */
-export function report(ctx, extra = {}) {
+// Печатает находки (сортирует список на месте) и возвращает счётчики по уровням.
+/** @param {Ctx} ctx @param {Finding[]} findings */
+export function report(ctx, findings, extra = {}) {
   const order = { err: 0, warn: 1, info: 2 };
   findings.sort((a, b) => order[a.level] - order[b.level] || a.file.localeCompare(b.file) || (a.line || 0) - (b.line || 0));
   const counts = { err: 0, warn: 0, info: 0 };

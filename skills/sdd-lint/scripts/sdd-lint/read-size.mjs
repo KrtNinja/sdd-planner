@@ -1,5 +1,5 @@
 // Объём spec, slice и README для чтения: видимые символы против READ_LIMIT.
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 import { stripProtocol } from './sources.mjs';
 
 // Dev Spec, slice и README человек читает целиком; комфортно — до READ_LIMIT символов.
@@ -35,11 +35,15 @@ export function visibleLength(md) {
 }
 const thousands = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 function readSize(rule, file, md) {
+  const { found, add } = collect();
   const n = visibleLength(md);
   if (n > READ_LIMIT) add(rule, file, null, `${thousands(n)} символов при ориентире ${thousands(READ_LIMIT)} (без пробелов, ссылок и разметки)`);
+  return found;
 }
 export function checkReadSize(m) {
-  if (m.spec) readSize('SP-23', m.spec.file, stripProtocol(m.spec.md));
-  for (const sl of m.slices.values()) readSize('SL-30', sl.file, sl.md);
-  if (m.readme != null) readSize('RM-05', m.readmeFile, m.readme);
+  return [
+    ...(m.spec ? readSize('SP-23', m.spec.file, stripProtocol(m.spec.md)) : []),
+    ...[...m.slices.values()].flatMap((sl) => readSize('SL-30', sl.file, sl.md)),
+    ...(m.readme != null ? readSize('RM-05', m.readmeFile, m.readme) : []),
+  ];
 }

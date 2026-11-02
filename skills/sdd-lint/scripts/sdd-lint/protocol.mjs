@@ -1,5 +1,5 @@
 // Протокол brainstorming: разбор, проверки PR-*.
-import { add } from './findings.mjs';
+import { collect, noStatus } from './findings.mjs';
 import { isEmptyCell, scan, inSection, header, tables, col } from './md.mjs';
 
 export const DROPPED_RE = /^Снято на ревью/;
@@ -54,11 +54,13 @@ export function parseProtocol(file, md) {
 
 export function checkProtocol(m) {
   const p = m.protocol;
-  if (!p) return;
-  if (!p.status) add('PR-01', p.file, 1, 'нет строки «Статус:»');
+  if (!p) return [];
+  const { found, add } = collect();
+  found.push(...noStatus('PR-01', p.file, p.status));
   p.rows.forEach((r, k) => {
     if (r.id !== String(k + 1)) add('PR-02', p.file, r.n, `строка ${k + 1} таблицы «Решения» имеет номер «${r.id}», ожидался ${k + 1}`);
   });
-  if (!/готов/i.test(p.status || '')) return;
+  if (!/готов/i.test(p.status || '')) return found;
   for (const r of p.rows) if (isEmptyCell(r.dec)) add('PR-03', p.file, r.n, `статус «готов», а у строки #${r.id} нет решения`);
+  return found;
 }

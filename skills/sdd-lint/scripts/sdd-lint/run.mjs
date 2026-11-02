@@ -16,7 +16,6 @@ import { cmdPrompt } from './cmd-prompt.mjs';
 import { cmdStart, cmdResearch } from './cmd-start.mjs';
 import { cmdTriage } from './cmd-triage.mjs';
 import { lintCmd } from './config.mjs';
-import { findings } from './findings.mjs';
 import { createIo, Exit } from './io.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
@@ -58,8 +57,6 @@ function dispatch(ctx) {
 export function run(argv, { write } = {}) {
   // lint — вложенный вызов для choose: та же функция, без нового процесса и без импорта run.mjs в команды.
   const ctx = { args: parseArgs(argv), io: createIo(write), lint: (/** @type {string[]} */ a) => run(a) };
-  // Находки пока копятся в общем массиве модуля (уйдёт в шаге 5): каждый вызов начинает с чистого.
-  findings.length = 0;
   try {
     dispatch(ctx);
     return { code: 0, chunks: ctx.io.chunks };

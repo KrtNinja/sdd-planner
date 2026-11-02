@@ -2,7 +2,7 @@
 import { usage } from './cli.mjs';
 import { contextFindings, factTask, loadContext, markContext, researchTask, syncContext } from './context.mjs';
 import { loadFeature } from './feature.mjs';
-import { findings, report } from './findings.mjs';
+import { report } from './findings.mjs';
 import { stageName } from './guide.mjs';
 import { REPO, inventory } from './input.mjs';
 import { header, rel } from './md.mjs';
@@ -59,8 +59,7 @@ export function cmdResearch(ctx) {
     ctx.io.exit(0);
   }
   const { ctx: context } = syncContext(m, list.join('; '), task.line);
-  findings.push(...contextFindings(context));
-  const c = report(ctx);
+  const c = report(ctx, contextFindings(context));
   if (c.err) {
     ctx.io.log(`\n${screen(`Ошибок в \`${rel(context.file)}\`: ${c.err}.`, `исправь ${rel(context.file)}`, G.then(['research', 'check', rel(m.dir)]))}`);
     ctx.io.exit(1);

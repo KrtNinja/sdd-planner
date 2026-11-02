@@ -2,7 +2,7 @@
 import { pendingAdrs } from './adr.mjs';
 import { showCmd, skill } from './config.mjs';
 import { neededAdrs, stubCount } from './cut.mjs';
-import { findings } from './findings.mjs';
+import { errorsOf } from './findings.mjs';
 import { rel, approved, plural } from './md.mjs';
 import { checkPlan, planPreview } from './plan.mjs';
 import { questionsView } from './question.mjs';
@@ -31,10 +31,7 @@ function nextSkillQuestion(m, now, name, label, cont = false) {
 // Согласие с планом нарезки: «Да» создаёт файлы скриптом (gen slices), а не руками агента.
 function planQuestion(m) {
   const dir = rel(m.dir);
-  const saved = findings.splice(0);
-  checkPlan(m);
-  const errs = findings.filter((x) => x.level === 'err').length;
-  findings.splice(0, findings.length, ...saved);
+  const errs = errorsOf(checkPlan(m)).length;
   const n = m.plan.slices.length;
   const edit = {
     id: 'plan:edit',

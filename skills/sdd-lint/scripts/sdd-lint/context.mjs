@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import { lintArgs } from './question.mjs';
 import { SKILLS_DIR } from './cmd-prompt.mjs';
-import { add, findings, line } from './findings.mjs';
+import { collect, line } from './findings.mjs';
 import { REPO, outside } from './input.mjs';
 import { dropHeader, header, isH2, read, rel, scan, setHeader } from './md.mjs';
 import { visibleLength } from './read-size.mjs';
@@ -74,6 +74,7 @@ function refProblem(ref) {
 }
 
 export function checkContext(ctx) {
+  const { found, add } = collect();
   const f = ctx.file;
   if (!ctx.sources) add('CX-01', f, null, 'нет строки «Источники:»');
   for (const s of REQUIRED) if (!ctx.sections.has(s)) add('CX-01', f, null, `нет раздела «${s}»`);
@@ -92,15 +93,10 @@ export function checkContext(ctx) {
   }
   const n = visibleLength(ctx.md);
   if (n > CONTEXT_LIMIT) add('CX-05', f, null, `${n} символов при ориентире ${CONTEXT_LIMIT} (без пробелов и разметки)`);
+  return found;
 }
-// Находки CX-* отдельно от общего списка: старт и задание сабагенту показывают только их.
-export function contextFindings(ctx) {
-  const saved = findings.splice(0);
-  checkContext(ctx);
-  const own = findings.splice(0);
-  findings.push(...saved);
-  return own;
-}
+// Находки CX-* — отдельно от проверок фичи: их показывают старт и задание сабагенту.
+export const contextFindings = (ctx) => checkContext(ctx);
 
 // Заготовка: шапку пишет скрипт. Источники поменялись — отметки «Проверено» и «Принято» снимаются.
 export function syncContext(m, key, taskLine) {

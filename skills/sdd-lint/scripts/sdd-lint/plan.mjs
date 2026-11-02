@@ -1,6 +1,6 @@
 // План нарезки _work/plan.md: разбор, проверки PL-*, превью для человека в вопросе этапа.
 import { adrNums, adrTopic, reason, stubLines } from './cut.mjs';
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 import { rel, uniq, approved, scan, reqIds } from './md.mjs';
 import { layers } from './readme.mjs';
 import { registry, parseHalves, halvesProblem } from './services.mjs';
@@ -69,17 +69,18 @@ function sharedReqs(p) {
 const nfrOnly = (s) => s.basis.size > 0 && [...s.basis].every((id) => id.startsWith('NFR'));
 
 export function checkPlan(m) {
+  const { found, add } = collect();
   const p = m.plan;
-  if (!p) return;
+  if (!p) return found;
   const f = p.file;
   if (m.slices.size) {
     add('PL-13', f, null, `в slices/ уже ${m.slices.size} файл(ов) slices`);
-    return;
+    return found;
   }
   for (const b of p.bad) add('PL-01', f, b.n, `«${b.text}» — не заголовок slice`);
   if (!p.slices.length) {
     add('PL-01', f, null, 'нет ни одного slice');
-    return;
+    return found;
   }
   for (const s of stubLines(p.md)) add('PL-14', f, s.n, s.items.map((x) => `«${x}»`).join(', '));
   const seen = { num: new Map(), slug: new Map() };
@@ -131,6 +132,7 @@ export function checkPlan(m) {
   }
   for (const [id, ns] of sharedReqs(p)) add('PL-10', f, null, `${id} — в ${ns.join(', ')}`);
   if (p.slices.length > 6) add('PL-12', f, null, `${p.slices.length} slices`);
+  return found;
 }
 
 // «FR-1, FR-2, FR-3, FR-7» → «FR-1…FR-3, FR-7»: план читают в терминале.

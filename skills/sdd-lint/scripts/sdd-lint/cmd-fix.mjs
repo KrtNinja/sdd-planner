@@ -3,10 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { ownApprovals, approveCmd } from './approval.mjs';
+import { reportFeature } from './cmd-check.mjs';
 import { diffChecks } from './cmd-diff.mjs';
 import { skillCode } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
-import { findings, hasErrors, report } from './findings.mjs';
 import { linkSpec, linkSlice } from './gen-links.mjs';
 import { gitInfo } from './git.mjs';
 import { fixIdTypos } from './ids.mjs';
@@ -16,7 +16,6 @@ import { genReadme } from './readme.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 import { moveLegacy } from './work.mjs';
 import { hasProtocolTraces } from './sources.mjs';
-import { printTip, stageOf, stageText, tipLine } from './stage.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
 
@@ -63,7 +62,7 @@ function numberPlaceholders(m) {
   return done;
 }
 // Вся механика fix: кириллица в ID, номера, ссылки, README, сброс одобрения правленого; затем проверки
-// и сверка с git. Находки остаются в findings — их печатают fix и done.
+// и сверка с git. Находки — в findings результата: их печатают fix и done.
 /** @param {Ctx} ctx */
 export function fixFeature(ctx, dir, { snapshot = false } = {}) {
   const files = (m) => uniq([...featureFiles(m), m.readmeFile, m.planFile].map((f) => path.resolve(f)));
@@ -105,36 +104,27 @@ export function fixFeature(ctx, dir, { snapshot = false } = {}) {
   }
 
   m = loadFeature(dir);
-  findings.length = 0;
-  runChecks(m);
+  const findings = runChecks(m);
   const g = gitInfo(m.dir);
-  if (g) diffChecks(dir, g, 'HEAD');
+  if (g) findings.push(...diffChecks(dir, g, 'HEAD'));
   else notes.push('не git-репозиторий: сверка с git (DF-*) пропущена');
   if (snapshot) for (const f of featureFiles(m)) saveSnapshot(f);
 
   const changed = files(m)
     .filter((f) => before.get(f) !== read(f))
     .map((f) => `${rel(f)}${before.get(f) == null ? ' — создан' : read(f) == null ? ' — удалён' : ''}${detail.has(f) ? `: ${detail.get(f).join(', ')}` : ''}`);
-  return { m, changed, notes };
+  return { m, changed, notes, findings };
 }
 export const fixedText = (changed) => (changed.length ? `Скрипт поправил:\n${changed.map((x) => `- ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');
 
 /** @param {Ctx} ctx */
 export function cmdFix(ctx) {
   const { flags, pos } = ctx.args;
-  const { m, changed, notes } = fixFeature(ctx, needDir(ctx, pos[0]), { snapshot: flags.snapshot });
-  const st = stageOf(m);
+  const { m, changed, notes, findings } = fixFeature(ctx, needDir(ctx, pos[0]), { snapshot: flags.snapshot });
   if (!flags.json) {
     ctx.io.log(fixedText(changed));
     for (const n of notes) ctx.io.log(`\n${n}`);
     if (findings.length) ctx.io.log('');
   }
-  const c = report(ctx, { stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip), fixed: changed, notes });
-  if (!flags.json) {
-    const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
-    ctx.io.log(`\n${stageText(st)}`);
-    ctx.io.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
-    if (!c.err) printTip(ctx, st);
-  }
-  ctx.io.exit(c.err ? 1 : 0);
+  reportFeature(ctx, m, findings, { fixed: changed, notes });
 }

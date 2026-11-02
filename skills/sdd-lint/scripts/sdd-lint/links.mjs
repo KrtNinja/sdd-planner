@@ -1,7 +1,7 @@
 // Ссылки на FR/NFR в «Основание:», «Проверяет:» и README: разбор, построение, устаревшие (SL-*).
 import path from 'node:path';
 
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 
 const REQ_REF_RE = /\[(N?FR-\d+)\]\(([^)\s]*)\)|(?<![\p{L}\d[-])(N?FR-\d+)(?![\d\]])/gu;
 export const CHECKS_RE = /^\s*Проверяет:/u;
@@ -22,6 +22,7 @@ export const linkBasis = (line, from, specFile) =>
 
 // FR без ссылки или со ссылкой не на ту строку spec.md → SL-28.
 export function staleReqLinks(file, n, text, spec) {
+  const { found, add } = collect();
   const plain = [];
   const stale = [];
   for (const r of reqRefs(text)) {
@@ -32,4 +33,5 @@ export function staleReqLinks(file, n, text, spec) {
   }
   if (plain.length) add('SL-28', file, n, `не ссылки: ${plain.join(', ')}`);
   if (stale.length) add('SL-28', file, n, `ссылки ведут не на ту строку spec.md: ${stale.join(', ')}`);
+  return found;
 }

@@ -6,7 +6,7 @@ import { chooseFeature } from './guide.mjs';
 import { closeSummary, closeQuestion, closePreview } from './close.mjs';
 import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
-import { findings, report } from './findings.mjs';
+import { report } from './findings.mjs';
 import { genLinks } from './gen-links.mjs';
 import { rel } from './md.mjs';
 import { needDir } from './pick.mjs';
@@ -49,12 +49,10 @@ export function cmdClose(ctx) {
   if (m.protocol) fs.rmSync(m.protocolFile);
   for (const d of [m.workDir, old.review]) fs.rmSync(d, { recursive: true, force: true });
   fs.rmSync(old.plan, { force: true });
-  findings.length = 0;
   // Без spec ссылок на протокол нет — чинить нечего (genLinks без spec останавливается).
   if (m.spec) genLinks(ctx, loadFeature(m.dir));
-  findings.length = 0;
-  runChecks(loadFeature(m.dir));
-  const c = report(ctx);
+  const findings = runChecks(loadFeature(m.dir));
+  const c = report(ctx, findings);
   ctx.io.log(
     (findings.length ? '\n' : '') +
     blocks(
