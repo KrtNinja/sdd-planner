@@ -1,13 +1,19 @@
 // Протокол brainstorming: разбор, проверки PR-*.
+// @ts-check
 import { collect, noStatus } from './findings.mjs';
 import { isEmptyCell, scan, inSection, header, tables, col } from './md.mjs';
+
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Protocol} Protocol */
 
 export const DROPPED_RE = /^Снято на ревью/;
 export const DROPPED_TITLE = 'Снято на ревью';
 
+/** @param {string} file @param {string | null | undefined} md @returns {Protocol | null} */
 export function parseProtocol(file, md) {
   if (md == null) return null;
   const sc = scan(md);
+  /** @type {Protocol['rows']} */
   const rows = [];
   const main = tables(inSection(sc, /^Решения\s*$/))[0];
   if (main) {
@@ -26,6 +32,7 @@ export function parseProtocol(file, md) {
       });
     }
   }
+  /** @type {Protocol['post']} */
   const post = [];
   const postT = tables(inSection(sc, /^Решения после/))[0];
   if (postT) {
@@ -42,7 +49,7 @@ export function parseProtocol(file, md) {
   const droppedT = tables(inSection(sc, DROPPED_RE))[0];
   const dropped = droppedT
     ? droppedT.rows.map((r) => {
-        const c = (re) => (r.cells[col(droppedT, re)] ?? '').trim();
+        const c = (/** @type {RegExp} */ re) => (r.cells[col(droppedT, re)] ?? '').trim();
         return { when: c(/^Когда/i), review: c(/^Ревью/i), where: c(/^Где/i), what: c(/^Что не так/i), status: c(/^Статус/i), n: r.n };
       })
     : [];
@@ -52,6 +59,7 @@ export function parseProtocol(file, md) {
   return { file, md, sc, status: header(md, 'Статус'), rows, post, dropped, outScope };
 }
 
+/** @param {Feature} m */
 export function checkProtocol(m) {
   const p = m.protocol;
   if (!p) return [];

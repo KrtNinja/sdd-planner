@@ -1,11 +1,11 @@
 // Находки проверок и отчёт: текст или --json.
+// @ts-check
 import { cmds } from './config.mjs';
 import { rel, uniq } from './md.mjs';
 import { RULES } from './rules.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
-
-/** @typedef {{ rule: string, level: 'err' | 'warn' | 'info', file: string, line: number | null, msg: string }} Finding */
+/** @typedef {import('./model.mjs').Finding} Finding */
 
 // Находка правила rule: уровень — из каталога rules.mjs, путь — от корня репозитория.
 /** @param {string} rule @param {string} file @param {number | null | undefined} line @param {string} msg @returns {Finding} */
@@ -31,7 +31,9 @@ export const errorsOf = (list) => list.filter((x) => x.level === 'err');
 
 // Находка — пункт списка markdown: в выводе MCP его рендерит GigaCode, в терминале он тоже читается.
 const LEVEL = { err: 'ОШИБКА', warn: 'ВНИМАНИЕ', info: 'ИНФО' };
+/** @param {Finding} x */
 export const line = (x) => `**${LEVEL[x.level]}** \`${x.rule}\` \`${x.file}${x.line ? `:${x.line}` : ''}\` — ${x.msg}`;
+/** @param {Finding} x */
 export const item = (x) => `- ${line(x)}`;
 // Печатает находки (сортирует список на месте) и возвращает счётчики по уровням.
 /** @param {Ctx} ctx @param {Finding[]} findings */

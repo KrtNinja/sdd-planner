@@ -14,7 +14,7 @@ import { saveSnapshot } from './snapshot.mjs';
 import { printTip, stageOf, stageText, tipLine } from './stage.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
-/** @typedef {import('./findings.mjs').Finding} Finding */
+/** @typedef {import('./model.mjs').Finding} Finding */
 
 /** @param {Ctx} ctx */
 export function cmdCheck(ctx) {

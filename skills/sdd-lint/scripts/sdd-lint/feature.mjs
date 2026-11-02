@@ -1,4 +1,5 @@
 // Фича целиком: загрузка артефактов и запуск всех проверок.
+// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -21,6 +22,18 @@ import { checkSpec } from './spec-rules.mjs';
 import { parseSpec } from './spec.mjs';
 import { checkWork } from './work.mjs';
 
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Slice} Slice */
+/** @typedef {import('./model.mjs').Adr} Adr */
+/** @typedef {import('./model.mjs').Review} Review */
+
+// readFn и listFn подменяют чтение: diff читает файлы из git, approve — будущий текст файла.
+/**
+ * @param {string} dir
+ * @param {(file: string) => string | null} [readFn]
+ * @param {((dir: string) => string[]) | null} [listFn]
+ * @returns {Feature}
+ */
 export function loadFeature(dir, readFn = read, listFn = null) {
   const featureDir = path.resolve(dir);
   const name = path.basename(featureDir);
@@ -31,13 +44,15 @@ export function loadFeature(dir, readFn = read, listFn = null) {
   const workDir = path.join(featureDir, WORK_DIR);
   const planFile = path.join(workDir, 'plan.md');
   const adrDir = path.join(featureDir, '..', 'adr');
-  const list = listFn || ((d) => (fs.existsSync(d) ? fs.readdirSync(d) : []));
+  const list = listFn || ((/** @type {string} */ d) => (fs.existsSync(d) ? fs.readdirSync(d) : []));
+  /** @type {Map<string, Slice>} */
   const slices = new Map();
   for (const f of list(slicesDir).filter((x) => /^\d{3}-.+\.md$/.test(x)).sort()) {
     const file = path.join(slicesDir, f);
     const md = readFn(file);
     if (md != null) slices.set(f.slice(0, 3), parseSlice(file, md));
   }
+  /** @type {Adr[]} */
   const adrs = [];
   for (const f of list(adrDir).filter((x) => /^\d{4}-.+\.md$/.test(x)).sort()) {
     const file = path.join(adrDir, f);
@@ -46,12 +61,14 @@ export function loadFeature(dir, readFn = read, listFn = null) {
   }
   const readme = readFn(readmeFile);
   const reviewDir = path.join(workDir, 'review');
+  /** @type {Map<string, Review>} */
   const reviews = new Map();
   for (const f of list(reviewDir).filter((x) => /\.md$/.test(x)).sort()) {
     const file = path.join(reviewDir, f);
     const md = readFn(file);
     if (md != null) reviews.set(f.replace(/\.md$/, ''), parseReview(file, md));
   }
+  /** @type {Feature} */
   const m = {
     workDir,
     reviewDir,
@@ -73,18 +90,20 @@ export function loadFeature(dir, readFn = read, listFn = null) {
     featureAdrs: adrs.filter((a) => a.md.includes(`${name}/`)),
     protocolFile,
     specFile,
+    approvals: [],
   };
   verifyApprovals(m);
   return m;
 }
 
+/** @param {Feature} m */
 export const featureFiles = (m) =>
   [m.protocolFile, m.specFile, m.readmeFile, ...[...m.slices.values()].map((s) => s.file), ...m.featureAdrs.map((a) => a.file)].filter((f) =>
     fs.existsSync(f),
   );
 
 // Все проверки фичи: находки — массивом, в том порядке, в каком их добавляли проверки.
-/** @returns {import('./findings.mjs').Finding[]} */
+/** @param {Feature} m @returns {import('./model.mjs').Finding[]} */
 export function runChecks(m) {
   return [
     ...checkProtocol(m),

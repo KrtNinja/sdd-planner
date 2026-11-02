@@ -1,7 +1,7 @@
 {
  "crap": {
-  "functions": 444,
-  "over10": 67,
+  "functions": 448,
+  "over10": 66,
   "offenders": {
    "skills.sdd-lint.scripts.sdd-lint.cmd-menu#complete": {
     "complexity": 48,
@@ -12,11 +12,6 @@
     "complexity": 20,
     "coverage": 48,
     "crap": 76.2432
-   },
-   "skills.sdd-lint.scripts.sdd-lint.plan#parsePlan": {
-    "complexity": 24,
-    "coverage": 58.6207,
-    "crap": 64.8105
    },
    "skills.sdd-lint.scripts.sdd-lint.readme#genReadme": {
     "complexity": 26,
@@ -93,11 +88,6 @@
     "coverage": 96.9697,
     "crap": 22.0135
    },
-   "skills.sdd-lint.scripts.sdd-lint.plan#planPreview": {
-    "complexity": 17,
-    "coverage": 75.8621,
-    "crap": 21.0644
-   },
    "skills.sdd-lint.scripts.sdd-lint.slices#parseSlice": {
     "complexity": 19,
     "coverage": 82.1429,
@@ -107,6 +97,11 @@
     "complexity": 21,
     "coverage": 100,
     "crap": 21
+   },
+   "skills.sdd-lint.scripts.sdd-lint.plan#planPreview": {
+    "complexity": 17,
+    "coverage": 76.6667,
+    "crap": 20.6714
    },
    "skills.sdd-lint.scripts.sdd-lint.gate-extra#reviewStep": {
     "complexity": 19,
@@ -192,6 +187,11 @@
     "complexity": 15,
     "coverage": 92.8571,
     "crap": 15.082
+   },
+   "skills.sdd-lint.scripts.sdd-lint.plan#parsePlan": {
+    "complexity": 12,
+    "coverage": 73.3333,
+    "crap": 14.7307
    },
    "skills.sdd-lint.scripts.sdd-lint.services#halvesProblem": {
     "complexity": 12,
@@ -308,11 +308,6 @@
     "coverage": 100,
     "crap": 11
    },
-   "skills.sdd-lint.scripts.sdd-lint.adr#parseAdr": {
-    "complexity": 10,
-    "coverage": 84.6154,
-    "crap": 10.3641
-   },
    "skills.sdd-lint.scripts.sdd-lint.plan#compactIds": {
     "complexity": 10,
     "coverage": 84.6154,
@@ -346,7 +341,7 @@
    {
     "score": 1,
     "left": "skills/sdd-lint/scripts/sdd-lint/cmd-menu.mjs:58-65",
-    "right": "skills/sdd-lint/scripts/sdd-lint/services.mjs:62-68"
+    "right": "skills/sdd-lint/scripts/sdd-lint/services.mjs:77-83"
    }
   ]
  },

@@ -6,7 +6,7 @@ import { coverage, sharing } from './readme.mjs';
 
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок правил — порядок находок. c — README и покрытие FR по slices, посчитанное один раз.
-/** @typedef {import('./findings.mjs').Finding} Finding */
+/** @typedef {import('./model.mjs').Finding} Finding */
 /**
  * @typedef {{ m: any, f: string, sc: any, covered: Map<string, Set<string>> }} ReadmeContext
  * @typedef {{ ids: string[], check: (c: ReadmeContext) => Finding[] }} ReadmeRule

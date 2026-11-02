@@ -76,7 +76,7 @@ function refProblem(ref) {
 
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок находок: шапка и разделы, затем по каждому факту (CX-02…04), затем объём.
-/** @typedef {import('./findings.mjs').Finding} Finding */
+/** @typedef {import('./model.mjs').Finding} Finding */
 /** @typedef {NonNullable<ReturnType<typeof parseContext>>} Context */
 /** @typedef {{ text: string, n: number }} Fact */
 

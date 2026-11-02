@@ -5,8 +5,11 @@ import { placeholders, scan, header, headerLine, uniq } from './md.mjs';
 import { registry, parseHalves, halvesProblem, serviceOfHeading, unknownService } from './services.mjs';
 
 // «Р1 — ADR: доставка событий» — ADR ещё не заведён; «Р1 — ждёт ADR-0001» — заведён.
+/** @param {string | null | undefined} why @returns {string | null} */
 export const adrTopic = (why) => ((why || '').match(/ADR:\s*([^;()\n]+)/u)?.[1] || '').replace(/[«»"'.,\s]+$/u, '').replace(/^[«"']+/u, '').trim() || null;
+/** @param {string | null | undefined} why @returns {string[]} */
 export const adrNums = (why) => uniq([...(why || '').matchAll(/(?<![\p{L}\d-])ADR-(\d+)/gu)].map((x) => x[1].padStart(4, '0')));
+/** @param {string | null | undefined} why @returns {string | null} */
 export const reason = (why) => ((why || '').replace(/^\**\s*/, '').match(/^[РP]([123])(?!\d)/u) || [])[1] || null;
 
 // Где в файле заготовки: [{ n, items }] — соседние строки одного раздела (AC, строка таблицы) одной группой.
@@ -39,8 +42,8 @@ export function neededAdrs(m) {
 
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок находок: по каждому файлу (slices, README) опечатки в ID и заготовки, затем правила по каждому slice.
-/** @typedef {import('./findings.mjs').Finding} Finding */
-/** @typedef {import('./slices.mjs').Slice} Slice */
+/** @typedef {import('./model.mjs').Finding} Finding */
+/** @typedef {import('./model.mjs').Slice} Slice */
 /**
  * @typedef {{ m: any, reg: any }} CutContext
  * @typedef {{ ids: string[], check: (file: string, md: string) => Finding[] }} FileRule
