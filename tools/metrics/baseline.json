@@ -1,14 +1,14 @@
 {
  "tests": {
-  "total": 260,
-  "pass": 260,
+  "total": 263,
+  "pass": 263,
   "fail": 0,
-  "seconds": 19
+  "seconds": 18
  },
- "functions": 412,
- "crapAtLeast10": 71,
- "crapOver30": 9,
- "complexityAtLeast10": 68,
+ "functions": 413,
+ "crapAtLeast10": 70,
+ "crapOver30": 8,
+ "complexityAtLeast10": 67,
  "offenders": {
   "skills/sdd-lint/scripts/sdd-lint/cmd-menu.mjs#complete": {
    "complexity": 48,
@@ -26,17 +26,13 @@
    "complexity": 37,
    "crap": 52.3
   },
-  "skills/sdd-lint/scripts/sdd-lint/adr.mjs#checkAdrs": {
-   "complexity": 42,
-   "crap": 48.7
-  },
   "skills/sdd-lint/scripts/sdd-lint/cmd-check.mjs#gateClosed": {
    "complexity": 22,
    "crap": 47.8
   },
-  "skills/sdd-lint/scripts/mcp.mjs#handle": {
-   "complexity": 16,
-   "crap": 42.5
+  "skills/sdd-lint/scripts/sdd-lint/adr.mjs#checkAdrs": {
+   "complexity": 42,
+   "crap": 45.9
   },
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#slugify": {
    "complexity": 6,
@@ -46,13 +42,13 @@
    "complexity": 19,
    "crap": 31.2
   },
-  "skills/sdd-lint/scripts/sdd-lint/stage.mjs#stageOf": {
-   "complexity": 27,
-   "crap": 29.3
-  },
   "skills/sdd-lint/scripts/sdd-lint/cmd-approve.mjs#cmdApprove": {
    "complexity": 28,
    "crap": 29.1
+  },
+  "skills/sdd-lint/scripts/sdd-lint/stage.mjs#stageOf": {
+   "complexity": 27,
+   "crap": 27.3
   },
   "skills/sdd-lint/scripts/sdd-lint/readme.mjs#genReadme": {
    "complexity": 26,
@@ -296,19 +292,19 @@
   }
  },
  "eslint": {
-  "no-nested-ternary": 38,
-  "complexity": 56,
+  "no-nested-ternary": 37,
   "max-lines-per-function": 15,
   "max-statements": 31,
+  "complexity": 55,
   "max-len": 131,
   "max-params": 4,
   "no-unused-vars": 4,
   "no-param-reassign": 1,
   "no-shadow": 3
  },
- "tscErrors": 995,
+ "tscErrors": 988,
  "clonesCodePercent": 3.21,
- "clonesTestsPercent": 6.54,
+ "clonesTestsPercent": 6.34,
  "cycles": 0,
  "sideEffects": 0,
  "unusedExports": 30
