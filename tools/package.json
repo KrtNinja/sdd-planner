@@ -12,7 +12,7 @@
     "metrics:fast": "node metrics/report.mjs --no-coverage",
     "gate": "node metrics/report.mjs --gate",
     "baseline": "node metrics/report.mjs --baseline",
-    "lcov": "cd .. && mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-include='skills/**' --test-reporter=dot --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info tests/*.test.mjs",
+    "lcov": "cd .. && mkdir -p coverage && node --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include='skills/**' --test-reporter=dot --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info tests/*.test.mjs",
     "ub:gate": "node metrics/ub-gate.mjs",
     "ub:baseline": "node metrics/ub-gate.mjs --baseline"
   },

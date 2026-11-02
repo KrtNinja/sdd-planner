@@ -1,5 +1,5 @@
 // Пометки правок в тексте spec и slices («изменено <дата>», «добавлен после ревью»): им место в git.
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 
 // «Изменено 28.10.2026», «добавлен после ревью R2»: решение живёт в самом FR и AC, история — в git.
 // «(удалён: причина)» — не пометка правки, а постоянный ID удалённого требования.
@@ -14,6 +14,7 @@ const EDIT_MARK_RES = [
   /(?<![\p{L}])(?:ревью|находк\p{L}*)\s+R\d+/iu,
 ];
 function editMarks(file, sc, rule) {
+  const { found, add } = collect();
   for (const l of sc.lines) {
     if (/^\s*Статус:/.test(l.text)) continue;
     for (const re of EDIT_MARK_RES) {
@@ -24,9 +25,12 @@ function editMarks(file, sc, rule) {
       }
     }
   }
+  return found;
 }
 export function checkEditMarks(m) {
-  if (m.spec) editMarks(m.spec.file, m.spec.sc, 'SP-22');
-  for (const sl of m.slices.values()) editMarks(sl.file, sl.sc, 'SL-29');
-  if (m.readmeSc) editMarks(m.readmeFile, m.readmeSc, 'SL-29');
+  return [
+    ...(m.spec ? editMarks(m.spec.file, m.spec.sc, 'SP-22') : []),
+    ...[...m.slices.values()].flatMap((sl) => editMarks(sl.file, sl.sc, 'SL-29')),
+    ...(m.readmeSc ? editMarks(m.readmeFile, m.readmeSc, 'SL-29') : []),
+  ];
 }

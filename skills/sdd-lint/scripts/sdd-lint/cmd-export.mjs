@@ -31,8 +31,7 @@ function acOf(feature, ac) {
 /** @param {Ctx} ctx */
 export function cmdExport(ctx) {
   const m = loadFeature(needDir(ctx, ctx.args.pos[0]));
-  runChecks(m);
-  const closed = gateClosed(m, 'build');
+  const closed = gateClosed(m, 'build', runChecks(m));
   const layerOf = new Map(layers(m).flatMap((ls, i) => ls.map((n) => [n, i + 1])));
   const slices = [...m.slices.values()].map((sl) => {
     const acs = sl.acs.map((a) => acOf(m.name, a));

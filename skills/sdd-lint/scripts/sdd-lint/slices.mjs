@@ -2,7 +2,7 @@
 import path from 'node:path';
 
 import { unknownNames } from './data.mjs';
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 import { latinAc } from './ids.mjs';
 import { CHECKS_RE, reqRefs, BASIS_LINK_RE, specFileHref, staleReqLinks } from './links.mjs';
 import {
@@ -98,9 +98,10 @@ const sideOfHeading = (h) => {
 };
 
 export function checkSlices(m) {
+  const { found, add } = collect();
   const s = m.spec;
   const slices = m.slices;
-  if (!slices.size) return;
+  if (!slices.size) return found;
   const behaviour = [...slices.values()].filter((x) => /поведение/i.test(x.type || '')).map((x) => x.num).sort();
   const firstBehaviour = behaviour[0];
   const acDefs = new Map();
@@ -124,7 +125,7 @@ export function checkSlices(m) {
       const got = (basis.match(BASIS_LINK_RE) || [])[1];
       if (got !== want || reqRefs(basis).some((r) => r.href))
         add('SL-28', f, sl.basisLine, got === undefined ? '«Основание» без ссылки на spec.md' : '«Основание»: ссылка на spec.md не та или ссылки на отдельные FR');
-      for (const ac of sl.acs.filter((x) => x.checks)) staleReqLinks(f, ac.checks.n, ac.checks.text, s);
+      for (const ac of sl.acs.filter((x) => x.checks)) found.push(...staleReqLinks(f, ac.checks.n, ac.checks.text, s));
     }
 
     // FR зависимостей (транзитивно)
@@ -258,5 +259,6 @@ export function checkSlices(m) {
       for (const x of l.text.matchAll(/\bAC-\d{3}-[BF]?\d+\b/g)) if (!acDefs.has(x[0])) add('SL-27', file, l.n, `ссылка на ${x[0]}, такого AC нет`);
   }
 
-  checkReadme(m);
+  found.push(...checkReadme(m));
+  return found;
 }

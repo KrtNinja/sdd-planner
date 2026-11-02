@@ -1,5 +1,5 @@
 // Кириллица в ID (SL-31): «АС-003-В2» выглядит как AC-003-B2, но скрипт его не видит — fix заменяет буквы.
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 import { scan } from './md.mjs';
 
 // В ID буквы латинские (AC, B, F, ADR), а в «Р1–Р3» — кириллическая «Р».
@@ -37,5 +37,7 @@ export function fixIdTypos(md) {
 }
 
 export function checkIdTypos(file, md) {
+  const { found, add } = collect();
   for (const t of idTypos(md)) add('SL-31', file, t.n, `«${t.from}» — ${t.why}; верно «${t.to}»`);
+  return found;
 }

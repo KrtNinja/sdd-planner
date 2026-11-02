@@ -1,6 +1,6 @@
-// Повторы по токенам (идея jscpd): имена и литералы нормализуются, окно из min токенов,
+// Повторы по токенам (идея jscpd): имена и литералы нормализуются, импорты пропускаются, окно из min токенов,
 // совпавшие соседние окна склеиваются в один фрагмент. Структурное сходство функций — у dryer в CI.
-import { listMjs, source, tokens, rel } from './lib.mjs';
+import { listMjs, source, parse, tokens, rel } from './lib.mjs';
 
 const kind = (t) => {
   const label = t.type.label;
@@ -9,10 +9,17 @@ const kind = (t) => {
   return t.type.keyword ?? label;
 };
 
+// Импорты не считаются: список «import { … } from '…'» похож у любых модулей и правкой кода не убирается.
+function importRanges(src) {
+  return parse(src).body.filter((n) => n.type === 'ImportDeclaration').map((n) => [n.start, n.end]);
+}
+
 function tokenStream(files) {
   const out = [];
   for (const file of files) {
-    for (const t of tokens(source(file))) out.push({ file, line: t.loc.start.line, kind: kind(t) });
+    const src = source(file);
+    const skip = importRanges(src);
+    for (const t of tokens(src)) if (!skip.some(([a, b]) => t.start >= a && t.end <= b)) out.push({ file, line: t.loc.start.line, kind: kind(t) });
     out.push({ file, line: 0, kind: `EOF:${file}` });
   }
   return out;

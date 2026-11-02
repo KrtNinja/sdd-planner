@@ -1,5 +1,5 @@
 // Нарезка slices: причины Р1–Р3 правдивы, сервисы из реестра, кириллица в ID, заготовки (SL-31…SL-38).
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 import { checkIdTypos } from './ids.mjs';
 import { placeholders, scan, header, headerLine, uniq } from './md.mjs';
 import { registry, parseHalves, halvesProblem, serviceOfHeading, unknownService } from './services.mjs';
@@ -38,10 +38,11 @@ export function neededAdrs(m) {
 }
 
 export function checkCut(m) {
+  const { found, add } = collect();
   const reg = registry(m);
   const files = [...[...m.slices.values()].map((s) => [s.file, s.md]), ...(m.readme != null ? [[m.readmeFile, m.readme]] : [])];
   for (const [file, md] of files) {
-    checkIdTypos(file, md);
+    found.push(...checkIdTypos(file, md));
     for (const s of stubLines(md)) add('SL-37', file, s.n, s.items.map((x) => `«${x}»`).join(', '));
   }
 
@@ -75,4 +76,5 @@ export function checkCut(m) {
     const ids = [...sl.basis];
     if (ids.length && ids.every((id) => id.startsWith('NFR')) && !(sl.num === '001' && prep)) add('SL-36', f, headerLine(sl.md, 'Основание'), `«Основание: ${ids.join(', ')}» — только NFR`);
   }
+  return found;
 }

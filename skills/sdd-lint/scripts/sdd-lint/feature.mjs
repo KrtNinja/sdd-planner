@@ -79,17 +79,21 @@ export const featureFiles = (m) =>
     fs.existsSync(f),
   );
 
+// Все проверки фичи: находки — массивом, в том порядке, в каком их добавляли проверки.
+/** @returns {import('./findings.mjs').Finding[]} */
 export function runChecks(m) {
-  checkProtocol(m);
-  checkSpec(m);
-  checkSlices(m);
-  if (m.slices.size) checkCut(m);
-  checkPlan(m);
-  checkAdrs(m);
-  checkReviews(m);
-  checkWork(m);
-  checkEditMarks(m);
-  checkCodeRefs(m);
-  checkReadSize(m);
-  checkApprovals(m);
+  return [
+    ...checkProtocol(m),
+    ...checkSpec(m),
+    ...checkSlices(m),
+    ...(m.slices.size ? checkCut(m) : []),
+    ...checkPlan(m),
+    ...checkAdrs(m),
+    ...checkReviews(m),
+    ...checkWork(m),
+    ...checkEditMarks(m),
+    ...checkCodeRefs(m),
+    ...checkReadSize(m),
+    ...checkApprovals(m),
+  ];
 }

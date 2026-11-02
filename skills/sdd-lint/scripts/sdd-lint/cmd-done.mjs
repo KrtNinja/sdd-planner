@@ -6,7 +6,7 @@ import { gateClosed } from './cmd-check.mjs';
 import { closedScreen } from './guide.mjs';
 import { fixFeature, fixedText } from './cmd-fix.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
-import { findings, line, report } from './findings.mjs';
+import { line, report } from './findings.mjs';
 import { rel } from './md.mjs';
 import { needDir } from './pick.mjs';
 import { questionsView, viewText } from './question.mjs';
@@ -26,16 +26,13 @@ export function cmdPlan(ctx) {
     ctx.io.log(screen(`Плана нарезки ещё нет: ${rel(m.planFile)}.`, `запиши ${rel(m.planFile)} по шаблону assets/plan.md скилла sdd-slices`, G.then(['plan', dir])));
     ctx.io.exit(2);
   }
-  runChecks(m);
-  const closed = gateClosed(m, 'slices');
+  const all = runChecks(m);
+  const closed = gateClosed(m, 'slices', all);
   if (closed) {
     ctx.io.log(closedScreen('slices', closed));
     ctx.io.exit(3);
   }
-  const own = findings.filter((x) => x.rule.startsWith('PL'));
-  findings.length = 0;
-  findings.push(...own);
-  const c = report(ctx);
+  const c = report(ctx, all.filter((x) => x.rule.startsWith('PL')));
   const { runs } = bump(m.dir, 'plan');
   if (c.err) {
     if (runs < MAX_RUNS) ctx.io.log(`\n${screen(`План нарезки не готов: ошибок ${c.err}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, `исправь ${rel(m.planFile)}`, G.then(['plan', dir]))}`);
@@ -68,7 +65,7 @@ function promote(m) {
 /** @param {Ctx} ctx */
 export function cmdDone(ctx) {
   const { pos } = ctx.args;
-  const { m, changed, notes } = fixFeature(ctx, needDir(ctx, pos[0]));
+  const { m, changed, notes, findings } = fixFeature(ctx, needDir(ctx, pos[0]));
   const dir = rel(m.dir);
   const errs = findings.filter((x) => x.level === 'err');
   const warns = findings.filter((x) => x.level === 'warn');
@@ -78,7 +75,7 @@ export function cmdDone(ctx) {
 
   if (errs.length) {
     ctx.io.log('');
-    report(ctx);
+    report(ctx, findings);
     if (runs < MAX_RUNS) ctx.io.log(`\n${screen(`Этап не готов: ошибок ${errs.length}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, 'исправь ошибки', G.then(['done', dir]))}`);
     else {
       reset(m.dir, 'done');
@@ -89,7 +86,7 @@ export function cmdDone(ctx) {
   if (warns.length && !prev?.warnTried) {
     mark(m.dir, 'done', { warnTried: true });
     ctx.io.log('');
-    report(ctx);
+    report(ctx, findings);
     ctx.io.log(
       `\n${screen(`Ошибок нет, предупреждений ${warns.length} — поправлю те, что можно без вашего решения.`, 'исправь предупреждения, которые не требуют решения человека; остальные не трогай', G.then(['done', dir]))}`,
     );

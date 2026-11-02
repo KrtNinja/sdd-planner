@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { usage } from './cli.mjs';
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 import { linkReqs, basisPlain, staleReqLinks } from './links.mjs';
 import { rel, uniq, scan, isH2, inSection, sectionText, tables, col, reqIds, replaceSection } from './md.mjs';
 import { registry } from './services.mjs';
@@ -49,10 +49,11 @@ export function layers(m, items = m.slices) {
 }
 
 export function checkReadme(m) {
+  const { found, add } = collect();
   const f = m.readmeFile;
   if (m.readme == null) {
     add('RM-01', f, null, 'нет README со списком slices, покрытием и порядком');
-    return;
+    return found;
   }
   const sc = m.readmeSc;
   const t = tables(sc.lines.filter((l) => !l.inCode)).find((x) => /^slice$/i.test(x.header[0] || ''));
@@ -86,7 +87,7 @@ export function checkReadme(m) {
     for (const r of cov.rows) {
       const id = reqIds(r.cells[0])[0];
       if (id) inReadme.set(id, { set: r.cells.slice(1).join(' ').match(/\b\d{3}\b/g) || [], n: r.n });
-      if (id && m.spec) staleReqLinks(f, r.n, r.cells[0], m.spec);
+      if (id && m.spec) found.push(...staleReqLinks(f, r.n, r.cells[0], m.spec));
     }
     for (const [id, nums] of covered) {
       const x = inReadme.get(id);
@@ -117,6 +118,7 @@ export function checkReadme(m) {
     for (const r of m.spec.reqs.values())
       if (!r.deleted && r.id.startsWith('FR') && !inCheck.has(r.id)) add('RM-04', f, null, `${r.id} не встречается в «Проверка фичи»`);
   }
+  return found;
 }
 
 /** @param {Ctx} ctx */

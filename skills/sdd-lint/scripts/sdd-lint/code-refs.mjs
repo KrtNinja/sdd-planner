@@ -1,5 +1,5 @@
 // Ссылки на код в spec, slices, README и ADR (CD-*): требования не должны врать после переименований в коде.
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 
 // Связь «требование → код» идёт из кода (AC-ID в названии теста), доки на код не ссылаются.
 // brainstorming.md и _work/ — временные артефакты этапа, их не проверяем: в протоколе аналитик пишет что угодно.
@@ -60,6 +60,7 @@ export function internalNames(text) {
 const WHAT = { 'CD-01': 'путь или файл кода', 'CD-02': 'ссылка на код', 'CD-03': 'вызов из кода' };
 // names — проверять ли внутренние имена; inAc — и в блоках AC (в slices их уже ловит SL-22).
 function checkFile(file, sc, { names = true, inAc = true } = {}) {
+  const { found, add } = collect();
   for (const b of sc.blocks) if (!PLAIN_LANGS.has(b.lang)) add('CD-04', file, b.start, `блок кода «${b.lang}»`);
   for (const l of sc.lines) {
     if (/^\s*Статус:/.test(l.text)) continue;
@@ -72,11 +73,14 @@ function checkFile(file, sc, { names = true, inAc = true } = {}) {
     if (!names || (l.inCode && !inAc)) continue;
     for (const x of internalNames(l.text)) add('CD-05', file, l.n, `«${x}» — внутреннее имя из кода`);
   }
+  return found;
 }
 
 export function checkCodeRefs(m) {
-  if (m.spec) checkFile(m.spec.file, m.spec.sc);
-  for (const sl of m.slices.values()) checkFile(sl.file, sl.sc, { inAc: false });
-  if (m.readmeSc) checkFile(m.readmeFile, m.readmeSc);
-  for (const a of m.featureAdrs) checkFile(a.file, a.sc);
+  return [
+    ...(m.spec ? checkFile(m.spec.file, m.spec.sc) : []),
+    ...[...m.slices.values()].flatMap((sl) => checkFile(sl.file, sl.sc, { inAc: false })),
+    ...(m.readmeSc ? checkFile(m.readmeFile, m.readmeSc) : []),
+    ...m.featureAdrs.flatMap((a) => checkFile(a.file, a.sc)),
+  ];
 }

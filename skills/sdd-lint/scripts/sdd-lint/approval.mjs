@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 import { lintCmd } from './config.mjs';
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 import { read, rel, approved, headerLine } from './md.mjs';
 import { stripProtocol } from './sources.mjs';
 
@@ -43,11 +43,13 @@ export function verifyApprovals(m) {
 }
 export const ownApprovals = (m) => m.approvals.filter((x) => x.kind !== 'adr' || m.featureAdrs.some((a) => a.file === x.file));
 export function checkApprovals(m) {
+  const { found, add } = collect();
   for (const x of ownApprovals(m)) {
     const md = read(x.file) ?? '';
     if (x.state === 'manual') add('AP-01', x.file, headerLine(md, 'Статус'), `«${x.raw}» без отметки approve — одобрением не считается`);
     if (x.state === 'changed') add('AP-02', x.file, headerLine(md, 'Статус'), `«${x.raw}»: файл менялся после approve`);
   }
+  return found;
 }
 export const approveCmd = (m, x) =>
   x.kind === 'adr' ? lintCmd('approve', 'adr', rel(m.dir), path.basename(x.file).slice(0, 4)) : lintCmd('approve', x.kind, rel(m.dir));

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { WORK_DIR } from './config.mjs';
-import { add } from './findings.mjs';
+import { collect } from './findings.mjs';
 import { git, gitInfo } from './git.mjs';
 import { scan, rel } from './md.mjs';
 
@@ -42,18 +42,22 @@ export function workIgnored(m) {
 }
 
 function refsInto(file, sc) {
+  const { found, add } = collect();
   for (const l of sc.lines) if (!l.inCode && WORK_REF.test(l.text)) add('WK-02', file, l.n, l.text.trim().slice(0, 80));
+  return found;
 }
 
 export function checkWork(m) {
+  const { found, add } = collect();
   if (workIgnored(m)) add('WK-01', m.workDir, null, `${rel(m.workDir)}/ попадает под .gitignore`);
-  if (m.spec) refsInto(m.spec.file, m.spec.sc);
-  for (const sl of m.slices.values()) refsInto(sl.file, sl.sc);
-  if (m.readmeSc) refsInto(m.readmeFile, m.readmeSc);
-  for (const a of m.featureAdrs) refsInto(a.file, scan(a.md));
+  if (m.spec) found.push(...refsInto(m.spec.file, m.spec.sc));
+  for (const sl of m.slices.values()) found.push(...refsInto(sl.file, sl.sc));
+  if (m.readmeSc) found.push(...refsInto(m.readmeFile, m.readmeSc));
+  for (const a of m.featureAdrs) found.push(...refsInto(a.file, scan(a.md)));
   const old = legacyPaths(m);
   if (fs.existsSync(old.review)) add('WK-03', old.review, null, `ревью теперь в ${rel(m.reviewDir)}/`);
   if (fs.existsSync(old.plan)) add('WK-03', old.plan, null, `план теперь ${rel(m.planFile)}`);
+  return found;
 }
 
 // fix: перенести старые review/ и slices/plan.md в _work/. Отслеживаемое — git mv, чтобы история шла за файлом.

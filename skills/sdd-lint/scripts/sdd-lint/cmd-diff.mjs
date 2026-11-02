@@ -2,7 +2,7 @@
 import { usage } from './cli.mjs';
 import { skillCode } from './config.mjs';
 import { loadFeature } from './feature.mjs';
-import { add, report } from './findings.mjs';
+import { collect, report } from './findings.mjs';
 import { gitInfo, gitShow, gitList } from './git.mjs';
 import { rel, approved } from './md.mjs';
 import { needDir } from './pick.mjs';
@@ -17,13 +17,13 @@ export function cmdDiff(ctx) {
   const g = gitInfo(dir);
   if (!g) usage(ctx, 'diff работает только в git-репозитории');
   const ref = flags.base || 'HEAD';
-  diffChecks(dir, g, ref);
-  const c = report(ctx, { base: ref });
+  const c = report(ctx, diffChecks(dir, g, ref), { base: ref });
   if (!flags.json) ctx.io.log(`\nСверка с ${ref}. Ошибок: ${c.err}, предупреждений: ${c.warn}`);
   ctx.io.exit(c.err ? 1 : 0);
 }
-// Проверки DF-*: рабочая копия против ref. Находки — в findings.
+// Проверки DF-*: рабочая копия против ref. Возвращает находки.
 export function diffChecks(dir, g, ref) {
+  const { found, add } = collect();
   const cur = loadFeature(dir);
   const base = loadFeature(
     dir,
@@ -47,4 +47,5 @@ export function diffChecks(dir, g, ref) {
   const curAcs = new Set([...cur.slices.values()].flatMap((s) => s.acs.map((a) => a.id)));
   for (const s of base.slices.values()) for (const a of s.acs) if (!curAcs.has(a.id)) add('DF-02', s.file, null, `${a.id} пропал`);
   // одобренное не меняется молча — AP-02: отпечаток approve, без git
+  return found;
 }

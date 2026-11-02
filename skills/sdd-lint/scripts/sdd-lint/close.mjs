@@ -5,7 +5,6 @@ import path from 'node:path';
 import { pendingAdrs } from './adr.mjs';
 import { lintCode } from './config.mjs';
 import { runChecks } from './feature.mjs';
-import { findings } from './findings.mjs';
 import { git, gitInfo } from './git.mjs';
 import { rel, approved } from './md.mjs';
 import { openBlockers, undecided } from './review.mjs';
@@ -52,8 +51,7 @@ const listed = (xs) => (xs.length > MAX_LIST ? `${xs.slice(0, MAX_LIST).join(', 
 // Сводка для подтверждения. Риски — только то, что будет потеряно или останется сломанным;
 // пустой список — подтверждение без последствий.
 export function closeSummary(m) {
-  findings.length = 0;
-  runChecks(m);
+  const findings = runChecks(m);
   const dir = rel(m.dir);
   const files = doomedFiles(m);
   const doomed = isDoomed(m);
