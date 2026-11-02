@@ -1,7 +1,7 @@
 {
  "crap": {
-  "functions": 448,
-  "over10": 66,
+  "functions": 451,
+  "over10": 64,
   "offenders": {
    "skills.sdd-lint.scripts.sdd-lint.cmd-menu#complete": {
     "complexity": 48,
@@ -223,11 +223,6 @@
     "coverage": 89.4737,
     "crap": 13.1971
    },
-   "skills.sdd-lint.scripts.sdd-lint.start#startState": {
-    "complexity": 13,
-    "coverage": 90,
-    "crap": 13.169
-   },
    "skills.sdd-lint.scripts.sdd-lint.review-walk#artifact": {
     "complexity": 13,
     "coverage": 100,
@@ -299,11 +294,6 @@
     "crap": 11
    },
    "skills.sdd-lint.scripts.sdd-lint.sources#parseSources": {
-    "complexity": 11,
-    "coverage": 100,
-    "crap": 11
-   },
-   "skills.sdd-lint.scripts.sdd-lint.start#afterQuestion": {
     "complexity": 11,
     "coverage": 100,
     "crap": 11
