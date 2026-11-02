@@ -4,42 +4,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
-const GOOD = path.join(root, 'tests/fixtures/good');
-const SPEC_OK = 'Статус: одобрено 27.10.2026 · 67e1fb';
-const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: 'node scripts/sdd-lint.mjs', SDD_VIEW: 'json' };
-
-function workspace() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-guide-test-'));
-  fs.cpSync(GOOD, dir, { recursive: true });
-  return dir;
-}
-function run(cwd, ...args) {
-  const r = spawnSync('node', [LINT, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, TMPDIR: path.join(cwd, '.tmp') } });
-  return { code: r.status, out: r.stdout + r.stderr };
-}
-function edit(cwd, rel, from, to) {
-  const f = path.join(cwd, 'docs', rel);
-  const s = fs.readFileSync(f, 'utf8');
-  assert.ok(s.includes(from), `в ${rel} нет «${from}»`);
-  fs.writeFileSync(f, s.replace(from, to));
-}
-const json = (out) => JSON.parse(out.slice(out.indexOf('{')));
-const optionIds = (out) => json(out).questions.flatMap((q) => q.options.map((o) => o.id));
-const review = (cwd, key, rows) => {
-  const d = path.join(cwd, 'docs/comments/_work/review');
-  fs.mkdirSync(d, { recursive: true });
-  fs.writeFileSync(
-    path.join(d, `${key}.md`),
-    `# Ревью ${key} — comments\n\nИтог: блокеров ${rows.length}, замечаний 0\n\n| # | Важность | Где | Что не так | Пункт | Предложение | Решение |\n|---|---|---|---|---|---|---|\n${rows.join('\n')}\n`,
-  );
-};
+import { SPEC_OK, workspace, run, edit, json, optionIds, writeReview } from './helpers.mjs';
 
 // ---------- какую фичу брать ----------
 test('gate без фичи: подходит одна — берётся сама, со строкой «беру единственную»', () => {
@@ -118,7 +84,7 @@ test('gate adr без темы и без Р1 — кандидатов ищет �
 // ---------- decide: находка ревью ----------
 test('gate decide R1: находку находит скрипт, с тем, что на неё завязано', () => {
   const cwd = workspace();
-  review(cwd, 'slices', ['| R1 | блокер | slices/002-comments.md, AC-002-B1, FR-2 | лимит не проверен | 3 | добавить AC на 5001 символ |  |']);
+  writeReview(cwd, ['| R1 | блокер | slices/002-comments.md, AC-002-B1, FR-2 | лимит не проверен | 3 | добавить AC на 5001 символ |  |'], 'slices');
   const r = run(cwd, 'gate', 'decide', 'comments', 'R1');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /^\*\*Находка R1\*\* · ревью slices · `docs\/comments\/_work\/review\/slices\.md:\d+`$/m);
@@ -129,8 +95,8 @@ test('gate decide R1: находку находит скрипт, с тем, ч�
 });
 test('gate decide: нет находки — какие есть; одна и та же в двух ревью — вопрос', () => {
   const cwd = workspace();
-  review(cwd, 'slices', ['| R1 | блокер | slices/002-comments.md | а | 1 | б |  |']);
-  review(cwd, 'spec', ['| R1 | замечание | spec.md, FR-1 | в | 1 | г |  |']);
+  writeReview(cwd, ['| R1 | блокер | slices/002-comments.md | а | 1 | б |  |'], 'slices');
+  writeReview(cwd, ['| R1 | замечание | spec.md, FR-1 | в | 1 | г |  |'], 'spec');
   assert.match(run(cwd, 'gate', 'decide', 'comments', 'R9').out, /Находки R9 нет\. Есть: R1 \(slices\), R1 \(spec\)/);
   const r = run(cwd, 'gate', 'decide', 'comments', 'R1');
   assert.deepEqual(optionIds(r.out).sort(), ['slices:R1', 'spec:R1']);
