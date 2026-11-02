@@ -4,45 +4,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { spawnSync, execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 
 import { tipOk, tipLine } from '../skills/sdd-lint/scripts/sdd-lint/stage.mjs';
+import { JSON_ENV, workspace, commitAll, runner, writeReview } from './helpers.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
-const GOOD = path.join(root, 'tests/fixtures/good');
-const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: '/sdd-lint', SDD_VIEW: 'json' };
-
-function workspace() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-tip-test-'));
-  fs.cpSync(GOOD, dir, { recursive: true });
-  return dir;
-}
-function gitWorkspace() {
-  const cwd = workspace();
-  const g = (...a) => execFileSync('git', a, { cwd, stdio: 'pipe' });
-  g('init', '-q');
-  g('-c', 'user.email=t@t', '-c', 'user.name=t', 'add', '-A');
-  g('-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'init');
-  return cwd;
-}
-function run(cwd, ...args) {
-  const r = spawnSync('node', [LINT, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, TMPDIR: path.join(cwd, '.tmp') } });
-  return { code: r.status, out: r.stdout + r.stderr };
-}
+// Вопросы структурой, команды lint — как их видит человек в GigaCode.
+const run = runner({ ...JSON_ENV, SDD_LINT_CMD: '/sdd-lint' });
+const gitWorkspace = () => commitAll(workspace());
 const lastLine = (out) => out.trimEnd().split('\n').pop();
 const tipOf = (cwd) => JSON.parse(run(cwd, 'check', 'docs/comments', '--json').out).tip;
-function withReview(cwd, rows) {
-  const d = path.join(cwd, 'docs/comments/_work/review');
-  fs.mkdirSync(d, { recursive: true });
-  fs.writeFileSync(
-    path.join(d, 'slices.md'),
-    `# Ревью slices — Комментарии\n\nИтог: блокеров 1, замечаний 0\n\n| # | Важность | Где | Что не так | Пункт | Предложение | Решение |\n|---|---|---|---|---|---|---|\n${rows.join('\n')}\n`,
-  );
-}
 const BLOCKER = '| R1 | блокер | slices/002-comments.md, AC-002-B2 | граница длины без пары 5000 / 5001 | 2 | добавить AC на 5001 |  |';
 const FIXED = '| R1 | блокер | slices/002-comments.md, AC-002-B2 | граница длины без пары 5000 / 5001 | 2 | добавить AC на 5001 | исправлено |';
 
@@ -57,13 +28,13 @@ test('tip: ревью не было — последняя строка check р
 
 test('tip: открытый блокер ревью — разбор через вопрос этапа, а не одобрение', () => {
   const cwd = workspace();
-  withReview(cwd, [BLOCKER]);
+  writeReview(cwd, [BLOCKER]);
   assert.equal(tipOf(cwd), 'Tip: Введите /sdd-lint ask docs/comments чтобы продолжить');
 });
 
 test('tip: ревью разобрано — одобрить; меню с одной фичей ведёт туда же', () => {
   const cwd = workspace();
-  withReview(cwd, [FIXED]);
+  writeReview(cwd, [FIXED]);
   assert.equal(tipOf(cwd), 'Tip: Введите /sdd-lint approve slices docs/comments чтобы продолжить');
   const menu = run(cwd).out;
   assert.equal(lastLine(menu), 'Tip: Введите /sdd-lint approve slices docs/comments чтобы продолжить');
@@ -105,7 +76,7 @@ const bare = (text) => text.split('\n').filter((l) => !l.startsWith('Tip:') && /
 
 test('команды в тексте для человека — inline-кодом, строка Tip — без бэктиков', () => {
   const cwd = workspace();
-  withReview(cwd, [BLOCKER]);
+  writeReview(cwd, [BLOCKER]);
   const r = run(cwd, 'docs/comments');
   assert.deepEqual(bare(r.out.split('Следующий шаг')[1]), []);
   assert.match(r.out, /одобрить: `\/sdd-lint approve slices docs\/comments`/);
