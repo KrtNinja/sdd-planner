@@ -3,7 +3,7 @@
 // П<n> / «исправлено» — решение провёл /sdd-decide; remarks — какие замечания разбирать, остальные снять.
 import fs from 'node:fs';
 
-import { pos } from './args.mjs';
+import { pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { loadFeature } from './feature.mjs';
 import { hasSection, inSection, plural, rel, scan, tables, today } from './md.mjs';

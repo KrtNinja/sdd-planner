@@ -1,5 +1,5 @@
 // Справка и ошибки вызова.
-import { cmd } from './args.mjs';
+import { cmd } from './legacy.mjs';
 import { code, lintCmd } from './config.mjs';
 
 export const HELP = `sdd-lint — проверки артефактов планирования SDD

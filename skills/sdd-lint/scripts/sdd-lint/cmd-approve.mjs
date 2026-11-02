@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { pendingAdrs } from './adr.mjs';
 import { fingerprint, approvalMds } from './approval.mjs';
-import { pos } from './args.mjs';
+import { pos } from './legacy.mjs';
 import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { findings, add, report } from './findings.mjs';

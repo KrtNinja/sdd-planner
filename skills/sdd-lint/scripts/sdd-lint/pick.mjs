@@ -2,7 +2,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { pos, CHOICES, SLOTS, cmd } from './args.mjs';
+import { CHOICES, SLOTS } from './args.mjs';
+import { pos, cmd } from './legacy.mjs';
 import { code, lintCmd, skillCode, lintCode } from './config.mjs';
 import { rel } from './md.mjs';
 

@@ -2,7 +2,7 @@
 // Без --yes ничего не удаляет: показывает, что уйдёт и чем это грозит, и задаёт второй вопрос.
 import fs from 'node:fs';
 
-import { flags, pos } from './args.mjs';
+import { flags, pos } from './legacy.mjs';
 import { chooseFeature } from './guide.mjs';
 import { closeSummary, closeQuestion, closePreview } from './close.mjs';
 import { skillCode, lintCode } from './config.mjs';

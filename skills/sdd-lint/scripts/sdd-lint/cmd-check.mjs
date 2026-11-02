@@ -1,6 +1,6 @@
 // Команды check и gate.
 import { pendingAdrs } from './adr.mjs';
-import { flags, pos } from './args.mjs';
+import { flags, pos } from './legacy.mjs';
 import { slicesBrief } from './brief.mjs';
 import { neededAdrs } from './cut.mjs';
 import { skillCode, lintCode } from './config.mjs';

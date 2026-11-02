@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { ownApprovals, approveCmd } from './approval.mjs';
-import { flags, pos } from './args.mjs';
+import { flags, pos } from './legacy.mjs';
 import { diffChecks } from './cmd-diff.mjs';
 import { skillCode } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';

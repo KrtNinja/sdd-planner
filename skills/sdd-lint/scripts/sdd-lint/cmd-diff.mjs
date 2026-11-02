@@ -1,5 +1,5 @@
 // Команда diff: проверки DF-* по git.
-import { flags, pos } from './args.mjs';
+import { flags, pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { skillCode } from './config.mjs';
 import { loadFeature } from './feature.mjs';

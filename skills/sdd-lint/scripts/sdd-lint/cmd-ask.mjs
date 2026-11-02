@@ -1,7 +1,7 @@
 // Команды ask и choose.
 import { execFileSync } from 'node:child_process';
 
-import { flags, pos } from './args.mjs';
+import { flags, pos } from './legacy.mjs';
 import { askOf, askView } from './ask.mjs';
 import { closeOptions } from './close.mjs';
 import { targetFiles } from './cmd-guard.mjs';

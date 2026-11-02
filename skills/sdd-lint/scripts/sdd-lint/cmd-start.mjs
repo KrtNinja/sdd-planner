@@ -1,5 +1,5 @@
 // Команды start (скилл /sdd-grill: задача, папка, источники по шагам) и research (задания сабагенту на любом этапе, проверка контекста).
-import { flags, pos } from './args.mjs';
+import { flags, pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { contextFindings, factTask, loadContext, markContext, researchTask, syncContext } from './context.mjs';
 import { loadFeature } from './feature.mjs';

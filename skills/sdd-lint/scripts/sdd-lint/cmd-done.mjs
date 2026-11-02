@@ -1,7 +1,7 @@
 // Команды plan и done: проверка плана нарезки и конец этапа одной командой — с лимитом прогонов.
 import fs from 'node:fs';
 
-import { pos } from './args.mjs';
+import { pos } from './legacy.mjs';
 import { askOf } from './ask.mjs';
 import { gateClosed } from './cmd-check.mjs';
 import { closedScreen } from './guide.mjs';

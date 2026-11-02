@@ -1,27 +1,5 @@
-// Разбор process.argv и описание команд: варианты, слоты аргументов, флаги.
+// Разбор аргументов (parseArgs — чистая функция) и описание команд: варианты, слоты аргументов, флаги.
 
-export const argv = process.argv.slice(2);
-export const flags = { json: false, snapshot: false, yes: false, base: null, slug: null, name: null, sources: null, accept: false, rename: null, sub: false, note: null, fallback: false };
-export const pos = [];
-for (let i = 0; i < argv.length; i++) {
-  const a = argv[i];
-  if (a === '--json') flags.json = true;
-  else if (a === '--snapshot') flags.snapshot = true;
-  else if (a === '--yes') flags.yes = true;
-  else if (a === '--base') flags.base = argv[++i];
-  else if (a.startsWith('--base=')) flags.base = a.slice(7);
-  // start: значения — ответы человека и имя папки, по одному элементу args.
-  // --slug — имя придумал агент, --name — ответ человека на «Как назвать папку?» (id варианта или имя).
-  else if (a === '--slug' || a === '--name' || a === '--sources' || a === '--rename') flags[a.slice(2)] = argv[++i] ?? '';
-  else if (/^--(slug|name|sources|rename)=/.test(a)) flags[a.slice(2, a.indexOf('='))] = a.slice(a.indexOf('=') + 1);
-  else if (a === '--accept') flags.accept = true;
-  // prompt: --sub — задача сабагенту, --note — уточнение к ней; choose --fallback — вариант без сабагентов.
-  else if (a === '--sub') flags.sub = true;
-  else if (a === '--note') flags.note = argv[++i] ?? '';
-  else if (a === '--fallback') flags.fallback = true;
-  // «@docs/comments/» — так путь дописывает Tab в строке GigaCode.
-  else pos.push(a.replace(/^@(?=.)/, ''));
-}
 // Команды и их аргументы — одно описание для меню, подсказок и Tab-дополнения.
 export const CMD_INFO = {
   start: 'старт /sdd-grill по шагам: задача, папка фичи, источники, исследование сабагентом',
@@ -82,4 +60,30 @@ export const SLOTS = {
 };
 export const FLAGS = { start: ['--slug', '--name', '--sources', '--accept', '--rename'], check: ['--json', '--snapshot'], fix: ['--json', '--snapshot'], diff: ['--json', '--base'], guard: ['--json', '--base'], close: ['--json', '--yes'], prompt: ['--sub', '--note'], choose: ['--fallback'] };
 export const COMMANDS = Object.keys(CMD_INFO);
-export const cmd = argv[0] === '__complete' ? '__complete' : COMMANDS.includes(pos[0]) ? pos.shift() : 'check';
+
+// argv — то, что пришло после имени скрипта. Возвращает { argv, flags, pos, cmd }; ничего не читает из процесса.
+export function parseArgs(argv) {
+  const flags = { json: false, snapshot: false, yes: false, base: null, slug: null, name: null, sources: null, accept: false, rename: null, sub: false, note: null, fallback: false };
+  const pos = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--json') flags.json = true;
+    else if (a === '--snapshot') flags.snapshot = true;
+    else if (a === '--yes') flags.yes = true;
+    else if (a === '--base') flags.base = argv[++i];
+    else if (a.startsWith('--base=')) flags.base = a.slice(7);
+    // start: значения — ответы человека и имя папки, по одному элементу args.
+    // --slug — имя придумал агент, --name — ответ человека на «Как назвать папку?» (id варианта или имя).
+    else if (a === '--slug' || a === '--name' || a === '--sources' || a === '--rename') flags[a.slice(2)] = argv[++i] ?? '';
+    else if (/^--(slug|name|sources|rename)=/.test(a)) flags[a.slice(2, a.indexOf('='))] = a.slice(a.indexOf('=') + 1);
+    else if (a === '--accept') flags.accept = true;
+    // prompt: --sub — задача сабагенту, --note — уточнение к ней; choose --fallback — вариант без сабагентов.
+    else if (a === '--sub') flags.sub = true;
+    else if (a === '--note') flags.note = argv[++i] ?? '';
+    else if (a === '--fallback') flags.fallback = true;
+    // «@docs/comments/» — так путь дописывает Tab в строке GigaCode.
+    else pos.push(a.replace(/^@(?=.)/, ''));
+  }
+  const cmd = argv[0] === '__complete' ? '__complete' : COMMANDS.includes(pos[0]) ? pos.shift() : 'check';
+  return { argv, flags, pos, cmd };
+}

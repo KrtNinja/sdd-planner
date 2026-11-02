@@ -1,5 +1,5 @@
 // Команды gen, next и trace.
-import { pos } from './args.mjs';
+import { pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { lintCode } from './config.mjs';
 import { impact } from './gate-extra.mjs';

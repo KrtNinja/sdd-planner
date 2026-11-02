@@ -1,5 +1,5 @@
 // Находки проверок и отчёт: текст или --json.
-import { flags } from './args.mjs';
+import { flags } from './legacy.mjs';
 import { cmds } from './config.mjs';
 import { rel, uniq } from './md.mjs';
 import { RULES } from './rules.mjs';

@@ -1,5 +1,5 @@
 // Команда export: требования фичи в JSON для зоны реализации — единственный интерфейс между зонами.
-import { pos } from './args.mjs';
+import { pos } from './legacy.mjs';
 import { gateClosed } from './cmd-check.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { rel } from './md.mjs';

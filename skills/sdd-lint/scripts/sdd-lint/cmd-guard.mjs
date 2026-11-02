@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { flags, pos } from './args.mjs';
+import { flags, pos } from './legacy.mjs';
 import { usage } from './cli.mjs';
 import { code, lintCode } from './config.mjs';
 import { loadFeature, featureFiles } from './feature.mjs';

@@ -2,7 +2,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { pos, CMD_INFO, CHOICES, SLOTS, FLAGS, COMMANDS } from './args.mjs';
+import { CMD_INFO, CHOICES, SLOTS, FLAGS, COMMANDS } from './args.mjs';
+import { pos } from './legacy.mjs';
 import { askOf } from './ask.mjs';
 import { promptSkills } from './cmd-prompt.mjs';
 import { code, lintCmd, skillCode, lintCode } from './config.mjs';
