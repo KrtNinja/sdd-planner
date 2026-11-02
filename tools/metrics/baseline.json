@@ -1,11 +1,11 @@
 {
  "tests": {
-  "total": 259,
-  "pass": 259,
+  "total": 260,
+  "pass": 260,
   "fail": 0,
-  "seconds": 123
+  "seconds": 22
  },
- "functions": 384,
+ "functions": 389,
  "crapAtLeast10": 72,
  "crapOver30": 10,
  "complexityAtLeast10": 69,
@@ -310,9 +310,9 @@
   "no-param-reassign": 1,
   "no-shadow": 3
  },
- "tscErrors": 1015,
- "clonesCodePercent": 3.89,
- "clonesTestsPercent": 6.53,
+ "tscErrors": 1010,
+ "clonesCodePercent": 3.81,
+ "clonesTestsPercent": 6.43,
  "cycles": 0,
  "sideEffects": 0,
  "unusedExports": 30
