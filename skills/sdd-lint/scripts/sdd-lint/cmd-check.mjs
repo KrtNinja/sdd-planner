@@ -1,6 +1,5 @@
 // Команды check и gate.
 import { pendingAdrs } from './adr.mjs';
-import { LEGACY, flags, pos } from './legacy.mjs';
 import { slicesBrief } from './brief.mjs';
 import { neededAdrs } from './cut.mjs';
 import { skillCode, lintCode } from './config.mjs';
@@ -14,19 +13,20 @@ import { G, blocks, screen } from './screen.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 import { printTip, stageOf, stageText, tipLine } from './stage.mjs';
 
-export function cmdCheck() {
-  const m = loadFeature(needDir(LEGACY, pos[0]));
+export function cmdCheck(ctx) {
+  const { flags, pos } = ctx.args;
+  const m = loadFeature(needDir(ctx, pos[0]));
   runChecks(m);
   if (flags.snapshot) for (const f of featureFiles(m)) saveSnapshot(f);
   const st = stageOf(m);
-  const c = report(LEGACY, { stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip) });
+  const c = report(ctx, { stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip) });
   if (!flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
-    console.log(`\n${stageText(st)}`);
-    console.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
-    if (!c.err) printTip(LEGACY, st);
+    ctx.io.log(`\n${stageText(st)}`);
+    ctx.io.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
+    if (!c.err) printTip(ctx, st);
   }
-  process.exit(c.err ? 1 : 0);
+  ctx.io.exit(c.err ? 1 : 0);
 }
 
 const errorsIn = (files) => findings.filter((x) => x.level === 'err' && files.map(rel).includes(x.file));
@@ -58,31 +58,32 @@ export function gateClosed(m, stage) {
   return closed;
 }
 
-export function cmdGate() {
+export function cmdGate(ctx) {
+  const { pos } = ctx.args;
   const stage = pos[0];
   const gates = ['spec', 'slices', 'adr', 'decide', 'review', 'build'];
-  if (!gates.includes(stage)) pickChoice(LEGACY, 'gate');
+  if (!gates.includes(stage)) pickChoice(ctx, 'gate');
   let target = pos[1];
   let note = null;
   // Фичу не назвали — выбирает скрипт: одна подходит — она, несколько — вопрос человеку.
   if (!target && stage !== 'build') {
     const c = chooseFeature(stage, (f) => ['gate', stage, f, ...pos.slice(2)]);
     if (!c.dir) {
-      console.log(c.text);
-      process.exit(2);
+      ctx.io.log(c.text);
+      ctx.io.exit(2);
     }
     [target, note] = [c.dir, c.note];
   }
-  const m = loadFeature(needDir(LEGACY, target, 1));
+  const m = loadFeature(needDir(ctx, target, 1));
   runChecks(m);
   const closed = gateClosed(m, stage);
   if (closed) {
     const relevant = stage === 'build' ? findings : errorsIn([m.protocolFile, m.specFile]);
     const errs = relevant.filter((y) => y.level === 'err');
-    if (errs.length) console.log(`${errs.map(item).join('\n')}\n`);
+    if (errs.length) ctx.io.log(`${errs.map(item).join('\n')}\n`);
     // build читает зона реализации (export) — ей вопрос этапа не нужен.
-    console.log(stage === 'build' ? closedScreen(stage, closed) : closedText(m, stage, closed));
-    process.exit(3);
+    ctx.io.log(stage === 'build' ? closedScreen(stage, closed) : closedText(m, stage, closed));
+    ctx.io.exit(3);
   }
   // Что после фичи, разбирает скрипт: тема ADR, находка ревью, режим ревью.
   const extra =
@@ -95,11 +96,11 @@ export function cmdGate() {
           : null;
   // Вопрос или стоп вместо этапа — готовый вывод целиком.
   if (extra?.stop) {
-    console.log(blocks(note, extra.text));
-    process.exit(0);
+    ctx.io.log(blocks(note, extra.text));
+    ctx.io.exit(0);
   }
   // Путь фичи — каноническим: агент подставляет его в следующие вызовы как есть, без разбора аргумента.
   const brief = stage === 'slices' ? slicesBrief(m) : null;
-  console.log(screen(blocks(note, helloLine(m, stage), extra?.card, brief?.card), `ворота ${stage} открыты`, `фича ${rel(m.dir)}`, extra?.parts, brief?.parts, G.skill));
-  process.exit(0);
+  ctx.io.log(screen(blocks(note, helloLine(m, stage), extra?.card, brief?.card), `ворота ${stage} открыты`, `фича ${rel(m.dir)}`, extra?.parts, brief?.parts, G.skill));
+  ctx.io.exit(0);
 }
