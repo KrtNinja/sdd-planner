@@ -17,7 +17,7 @@ export function cmdStart() {
   if (flags.sources != null || flags.accept || flags.rename) {
     const dir = needDir(pos[0]);
     out = flags.rename ? renameFeature(dir, flags.rename) : flags.sources != null ? addSources(dir, flags.sources) : acceptContext(dir);
-  } else out = startFrom(pos.join(' '), flags.slug);
+  } else out = startFrom(pos.join(' '), flags.slug, flags.name);
   console.log(out);
   process.exit(0);
 }

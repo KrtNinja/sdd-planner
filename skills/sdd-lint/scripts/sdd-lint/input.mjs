@@ -5,9 +5,14 @@ import path from 'node:path';
 
 import { DOCS, isDir, listFeatures, resolveFeature } from './pick.mjs';
 
-// Имя папки фичи: латиница в нижнем регистре, цифры, дефис — его набирают в командах и видят в путях.
-export const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// Имя папки фичи: латиница, цифры, дефис — его набирают в командах и видят в путях. Регистр — как дал
+// человек (PROJECT-4567 — ключ тикета); имена, которые отличаются только регистром, — одна папка (caseTwin).
+export const SLUG_RE = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
 export const SLUG_MAX = 40;
+// Ключ тикета: PROJECT-4567, ABC-12.
+const TICKET_RE = /^[A-Z][A-Z0-9]*-\d+$/;
+// Слово, похожее на имя папки в начале /sdd-grill: строчное через дефис или ключ тикета. «E-mail …», «Wi-Fi …» — задача.
+const nameLike = (w) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(w) || TICKET_RE.test(w);
 // Значения строки «Источники:» в протоколе. Остальное — пути и ссылки.
 export const REPO = 'репозиторий';
 export const NEW_PROJECT = 'нет — новый проект';
@@ -66,13 +71,14 @@ export function classify(raw) {
     const f = asFeature(text.replace(/^@/, ''));
     if (f) return { kind: 'feature', dir: f, sources: [], missing: [] };
     // Старая форма «/sdd-grill <feature>»: одно имя без задачи.
-    if (SLUG_RE.test(text) && !exists(text)) return { kind: 'need-task', slug: text, sources: [], missing: [] };
+    if (nameLike(text) && !exists(text)) return { kind: 'need-task', slug: text, sources: [], missing: [] };
   }
   let slug = null;
   let rest = text;
-  // Старая форма «/sdd-grill <feature> "фраза"»: имя первым словом — с дефисом, в кавычках дальше или уже в docs/.
-  const m = text.match(/^@?([a-z0-9]+(?:-[a-z0-9]+)*)\s+([\s\S]+)$/);
-  if (m && (m[1].includes('-') || /^["«]/.test(m[2]) || isDir(path.join(DOCS, m[1])))) {
+  // Старая форма «/sdd-grill <feature> "фраза"»: имя первым словом — строчное с дефисом или ключ тикета,
+  // задача дальше в кавычках или папка уже в docs/.
+  const m = text.match(/^@?([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\s+([\s\S]+)$/);
+  if (m && ((nameLike(m[1]) && m[1].includes('-')) || /^["«]/.test(m[2]) || isDir(path.join(DOCS, m[1])))) {
     slug = m[1];
     rest = m[2];
   }
@@ -96,16 +102,40 @@ export function classify(raw) {
   return { kind: task ? 'task' : 'need-task', slug, task, sources, missing: s.missing };
 }
 
-// Имя папки из имени файла задачи, если оно уже латиницей: user-settings.md → user-settings.
-const GENERIC = /^(readme|index|task|tasks|spec|prd|brief|req|requirements|doc|docs|draft|new|todo|notes?|tz|ticket|issue|story|feature)$/;
+// Имя папки из имени файла задачи, если оно уже латиницей: user-settings.md → user-settings, PROJECT-4567.md → PROJECT-4567.
+const GENERIC = /^(readme|index|task|tasks|spec|prd|brief|req|requirements|doc|docs|draft|new|todo|notes?|tz|ticket|issue|story|feature)$/i;
 export function slugFromFile(file) {
-  const base = path.basename(file).replace(/\.[^.]+$/, '').toLowerCase().replace(/[_\s.]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  const base = path.basename(file).replace(/\.[^.]+$/, '').replace(/[_\s.]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   return SLUG_RE.test(base) && base.length <= SLUG_MAX && !GENERIC.test(base) ? base : null;
 }
+// Имя папки, которое написал человек. Регистр не трогаем — это его выбор; меняем только то, без чего имя
+// не годится: «docs/Pay_Refund/» → Pay-Refund, «user settings» → user-settings, «давай PROJECT-4567» → PROJECT-4567
+// (одно слово-имя среди прочих). Не вышло — ответ как есть: его разберёт slugProblem.
+const toSlug = (s) =>
+  s
+    .replace(/^[`«"'@]+|[`»"'.,!;:]+$/g, '')
+    .replace(/^\.?\/?docs\//, '')
+    .replace(/\/+$/, '')
+    .replace(/[_\s]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+export function slugFromAnswer(answer) {
+  const a = (answer || '').trim();
+  const whole = toSlug(a);
+  if (SLUG_RE.test(whole)) return whole;
+  const one = a.split(/\s+/).map(toSlug).filter((x) => SLUG_RE.test(x));
+  return one.length === 1 ? one[0] : a;
+}
 export function slugProblem(slug) {
-  if (!SLUG_RE.test(slug || '') || slug.length > SLUG_MAX) return `«${slug || ''}» не подходит: латиница в нижнем регистре, цифры и дефис, до ${SLUG_MAX} знаков`;
-  if (slug === 'adr') return '«adr» занято: там лежат ADR';
+  if (!SLUG_RE.test(slug || '') || slug.length > SLUG_MAX) return `«${slug || ''}» не подходит: латиница, цифры и дефис, до ${SLUG_MAX} знаков`;
+  if (slug.toLowerCase() === 'adr') return `«${slug}» занято: там лежат ADR`;
   return null;
+}
+// Папка в docs/, имя которой отличается от slug только регистром: на macOS и Windows это одна папка,
+// а git на Linux видит две. except — своя папка (переименование PROJECT → project).
+export function caseTwin(slug, except = null) {
+  if (!isDir(DOCS)) return null;
+  return fs.readdirSync(DOCS).find((x) => x !== slug && x !== except && x.toLowerCase() === slug.toLowerCase() && isDir(path.join(DOCS, x))) || null;
 }
 
 // Заголовок протокола: первое предложение фразы или заголовок файла задачи.
