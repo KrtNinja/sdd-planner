@@ -8,6 +8,8 @@ import path from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { run as runLint } from '../skills/sdd-lint/scripts/sdd-lint/run.mjs';
+
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
 export const MCP = path.join(root, 'skills/sdd-lint/scripts/mcp.mjs');
@@ -54,12 +56,30 @@ export function commitAll(cwd, msg = 'init') {
   return cwd;
 }
 
-// Запуск sdd-lint: { code, out } — stdout и stderr вместе.
+// Запуск sdd-lint функцией run() в этом же процессе: { code, out } — stdout, затем stderr, как у spawnSync.
+// На время вызова — папка cwd, окружение env и свой TMPDIR (там счётчики прогонов и снимки), потом всё
+// возвращается. Тесты одного файла идут по очереди, поэтому смена папки процесса безопасна.
 export const runner = (env) => (cwd, ...args) => {
+  const vars = { ...env, TMPDIR: path.join(cwd, '.tmp') };
+  const saved = { cwd: process.cwd(), env: Object.fromEntries(Object.keys(vars).map((k) => [k, process.env[k]])) };
+  process.chdir(cwd);
+  Object.assign(process.env, vars);
+  try {
+    const { code, chunks } = runLint(args);
+    const text = (fd) => chunks.filter(([f]) => f === fd).map(([, t]) => t).join('');
+    return { code, out: text(1) + text(2) };
+  } finally {
+    process.chdir(saved.cwd);
+    for (const [k, v] of Object.entries(saved.env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+  }
+};
+export const run = runner(JSON_ENV);
+
+// Тот же вызов отдельным процессом — для проверок самой точки входа (CLI, симлинк, hook).
+export const spawnRunner = (env) => (cwd, ...args) => {
   const r = spawnSync('node', [LINT, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...env, TMPDIR: path.join(cwd, '.tmp') } });
   return { code: r.status, out: r.stdout + r.stderr };
 };
-export const run = runner(JSON_ENV);
 
 // Пути, чтение и правка внутри docs/.
 export const file = (cwd, rel) => path.join(cwd, 'docs', rel);
