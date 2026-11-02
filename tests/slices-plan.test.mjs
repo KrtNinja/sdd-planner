@@ -147,6 +147,11 @@ test('plan: покрытие, причины, зависимости, серви
   assert.match(r.out, /не ушли за 3 прогона — список выше\. Как быть/);
   assert.match(r.out, / · стоп\n$/);
 });
+test('plan: slice без строк шапки — PL-02 на каждую строку', () => {
+  const r = run(planWorkspace(`${PLAN}\n## 004-empty — Пустой\n`), 'plan', 'docs/comments');
+  assert.equal(r.code, 1, r.out);
+  for (const k of ['Основание', 'Зависимости', 'Половины', 'Результат', 'Почему отдельно']) assert.match(r.out, new RegExp(`PL-02.*004: нет строки «${k}:»`), r.out);
+});
 test('plan: Р1 по принятому ADR, требование в двух slices, slice из NFR, больше 6 — предупреждения', () => {
   const extra = [4, 5, 6, 7].map((n) => `\n## 00${n}-part-${n} — Часть ${n}\nОснование: NFR-2\nЗависимости: 002\nПоловины: только tasks-core\nРезультат: часть ${n}\nПочему отдельно: Р3 — раньше\n`).join('');
   const cwd = planWorkspace(PLAN + extra);
