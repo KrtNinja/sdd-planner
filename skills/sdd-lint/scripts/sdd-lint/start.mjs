@@ -1,4 +1,4 @@
-// Старт /sdd-grill по шагам: задача → папка фичи → источники → исследование сабагентом → «Старт готов».
+// Старт /sdd-grill по шагам: задача → имя и папка фичи → источники → исследование сабагентом → «Старт готов».
 // Агент передаёт сюда ответы человека и делает, что сказано в выводе: вопросы и задания — данные скрипта.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,8 +9,9 @@ import { skillCode, lintCode } from './config.mjs';
 import { contextFindings, loadContext, markContext, syncContext } from './context.mjs';
 import { loadFeature } from './feature.mjs';
 import { item } from './findings.mjs';
-import { NEW_PROJECT, REPO, classify, inventory, outside, parseSourcesAnswer, requestOf, slugFromFile, slugProblem, titleOf } from './input.mjs';
+import { NEW_PROJECT, REPO, classify, inventory, outside, parseSourcesAnswer, requestOf, slugProblem, titleOf } from './input.mjs';
 import { dropHeader, header, read, rel, setHeader, uniq } from './md.mjs';
+import { folderName, nameTrouble } from './name.mjs';
 import { DOCS, isDir, listFeatures } from './pick.mjs';
 import { ANSWER, questionsView, viewText, waitText } from './question.mjs';
 import { A, G, blocks, codePaths, list, screen } from './screen.mjs';
@@ -192,20 +193,10 @@ export function askTask({ sources = [] } = {}, slug = null) {
   );
 }
 
-function createFeature(c, slug, raw) {
-  const problem = slugProblem(slug);
-  if (problem) return { text: screen(null, `имя папки ${problem} — придумай другое → ${A(['start', raw, '--slug', '<имя>'])}`) };
+function createFeature(c, slug, raw, own) {
+  const trouble = nameTrouble(slug, raw, own);
+  if (trouble) return { text: trouble };
   const dir = path.join(DOCS, slug);
-  const old = read(path.join(dir, 'brainstorming.md'));
-  if (old != null || fs.existsSync(path.join(dir, 'spec.md')))
-    return {
-      text: screen(
-        null,
-        `папка ${dir} уже занята${old ? ` (запрос ${header(old, 'Запрос') || '—'})` : ''}`,
-        `та же задача — ${G.call(['start', dir])}`,
-        `другая — придумай другое имя → ${A(['start', raw, '--slug', '<имя>'])}`,
-      ),
-    };
   if (!isDir(DOCS) && !fs.existsSync('.git'))
     return {
       text: screen(
@@ -221,8 +212,9 @@ function createFeature(c, slug, raw) {
   return { dir };
 }
 
-// Всё, что человек написал после /sdd-grill. slug — имя папки, которое придумал агент.
-export function startFrom(raw, slug = null) {
+// Всё, что человек написал после /sdd-grill. slug — имя папки, которое придумал агент;
+// name — ответ человека на вопрос «Как назвать папку?»: id варианта или имя словами.
+export function startFrom(raw, slug = null, name = null) {
   const c = classify(raw);
   if (c.missing.length)
     return waitText(`Не нашёл ${c.missing.map((x) => `\`${x}\``).join(', ')}. Проверьте путь: начните с \`@\` — Tab дополнит. Или пришлите ссылку.`, ['start', '<прежний текст, путь — из ответа человека>']);
@@ -231,14 +223,9 @@ export function startFrom(raw, slug = null) {
     return resume(c.dir);
   }
   if (c.kind !== 'task') return askTask(c, slug || c.slug);
-  const name = slug || c.slug || (c.task.file ? slugFromFile(c.task.file) : null);
-  if (!name)
-    return screen(
-      null,
-      `придумай имя папки фичи по задаче ${requestOf(c.task)}: 2–4 английских слова через дефис, например user-settings-panel; человека не спрашивай — имя он увидит и сможет поменять`,
-      G.call(['start', raw, '--slug', '<имя>']),
-    );
-  const r = createFeature(c, name, raw);
+  const n = folderName(c, raw, slug, name);
+  if (n.text) return n.text;
+  const r = createFeature(c, n.slug, raw, n.own);
   return r.text || resume(r.dir, { created: true });
 }
 

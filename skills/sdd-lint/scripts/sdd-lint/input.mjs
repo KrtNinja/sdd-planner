@@ -102,6 +102,24 @@ export function slugFromFile(file) {
   const base = path.basename(file).replace(/\.[^.]+$/, '').toLowerCase().replace(/[_\s.]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   return SLUG_RE.test(base) && base.length <= SLUG_MAX && !GENERIC.test(base) ? base : null;
 }
+// Имя папки, которое написал человек: «docs/Pay_Refund/» → pay-refund, «user settings» → user-settings,
+// «давай pay-refund» → pay-refund (одно слово-имя среди прочих). Не вышло — ответ как есть: его разберёт slugProblem.
+const toSlug = (s) =>
+  s
+    .replace(/^[`«"'@]+|[`»"'.,!;:]+$/g, '')
+    .replace(/^\.?\/?docs\//, '')
+    .replace(/\/+$/, '')
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+export function slugFromAnswer(answer) {
+  const a = (answer || '').trim();
+  const whole = toSlug(a);
+  if (SLUG_RE.test(whole)) return whole;
+  const one = a.split(/\s+/).map(toSlug).filter((x) => SLUG_RE.test(x));
+  return one.length === 1 ? one[0] : a;
+}
 export function slugProblem(slug) {
   if (!SLUG_RE.test(slug || '') || slug.length > SLUG_MAX) return `«${slug || ''}» не подходит: латиница в нижнем регистре, цифры и дефис, до ${SLUG_MAX} знаков`;
   if (slug === 'adr') return '«adr» занято: там лежат ADR';

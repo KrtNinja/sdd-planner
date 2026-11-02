@@ -61,12 +61,54 @@ test('start без аргументов: начатые фичи — в вопр
 });
 
 // ---------- путь 2: задача фразой ----------
-test('задача фразой: имя папки придумывает агент, человека не спрашивают', () => {
-  const r = run(repo(), 'start', 'добавить панель настроек пользователя');
+test('задача фразой: вопрос «Как назвать папку?» — автоматически (рекомендую) или своё; папки ещё нет', () => {
+  const cwd = repo();
+  const r = run(cwd, 'start', 'добавить панель настроек пользователя');
+  const q = json(r.out);
+  assert.equal(q.questions[0].question, 'Как назвать папку фичи?');
+  assert.deepEqual(optionIds(r.out), ['name:auto', 'name:own']);
+  assert.equal(recommended(r.out), 'name:auto');
+  assert.match(q.questions[0].options[0].description, /агент подберёт/);
+  // Можно ответить своими словами — имя уходит в тот же вызов вместо <id>.
+  assert.deepEqual(q.then, ['start', 'добавить панель настроек пользователя', '--name', '<id>']);
+  assert.match(q.gear, /своими словами — вместо <id>/);
+  assert.equal(fs.readdirSync(path.join(cwd, 'docs')).length, 0);
+});
+test('«Автоматически»: имя придумывает агент, человека больше не спрашивают', () => {
+  const r = run(repo(), 'start', 'добавить панель настроек пользователя', '--name', 'name:auto');
   assert.match(r.out, /^⚙ sdd: придумай имя папки фичи по задаче «добавить панель настроек пользователя»: /);
-  assert.match(r.out, /человека не спрашивай/);
+  assert.match(r.out, /человека не спрашивай — он выбрал «Автоматически»/);
   assert.match(r.out, / · вызови \["start","добавить панель настроек пользователя","--slug","<имя>"\]\n$/);
-  assert.equal(fs.readdirSync(path.join(repo(), 'docs')).length, 0);
+  // «авто» словами — то же, что вариант 1.
+  assert.match(run(repo(), 'start', 'панель настроек', '--name', 'автоматически').out, /^⚙ sdd: придумай имя папки/);
+});
+test('«Своё»: скрипт ждёт имя, нормализует его и создаёт папку', () => {
+  const cwd = repo();
+  const w = run(cwd, 'start', 'добавить панель настроек пользователя', '--name', 'name:own');
+  assert.match(w.out, /^Как назвать папку фичи\? Латиница в нижнем регистре/);
+  assert.match(w.out, /\n⚙ sdd: жди ответ → \["start","добавить панель настроек пользователя","--name","<ответ человека>"\]\n$/);
+  run(cwd, 'start', 'добавить панель настроек пользователя', '--name', '`docs/User_Settings/`');
+  assert.match(read(cwd, 'docs/user-settings/brainstorming.md'), /^Запрос: «добавить панель настроек пользователя»$/m);
+  // Одно слово-имя среди прочих слов — берётся оно; «Buyer Profile» — через дефис.
+  run(cwd, 'start', 'возврат платежа покупателю', '--name', 'давай pay-123-refund');
+  assert.ok(fs.existsSync(path.join(cwd, 'docs/pay-123-refund/brainstorming.md')));
+  run(cwd, 'start', 'профиль покупателя в кабинете', '--name', 'Buyer Profile');
+  assert.ok(fs.existsSync(path.join(cwd, 'docs/buyer-profile/brainstorming.md')));
+});
+test('«Своё»: имя не подошло или папка занята — переспросить человека, не поручать агенту', () => {
+  const cwd = repo();
+  const bad = run(cwd, 'start', 'панель настроек', '--name', 'Панель');
+  assert.match(bad.out, /^Имя «Панель» не подходит: латиница/);
+  assert.match(bad.out, /\n⚙ sdd: жди ответ → \["start","панель настроек","--name","<ответ человека>"\]\n$/);
+  assert.doesNotMatch(bad.out, /придумай/);
+  // Два слова-имени — какое из них, скрипт не угадывает.
+  assert.match(run(cwd, 'start', 'панель настроек', '--name', 'pay-123 и settings').out, /не подходит/);
+  assert.match(run(cwd, 'start', 'панель настроек', '--name', 'adr').out, /«adr» занято/);
+  assert.equal(fs.readdirSync(path.join(cwd, 'docs')).length, 0);
+  run(cwd, 'start', 'панель настроек', '--name', 'settings');
+  const busy = run(cwd, 'start', 'что-то другое совсем', '--name', 'settings');
+  assert.match(busy.out, /^Папка `docs\/settings` уже занята \(запрос «панель настроек»\)\. Продолжить ту фичу — `\/sdd-grill settings`/);
+  assert.match(busy.out, /\n⚙ sdd: жди ответ → \["start","что-то другое совсем","--name","<ответ человека>"\]\n$/);
 });
 test('задача фразой и имя: протокол из шаблона, затем вопрос об источниках с описью папки', () => {
   const cwd = repo(SERVICES);
@@ -121,24 +163,28 @@ test('старая форма: «task-handover "фраза"» и одно имя
 });
 
 // ---------- путь 3: задача файлом ----------
-test('задача файлом: имя папки из имени файла, «Запрос: файл …», заголовок из файла', () => {
+test('задача файлом: «Автоматически» — имя из имени файла, «Запрос: файл …», заголовок из файла', () => {
   const cwd = repo({ 'docs/inbox/user-settings.md': '# Панель настроек\n\nМенять имя и язык.\n' });
-  const r = run(cwd, 'start', '@docs/inbox/user-settings.md');
+  const q = run(cwd, 'start', '@docs/inbox/user-settings.md');
+  assert.equal(json(q.out).questions[0].options[0].description, '`docs/user-settings` (из имени файла задачи)');
+  assert.ok(!fs.existsSync(path.join(cwd, 'docs/user-settings')));
+  const r = run(cwd, 'start', '@docs/inbox/user-settings.md', '--name', 'name:auto');
   assert.equal(r.code, 0, r.out);
   const md = read(cwd, 'docs/user-settings/brainstorming.md');
   assert.match(md, /^# Панель настроек — Brainstorming/);
   assert.match(md, /^Запрос: файл docs\/inbox\/user-settings\.md$/m);
   assert.match(r.out, /"id": "src:give"/);
 });
-test('задача файлом с общим именем (task.md) — имя придумывает агент', () => {
+test('задача файлом с общим именем (task.md) — «Автоматически»: имя придумывает агент', () => {
   const cwd = repo({ 'inbox/task.md': '# Задача\n' });
-  const r = run(cwd, 'start', 'вот задача @inbox/task.md');
+  assert.match(json(run(cwd, 'start', 'вот задача @inbox/task.md').out).questions[0].options[0].description, /агент подберёт/);
+  const r = run(cwd, 'start', 'вот задача @inbox/task.md', '--name', 'name:auto');
   assert.match(r.out, /^⚙ sdd: придумай имя папки фичи по задаче файл inbox\/task\.md:/);
   assert.match(r.out, /--slug","<имя>"/);
 });
 test('задача файлом, новый проект: изучается только файл задачи, «ничего не нашёл» не спрашивают', () => {
   const cwd = repo({ 'docs/inbox/user-settings.md': '# Панель\n\nМенять имя и язык.\nЯзык — только ru и en.\n' });
-  run(cwd, 'start', '@docs/inbox/user-settings.md');
+  run(cwd, 'start', '@docs/inbox/user-settings.md', '--name', 'name:auto');
   const r = run(cwd, 'choose', 'docs/user-settings', 'src:new');
   assert.match(read(cwd, 'docs/user-settings/brainstorming.md'), /^Источники: нет — новый проект$/m);
   assert.match(r.out, /research","context","docs\/user-settings"/);
@@ -342,7 +388,7 @@ test('протокол готов: start не начинает заново, а 
 });
 test('файл задачи внутри docs/ — документ, а не фича', () => {
   const cwd = repo({ 'docs/inbox/notes.md': '# Заметки\n' });
-  const r = run(cwd, 'start', 'docs/inbox/notes.md');
+  const r = run(cwd, 'start', 'docs/inbox/notes.md', '--name', 'name:auto');
   assert.match(r.out, /^⚙ sdd: придумай имя папки фичи по задаче файл docs\/inbox\/notes\.md:/);
   assert.ok(!fs.existsSync(path.join(cwd, 'docs/inbox/brainstorming.md')));
 });
@@ -352,7 +398,7 @@ test('help и Tab: start и research в справке, флаги start доп�
   assert.match(run(cwd, 'help', 'research').out, /CX-\*/);
   assert.match(run(cwd, 'research').out, /research — выбери вариант:[\s\S]*research context <feature>/);
   const c = run(cwd, '__complete', 'start', '--').out.split('\n').map((x) => x.split('\t')[0]);
-  assert.ok(c.includes('--sources') && c.includes('--rename'), c.join(','));
+  assert.ok(c.includes('--sources') && c.includes('--rename') && c.includes('--name'), c.join(','));
 });
 test('скилл sdd-grill: первый шаг — start, задания сабагенту не вшиты в скилл', () => {
   const md = fs.readFileSync(path.join(root, 'skills/sdd-grill/SKILL.md'), 'utf8');
