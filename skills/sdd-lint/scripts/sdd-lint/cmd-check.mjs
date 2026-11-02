@@ -5,11 +5,12 @@ import { slicesBrief } from './brief.mjs';
 import { neededAdrs } from './cut.mjs';
 import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
-import { findings, hasErrors, line, report } from './findings.mjs';
+import { findings, hasErrors, item, report } from './findings.mjs';
 import { rel, approved } from './md.mjs';
 import { pickChoice, needDir } from './pick.mjs';
 import { adrTopicStep, findingStep, reviewStep } from './gate-extra.mjs';
-import { chooseFeature, closedText, helloLine } from './guide.mjs';
+import { chooseFeature, closedScreen, closedText, helloLine } from './guide.mjs';
+import { G, blocks, screen } from './screen.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 import { printTip, stageOf, stageText, tipLine } from './stage.mjs';
 
@@ -22,7 +23,7 @@ export function cmdCheck() {
   if (!flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
     console.log(`\n${stageText(st)}`);
-    console.log(`Ошибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
+    console.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
     if (!c.err) printTip(st);
   }
   process.exit(c.err ? 1 : 0);
@@ -77,9 +78,10 @@ export function cmdGate() {
   const closed = gateClosed(m, stage);
   if (closed) {
     const relevant = stage === 'build' ? findings : errorsIn([m.protocolFile, m.specFile]);
-    for (const x of relevant.filter((y) => y.level === 'err')) console.log(line(x));
+    const errs = relevant.filter((y) => y.level === 'err');
+    if (errs.length) console.log(`${errs.map(item).join('\n')}\n`);
     // build читает зона реализации (export) — ей вопрос этапа не нужен.
-    console.log(stage === 'build' ? `ВОРОТА ${stage}: закрыты — ${closed[0]}.\nСкажи человеку: «${closed[1]}» — и остановись.` : closedText(m, stage, closed));
+    console.log(stage === 'build' ? closedScreen(stage, closed) : closedText(m, stage, closed));
     process.exit(3);
   }
   // Что после фичи, разбирает скрипт: тема ADR, находка ревью, режим ревью.
@@ -91,9 +93,13 @@ export function cmdGate() {
         : stage === 'review'
           ? reviewStep(m, pos[2], pos[3])
           : null;
+  // Вопрос или стоп вместо этапа — готовый вывод целиком.
+  if (extra?.stop) {
+    console.log(blocks(note, extra.text));
+    process.exit(0);
+  }
   // Путь фичи — каноническим: агент подставляет его в следующие вызовы как есть, без разбора аргумента.
-  const out = [note, `ВОРОТА ${stage}: открыты.`, `Фича: ${rel(m.dir)}`, extra?.text, extra?.stop ? null : helloLine(m, stage)];
-  if (stage === 'slices') out.push(slicesBrief(m));
-  console.log(out.filter(Boolean).join('\n'));
+  const brief = stage === 'slices' ? slicesBrief(m) : null;
+  console.log(screen(blocks(note, helloLine(m, stage), extra?.card, brief?.card), `ворота ${stage} открыты`, `фича ${rel(m.dir)}`, extra?.parts, brief?.parts, G.skill));
   process.exit(0);
 }

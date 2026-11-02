@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { pos } from './args.mjs';
+import { flags, pos } from './args.mjs';
 import { lintCmd } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { read, uniq } from './md.mjs';
@@ -16,6 +16,23 @@ export const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
 export const promptSkills = () => (isDir(SKILLS_DIR) ? fs.readdirSync(SKILLS_DIR).filter((x) => /^sdd-[a-z]+$/.test(x) && x !== 'sdd-lint' && fs.existsSync(path.join(SKILLS_DIR, x, 'SKILL.md'))) : []);
 // Аргументы с пробелами — в кавычках: у /sdd-decide вопрос и решение не должны слиться в одну строку.
 const shownArgs = (args) => args.map((a) => (/\s/.test(a) || a === '' ? `"${a.replace(/"/g, '\\"')}"` : a)).join(' ');
+// Скилл в сабагенте (--sub): человек его не видит, итог — последним сообщением.
+const SUB =
+  'Ты сабагент: человеку вопросов не задавай. Когда done вернёт вопрос этапа, не задавай его — последним сообщением выведи ' +
+  'список изменений (файл → ID → что изменилось). Без ответа человека дальше нельзя — выведи вопрос последним сообщением и остановись.';
+
+// Задача сабагенту убрать AI стиль: humanizer, затем guard скриптом. target — spec.md, ADR или папка фичи (slices).
+export function humanizeTask(target) {
+  const files = /\.md$/.test(target) ? target : `каждому файлу в ${target.replace(/\/$/, '')}/slices/`;
+  return [
+    `# Убрать AI стиль: ${target}`,
+    '',
+    `Загрузи скилл humanizer и примени его к ${files}: меняй только прозу вне блоков кода; ID, строки шапки, заголовки,`,
+    'таблицы, тексты в «ёлочках», числа и сроки не трогай.',
+    `Затем вызови sdd_lint с args ${JSON.stringify(['guard', target])}; при ошибках верни защищённые части как были и повтори guard.`,
+    'Последним сообщением — итог guard.',
+  ].join('\n');
+}
 export function skillPrompt(name, args) {
   const dir = path.join(SKILLS_DIR, name);
   const body = read(path.join(dir, 'SKILL.md')).replace(/^---\n[\s\S]*?\n---\n/, '').trim();
@@ -32,7 +49,9 @@ export function skillPrompt(name, args) {
           'Последним сообщением выведи таблицу находок и итог из шага 5 — его прочитает человек;',
           'свои шаги не пересказывай. Шаг 6 не выполняй: находки с человеком разберёт основное окно.',
         ]
-      : [`# Скилл ${name}: ${shownArgs(args)}`, '', 'Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.'];
+      : flags.sub
+        ? [`# Скилл ${name}: ${shownArgs(args)}`, '', SUB, ...(flags.note ? ['', flags.note] : [])]
+        : [`# Скилл ${name}: ${shownArgs(args)}`, '', 'Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.', ...(flags.note ? ['', flags.note] : [])];
   return [
     ...head,
     `Аргументы скилла: \`${shownArgs(args)}\`. Lint — инструмент MCP \`sdd_lint\`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — \`${SELF}\`.`,
@@ -52,6 +71,10 @@ export function skillPrompt(name, args) {
 export function cmdPrompt() {
   const known = promptSkills();
   const name = pos[0];
+  if (name === 'humanize' && pos[1]) {
+    console.log(humanizeTask(pos[1]));
+    process.exit(0);
+  }
   if (!known.includes(name)) {
     console.error(`${name ? `Нет скилла «${name}»` : 'Укажи скилл'}. Скиллы: ${known.join(', ')}`);
     process.exit(2);

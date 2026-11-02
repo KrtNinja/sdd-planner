@@ -3,7 +3,7 @@
 // Подсказки печатаются готовыми командами со slug фичи, чтобы их можно было скопировать.
 // Ветки-адаптеры меняют здесь значения по умолчанию; переменные окружения переопределяют их.
 const SKILL_PREFIX = process.env.SDD_SKILL_PREFIX ?? '/';
-const LINT_CMD = process.env.SDD_LINT_CMD ?? '/sdd-lint';
+export const LINT_CMD = process.env.SDD_LINT_CMD ?? '/sdd-lint';
 export const skill = (name, ...args) => [`${SKILL_PREFIX}${name}`, ...args].join(' ');
 export const lintCmd = (...args) => [LINT_CMD, ...args].join(' ');
 // Команда в тексте для человека — inline-кодом: агент выводит текст скрипта как есть, и markdown

@@ -92,13 +92,13 @@ export function cmdApprove() {
     report();
     const hg = findings.some((x) => x.rule === 'HG-01');
     console.log(`\nНЕ ОДОБРЕНО: ${rel(target)} остаётся «${cur}».`);
-    if (hg) console.log(`Если защищённые части поменяли вы сами — снимите новый снимок (${lintCode('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`);
+    if (hg) console.log(`\nЕсли защищённые части поменяли вы сами — снимите новый снимок (${lintCode('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`);
     process.exit(1);
   }
   fs.writeFileSync(target, next);
   console.log(`${rel(target)}: Статус: ${word} ${date} · ${fp}`);
   const st = stageOf(loadFeature(d));
-  console.log(stageText(st));
+  console.log(`\n${stageText(st)}`);
   printTip(st);
   process.exit(0);
 }

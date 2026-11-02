@@ -5,19 +5,20 @@ import { neededAdrs, stubCount } from './cut.mjs';
 import { findings } from './findings.mjs';
 import { rel, approved, plural } from './md.mjs';
 import { checkPlan, planPreview } from './plan.mjs';
-import { lintArgs, questionsView } from './question.mjs';
+import { questionsView } from './question.mjs';
+import { G } from './screen.mjs';
 import { artifactQuestion } from './review-walk.mjs';
 import { tempArtifacts, stageOf } from './stage.mjs';
 
 // Что спросить в конце этапа и что сделать по ответу — данные скрипта, а не текст для модели.
 // Агент задаёт вопросы из ask инструментом выбора и передаёт id варианта в choose.
 // Действие: lint — выполняет choose (after — что дальше, retry — при коде 2 переспросить);
-// subagent — задача сабагенту (без сабагентов: here — тот же скилл здесь, fallback — команда человеку;
-// snapshot — снимок, который choose снимает сам до задачи; next — вызов после сабагента, по умолчанию ask);
+// subagent — args sdd_lint для сабагента, say — что сказать человеку (без сабагентов: here — тот же скилл
+// здесь, fallback — текст человеку; snapshot — снимок, который choose снимает сам до задачи; next — вызов
+// после сабагента, по умолчанию ask; quiet — отчёт сабагента не пересказывать);
 // here — скилл в этом окне; show — команда, которую человек запускает сам; wait — вопрос, на который
 // человек отвечает словами: агент передаёт ответ в then, choose исполняет answer(ответ); none — ничего.
 // Варианты разбора ревью и одобрения — в review-walk.mjs.
-export const CLOSE_AFTER = 'Это ещё не удаление: выполни instruction из вывода — выведи preview и задай вопрос подтверждения.';
 // Новый этап — рекомендуем новый контекст: flash-модели и заполненное окно тянут хвост
 // прошлого этапа. Продолжение того же этапа (cont) — здесь: контекст ещё нужен.
 function nextSkillQuestion(m, now, name, label, cont = false) {
@@ -60,9 +61,7 @@ function planQuestion(m) {
         recommended: true,
         action: {
           lint: ['gen', 'slices', dir],
-          after:
-            'Скажи человеку одной строкой, какие файлы созданы, и продолжай нарезку с шага «Заполни заготовки». ' +
-            `Скилла sdd-slices нет в контексте — вызови sdd_lint с args ${lintArgs(['prompt', 'sdd-slices', m.name])} и выполняй его с этого шага.`,
+          after: [`${G.skill} sdd-slices с шага «Заполни заготовки»`, `скилла нет в контексте — ${G.call(['prompt', 'sdd-slices', m.name])}`],
         },
       },
       edit,
@@ -101,7 +100,7 @@ export function askOf(m) {
               description: skill('sdd-close', m.name),
               recommended: true,
               // close без --yes ничего не удаляет: показывает, что уйдёт и чем это грозит, и задаёт второй вопрос.
-              action: { lint: ['close', rel(m.dir), '--json'], after: CLOSE_AFTER },
+              action: { lint: ['close', rel(m.dir), '--json'] },
             },
             { id: 'later', label: 'Позже', description: 'ничего не делать', action: { none: true } },
           ],
@@ -123,8 +122,7 @@ export function askOf(m) {
 }
 
 // Вопросы этапа. Действия в вывод не идут: их выполняет choose по id.
-// Как задать вопрос, вывод говорит сам (instruction): правило приходит в момент действия,
-// а не из контекста агента. text — тот же вопрос списком для агента без инструмента выбора.
+// Человек видит карточку вопроса, агент — строку ⚙: заголовки для инструмента выбора и id по номерам.
 export function askView(m) {
   const { stage, questions } = askOf(m);
   return questionsView(rel(m.dir), stage, questions);

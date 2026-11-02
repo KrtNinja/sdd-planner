@@ -36,8 +36,8 @@ export function pickFeature(why, n) {
     console.error(isDir(DOCS) ? `${why}. В ${DOCS}/ пока нет фич. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.` : `${why}. Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
     process.exit(2);
   }
-  const lines = known.map((f) => `  ${lintCode(...callPrefix(n), f)}`);
-  console.error(`${why}. Фичи в ${DOCS}/:\n${lines.join('\n')}`);
+  const lines = known.map((f) => `- ${lintCode(...callPrefix(n), f)}`);
+  console.error(`${why}. Фичи в ${code(`${DOCS}/`)}:\n\n${lines.join('\n')}`);
   process.exit(2);
 }
 // Нет варианта (approve без spec|slices|adr) — показать варианты готовыми командами.
@@ -47,9 +47,8 @@ export function pickChoice(name, n = 0) {
   // completion запускают в терминале, у остальных после варианта идёт фича.
   const line = (k) => (name === 'completion' ? `sdd-lint completion ${k}` : SLOTS[name].includes('feature') ? lintCmd(name, k, ex) : lintCmd(name, k));
   const cmdsList = opts.map(([k]) => line(k));
-  const w = Math.max(...cmdsList.map((x) => x.length));
   const bad = pos[n] ? `Нет варианта «${pos[n]}» у ${name}` : `${name} — выбери вариант`;
-  console.error(`${bad}:\n${opts.map(([, d], i) => `  ${code(cmdsList[i])}${' '.repeat(w - cmdsList[i].length)}  — ${d}`).join('\n')}`);
+  console.error(`${bad}:\n\n${opts.map(([, d], i) => `- ${code(cmdsList[i])} — ${d}`).join('\n')}`);
   process.exit(2);
 }
 export function needDir(d, n = 0) {

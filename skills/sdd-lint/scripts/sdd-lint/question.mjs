@@ -1,50 +1,58 @@
 // Вопрос человеку — одна форма для всех команд: ask, choose, gate, start, close. Обход по пунктам: блок → «Как решаем?».
 //
 // Вопрос — данные: { header, question, preview?, options: [{ id, label, description, recommended, action }] }.
-// Здесь он становится выводом для агента: варианты с номерами, «(рекомендую)» в label, text — тот же вопрос
-// списком для агента без инструмента выбора, instruction — как задать и куда передать ответ.
+// На экран — карточка: preview, вопрос жирным, варианты нумерованным списком, «(рекомендую)» после
+// названия. Агенту — строка ⚙: заголовки для инструмента выбора, куда передать выбор и id по номерам.
+// Карточку агент не перепечатывает: она уже на экране. SDD_VIEW=json — тот же вопрос структурой (тесты).
 // Действия (action) в вывод не идут: их выполняет choose по id.
+import { A, G, blocks, bold, cmdCode, codePaths, field, gearLine, screen } from './screen.mjs';
 
-export const lintArgs = (args) => JSON.stringify(args);
-export const lintCall = (args) => `sdd_lint с args ${lintArgs(args)}`;
-// Задача сабагенту целиком: вызвать sdd_lint и выполнить, что он вернёт; tail — что сверх этого.
-export const taskFor = (args, tail) => `Вызови инструмент sdd_lint с args ${lintArgs(args)} и выполни то, что он вернёт.${tail ? ` ${tail}` : ''}`;
+export const lintArgs = A;
 // Место в args, куда агент подставляет ответ человека дословно.
 export const ANSWER = '<ответ человека>';
+const JSON_VIEW = () => process.env.SDD_VIEW === 'json';
+
+const optionLine = (o) => `${o.n}. ${bold(o.label)}${o.recommended ? ' (рекомендую)' : ''}${o.description ? ` — ${codePaths(cmdCode(o.description))}` : ''}`;
 
 // then — вызов, куда агент передаёт выбор: <id> — id варианта.
 // free — человек может ответить своими словами, их передают вместо <id> (тема ADR, фича).
-export function questionView({ questions, then, stage = null, free = false }) {
+// lead — текст человеку перед вопросом; extra — части строки ⚙ сверх вопроса.
+export function questionView({ questions, then, stage = null, free = false, lead = null, extra = [] }) {
   let n = 0;
   // preview (план нарезки, блок находки) человек читает до вопроса: в инструменте выбора ему не место.
   const preview = questions.map((q) => q.preview).filter(Boolean).join('\n\n') || null;
-  const qs = questions.map(({ preview: _p, walk: _w, ...q }) => ({
-    ...q,
-    options: q.options.map(({ action: _a, ...o }) => ({ n: ++n, ...o, label: o.recommended ? `${o.label} (рекомендую)` : o.label })),
-  }));
-  const text = qs.map((q) => [q.question, ...q.options.map((o) => `${o.n}. ${o.label}${o.description ? ` — ${o.description}` : ''}`)].join('\n')).join('\n\n');
-  const reply = free
-    ? '; дальше — по скиллу. Человек ответил своими словами — передай их вместо <id>.'
-    : '; выбрано несколько — по одному, по порядку. Человек ответил словами: однозначно назвал один вариант — его id, иначе отвечай как в обычном диалоге.';
-  const instruction =
-    (preview ? 'Сначала выведи preview дословно, отдельным сообщением: это для человека. ' : '') +
-    'Задай questions инструментом выбора как есть: текст, порядок, варианты и «(рекомендую)» не меняй, своих вариантов не добавляй. ' +
-    'Инструмента выбора нет — выведи text дословно и жди ответа. ' +
-    `Выбран вариант — ${lintCall(then)}: вместо <id> — id варианта (ответ номером — id варианта с этим n)${reply} ` +
-    'Вариант за человека не выбирай.';
-  return { instruction, ...(stage ? { stage } : {}), ...(preview ? { preview } : {}), ...(free ? {} : { choose: then }), questions: qs, text };
+  const qs = questions.map(({ preview: _p, walk: _w, ...q }) => ({ ...q, options: q.options.map(({ action: _a, ...o }) => ({ n: ++n, ...o })) }));
+  const card = blocks(lead, preview, ...qs.map((q) => blocks(bold(q.question), q.options.map(optionLine).join('\n'))));
+  const gear = gearLine(
+    G.ask(
+      qs.map((q) => q.header),
+      then,
+      qs.flatMap((q) => q.options.map((o) => o.id)),
+      free,
+    ),
+    extra,
+  );
+  return { ...(lead ? { lead } : {}), ...(stage ? { stage } : {}), ...(preview ? { preview } : {}), ...(free ? {} : { choose: then }), then, questions: qs, card, gear };
 }
+// Вопрос в вывод: карточка и строка ⚙; для тестов — JSON (lead — строкой перед ним, как текст выше вопроса).
+export const viewText = (v) => (JSON_VIEW() ? [v.lead, JSON.stringify(v, null, 2)].filter(Boolean).join('\n') : blocks(v.card, v.gear));
 // Вопрос этапа: выбор уходит в choose.
-export const questionsView = (dir, stage, questions) => questionView({ questions, then: ['choose', dir, '<id>'], stage });
-// Вопрос с вариантами, ответ на который агент передаёт в then — gate, выбор фичи.
-export const pickView = (q, then) => questionView({ questions: [q], then, free: true });
-export const pickText = (lead, q, then) => [lead, JSON.stringify(pickView(q, then), null, 2)].join('\n');
+export const questionsView = (dir, stage, questions, opts = {}) => questionView({ questions, then: ['choose', dir, '<id>'], stage, ...opts });
+// Вопрос с вариантами, ответ на который агент передаёт в then, — gate, выбор фичи; можно своими словами.
+export const pickText = (lead, q, then) => viewText(questionView({ questions: [q], then, free: true, lead }));
 
 // Вопрос, на который человек отвечает своими словами: ответ уходит в скрипт дословно, а не в рассуждения агента.
-export const waitText = (ask, then) => `Передай человеку дословно и жди ответа:\n\n${ask}\n\nОтвет человека передай дословно: ${lintCall(then)}.`;
+export const waitText = (ask, then, extra = []) => screen(ask, G.wait(then), extra);
 
 // Пункт — блок полей, который человек читает перед вопросом «Как решаем?».
-export const itemBlock = (head, fields) => [head, ...fields.filter(([, v]) => v !== undefined).map(([k, v]) => `  ${k}: ${v || '—'}`)].join('\n');
+export const itemBlock = (head, fields) =>
+  blocks(
+    head,
+    fields
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => field(k, codePaths(v)))
+      .join('\n'),
+  );
 
 // Обход по пунктам: нерешённые пункты — по одному, первый — блок и вопрос «Как решаем?».
 // Решение пишет скрипт или decide, решённый пункт уходит из очереди, следующий ask берёт следующий:
@@ -52,5 +60,5 @@ export const itemBlock = (head, fields) => [head, ...fields.filter(([, v]) => v 
 export function walkQuestion({ items, header, block, options, question = 'Как решаем?' }) {
   if (!items.length) return null;
   const item = items[0];
-  return { walk: true, header: header(item, items.length), question, preview: block(item), options: options(item) };
+  return { walk: true, header: header(item, items.length), question, preview: block(item, items.length), options: options(item) };
 }

@@ -10,6 +10,7 @@ import { git, gitInfo } from './git.mjs';
 import { rel, approved } from './md.mjs';
 import { openBlockers, undecided } from './review.mjs';
 import { hasProtocolTraces } from './sources.mjs';
+import { G, blocks, bold, codePaths, list } from './screen.mjs';
 import { legacyPaths, workFiles } from './work.mjs';
 
 const MAX_LIST = 15;
@@ -88,14 +89,13 @@ export function closeSummary(m) {
 }
 
 export function closePreview(s) {
-  return [
-    `Закрытие ${s.dir}: пока ничего не удалено.`,
-    '',
-    'Удалится:',
-    ...s.effects.slice(0, MAX_LIST).map((x) => `  ${x}`),
-    ...(s.effects.length > MAX_LIST ? [`  … и ещё ${s.effects.length - MAX_LIST}`] : []),
-    ...(s.risks.length ? ['', 'Последствия:', ...s.risks.map((x) => `  - ${x}`)] : []),
-  ].join('\n');
+  const shown = s.effects.slice(0, MAX_LIST).map(codePaths);
+  if (s.effects.length > MAX_LIST) shown.push(`… и ещё ${s.effects.length - MAX_LIST}`);
+  return blocks(
+    `${bold(`Закрытие ${s.dir}`)} — пока ничего не удалено.`,
+    `Удалится:\n${list(shown)}`,
+    s.risks.length ? `Последствия:\n${list(s.risks.map(codePaths))}` : null,
+  );
 }
 
 // Второй вопрос перед удалением. Риски есть — рекомендуем не удалять: решает человек.
@@ -110,7 +110,7 @@ export function closeQuestion(m, s) {
 }
 // Рекомендованный — первым, как в остальных вопросах этапа.
 export function closeOptions(m, clean = true) {
-  const yes = { id: 'close:yes', label: 'Удалить', description: 'скрипт удалит перечисленное и проверит фичу', recommended: clean, action: { lint: ['close', rel(m.dir), '--yes'], after: 'Передай вывод человеку как есть. Остановись.' } };
+  const yes = { id: 'close:yes', label: 'Удалить', description: 'скрипт удалит перечисленное и проверит фичу', recommended: clean, action: { lint: ['close', rel(m.dir), '--yes'], after: G.stop } };
   const no = { id: 'close:no', label: 'Не удалять', description: 'ничего не делать', recommended: !clean, action: { none: true } };
   return clean ? [yes, no] : [no, yes];
 }

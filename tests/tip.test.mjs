@@ -14,7 +14,7 @@ import { tipOk, tipLine } from '../skills/sdd-lint/scripts/sdd-lint/stage.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
 const GOOD = path.join(root, 'tests/fixtures/good');
-const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: '/sdd-lint' };
+const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: '/sdd-lint', SDD_VIEW: 'json' };
 
 function workspace() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-tip-test-'));
@@ -114,9 +114,10 @@ test('команды в тексте для человека — inline-кодо
   assert.deepEqual(bare(run(cwd, 'approve').out), []);
 });
 
-test('choose: команду для нового окна — кодом и строкой Tip последней', () => {
+test('choose: команду для нового окна — кодом, строка Tip последней в карточке, за ней только ⚙', () => {
   const r = run(workspace(), 'choose', 'docs/comments', 'review-window:slices');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /`\/sdd-review comments slices`/);
-  assert.equal(lastLine(r.out), 'Tip: Введите /sdd-review comments slices чтобы продолжить');
+  assert.equal(lastLine(r.out), '⚙ sdd: стоп');
+  assert.match(r.out, /\nTip: Введите \/sdd-review comments slices чтобы продолжить\n\n⚙ sdd: стоп\n$/);
 });

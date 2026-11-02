@@ -11,9 +11,12 @@ import { addOpenQuestion, openTarget, openText } from './open-questions.mjs';
 import { needDir } from './pick.mjs';
 import { DROPPED_RE, DROPPED_TITLE } from './protocol.mjs';
 import { DECISION, findRow, untriagedRemarks, withDecisions } from './review.mjs';
+import { codePaths } from './screen.mjs';
 
+// Вывод triage — текст человеку; пути — кодом. Строку ⚙ добавляет choose (что дальше).
+const say = (msg) => console.log(codePaths(msg));
 const fail = (msg) => {
-  console.log(msg);
+  say(msg);
   process.exit(2);
 };
 const cell = (s) => (s || '—').replace(/\|/g, '/').replace(/\s+/g, ' ').trim();
@@ -77,7 +80,7 @@ export function cmdTriage() {
     const out = [];
     if (take.length) out.push(`К разбору: ${take.join(', ')} — по одному.`);
     if (drop.length) out.push(`Сняты: ${drop.map((r) => r.id).join(', ')} — «отклонено» в ${file}${logged ? `, ${plural(drop.length, 'строка', 'строки', 'строк')} в «${DROPPED_TITLE}» протокола: повторное ревью их не поднимет` : ''}.`);
-    console.log(out.join('\n'));
+    say(out.join('\n\n'));
     process.exit(0);
   }
 
@@ -85,20 +88,20 @@ export function cmdTriage() {
   if (!r) fail(`Находки ${rid || '—'} в ${file} нет. Есть: ${rv.rows.map((x) => x.id).join(', ') || 'нет'}.`);
   if (verb === 'open') {
     const target = openTarget(m, key, r);
-    if (!target) fail(`Не понял, в какой файл записать вопрос по ${r.id}: в «Где» нет slice, AC или FR. Спроси человека, куда его записать.`);
+    if (!target) fail(`Не понял, в какой файл записать вопрос по ${r.id}: в «Где» нет slice, AC или FR. Куда его записать?`);
     const n = addOpenQuestion(target, openText(r, target.adr));
     save(rv, new Map([[r.id, DECISION.open]]));
-    console.log(
+    say(
       `${r.id} → открытый вопрос: ${rel(target.file)}:${n} («${target.title}»).` +
         (target.adr ? '' : ' Одобрение подождёт ответа: «Одобрить» сначала спросит его.'),
     );
   } else if (verb === 'ignore') {
     save(rv, new Map([[r.id, DECISION.ignore]]));
     const logged = addDropped(m, key, [r]);
-    console.log(`${r.id} снят: «отклонено» в ${file}${logged ? `, строка в «${DROPPED_TITLE}» протокола — повторное ревью его не поднимет` : ''}.`);
+    say(`${r.id} снят: «отклонено» в ${file}${logged ? `, строка в «${DROPPED_TITLE}» протокола — повторное ревью его не поднимет` : ''}.`);
   } else if (/^П\d+$/.test(verb) || verb === 'исправлено') {
     save(rv, new Map([[r.id, verb]]));
-    console.log(`${r.id}: «Решение» — ${verb} (${file}).`);
+    say(`${r.id}: «Решение» — ${verb} (${file}).`);
   } else fail(`Решение «${verb}» не бывает: open, ignore, П<n> или «исправлено».`);
   process.exit(0);
 }

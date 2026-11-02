@@ -9,6 +9,7 @@ import { rel, uniq } from './md.mjs';
 import { pickChoice, needDir } from './pick.mjs';
 import { genReadme } from './readme.mjs';
 import { genSlices } from './scaffold.mjs';
+import { codePaths } from './screen.mjs';
 
 // Протокол → куда ушла каждая строка: для ревью смысла трассировки.
 export function cmdTrace() {
@@ -40,8 +41,7 @@ export function cmdTrace() {
   for (const r of [...p.rows, ...p.post]) {
     const to = where.get(r.id);
     if (!to) lost += 1;
-    console.log(`${`#${r.id}`.padEnd(5)} ${rel(p.file)}:${r.n}  ${short(r.dec || '—')}`);
-    console.log(`      → ${to ? uniq(to).join('; ') : 'НИКУДА'}`);
+    console.log(`- **#${r.id}** \`${rel(p.file)}:${r.n}\` ${short(r.dec || '—')} → ${to ? codePaths(uniq(to).join('; ')) : '**НИКУДА**'}`);
   }
   process.exit(lost ? 1 : 0);
 }

@@ -115,21 +115,21 @@ export function fixFeature(dir, { snapshot = false } = {}) {
     .map((f) => `${rel(f)}${before.get(f) == null ? ' — создан' : read(f) == null ? ' — удалён' : ''}${detail.has(f) ? `: ${detail.get(f).join(', ')}` : ''}`);
   return { m, changed, notes };
 }
-export const fixedText = (changed) => (changed.length ? `Скрипт поправил:\n${changed.map((x) => `  ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');
+export const fixedText = (changed) => (changed.length ? `Скрипт поправил:\n${changed.map((x) => `- ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');
 
 export function cmdFix() {
   const { m, changed, notes } = fixFeature(needDir(pos[0]), { snapshot: flags.snapshot });
   const st = stageOf(m);
   if (!flags.json) {
     console.log(fixedText(changed));
-    for (const n of notes) console.log(n);
+    for (const n of notes) console.log(`\n${n}`);
     if (findings.length) console.log('');
   }
   const c = report({ stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip), fixed: changed, notes });
   if (!flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
     console.log(`\n${stageText(st)}`);
-    console.log(`Ошибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
+    console.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
     if (!c.err) printTip(st);
   }
   process.exit(c.err ? 1 : 0);

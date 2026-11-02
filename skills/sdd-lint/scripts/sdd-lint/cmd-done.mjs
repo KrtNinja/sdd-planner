@@ -2,31 +2,34 @@
 import fs from 'node:fs';
 
 import { pos } from './args.mjs';
-import { askView } from './ask.mjs';
+import { askOf } from './ask.mjs';
 import { gateClosed } from './cmd-check.mjs';
+import { closedScreen } from './guide.mjs';
 import { fixFeature, fixedText } from './cmd-fix.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
 import { findings, line, report } from './findings.mjs';
 import { rel } from './md.mjs';
 import { needDir } from './pick.mjs';
+import { questionsView, viewText } from './question.mjs';
+import { G, blocks, list, screen } from './screen.mjs';
 import { MAX_RUNS, bump, mark, reset } from './runs.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 
-const call = (...args) => `sdd_lint ${JSON.stringify(args)}`;
 const exitWith = (code) => process.exit(code);
+
 
 // План проверяет скрипт, а не модель: покрытие, причины, зависимости, сервисы.
 export function cmdPlan() {
   const m = loadFeature(needDir(pos[0]));
   const dir = rel(m.dir);
   if (!m.plan) {
-    console.log(`Плана нет: запиши ${rel(m.planFile)} по шаблону assets/plan.md скилла sdd-slices, затем ${call('plan', dir)}.`);
+    console.log(screen(`Плана нарезки ещё нет: ${rel(m.planFile)}.`, `запиши ${rel(m.planFile)} по шаблону assets/plan.md скилла sdd-slices`, G.then(['plan', dir])));
     exitWith(2);
   }
   runChecks(m);
   const closed = gateClosed(m, 'slices');
   if (closed) {
-    console.log(`ВОРОТА slices: закрыты — ${closed[0]}.\nСкажи человеку: «${closed[1]}» — и остановись.`);
+    console.log(closedScreen('slices', closed));
     exitWith(3);
   }
   const own = findings.filter((x) => x.rule.startsWith('PL'));
@@ -35,16 +38,16 @@ export function cmdPlan() {
   const c = report();
   const { runs } = bump(m.dir, 'plan');
   if (c.err) {
-    if (runs < MAX_RUNS) console.log(`\nНе готово: ошибок ${c.err}. Исправь ${rel(m.planFile)} и снова ${call('plan', dir)} — прогон ${runs} из ${MAX_RUNS}.`);
+    if (runs < MAX_RUNS) console.log(`\n${screen(`План нарезки не готов: ошибок ${c.err}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, `исправь ${rel(m.planFile)}`, G.then(['plan', dir]))}`);
     else {
       reset(m.dir, 'plan');
-      console.log(`\nОшибки в плане не ушли за ${MAX_RUNS} прогона. Покажи человеку список выше одним сообщением, спроси, как быть, и остановись.`);
+      console.log(`\n${screen(`Ошибки в плане нарезки не ушли за ${MAX_RUNS} прогона — список выше. Как быть: поправить план вместе или вы поправите сами?`, 'коротко объясни человеку, что не вышло и почему', G.stop)}`);
     }
     exitWith(1);
   }
   reset(m.dir, 'plan');
-  const warn = c.warn ? ` Предупреждений ${c.warn}: это повод склеить slices — поправь план или оставь, человек увидит их рядом с планом.` : '';
-  console.log(`\nПлан без ошибок: ${m.plan.slices.length} slices.${warn}\nДальше — ${call('ask', dir)}: он покажет план человеку и спросит, подходит ли нарезка.`);
+  const warn = c.warn ? `предупреждений ${c.warn} — повод склеить slices: поправь план или оставь, человек увидит их рядом с планом` : null;
+  console.log(`\n${screen(`План нарезки без ошибок: ${m.plan.slices.length} slices.`, warn, G.call(['ask', dir]))}`);
   exitWith(0);
 }
 
@@ -69,15 +72,15 @@ export function cmdDone() {
   const warns = findings.filter((x) => x.level === 'warn');
   const { runs, prev } = bump(m.dir, 'done');
   console.log(fixedText(changed));
-  for (const n of notes) console.log(n);
+  for (const n of notes) console.log(`\n${n}`);
 
   if (errs.length) {
     console.log('');
     report();
-    if (runs < MAX_RUNS) console.log(`\nНе готово: ошибок ${errs.length}. Исправь их и снова ${call('done', dir)} — прогон ${runs} из ${MAX_RUNS}.`);
+    if (runs < MAX_RUNS) console.log(`\n${screen(`Этап не готов: ошибок ${errs.length}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, 'исправь ошибки', G.then(['done', dir]))}`);
     else {
       reset(m.dir, 'done');
-      console.log(`\nОшибки не ушли за ${MAX_RUNS} прогона. Покажи человеку список выше одним сообщением: что не вышло и почему. Спроси, как быть, и остановись.`);
+      console.log(`\n${screen(`Ошибки не ушли за ${MAX_RUNS} прогона — список выше. Как быть?`, 'коротко объясни человеку, что не вышло и почему', G.stop)}`);
     }
     exitWith(1);
   }
@@ -86,8 +89,7 @@ export function cmdDone() {
     console.log('');
     report();
     console.log(
-      `\nНе готово: ошибок нет, предупреждений ${warns.length}. Исправь те, что можно без решения человека, и снова ${call('done', dir)}.` +
-        ' Остальные не трогай — done покажет их человеку.',
+      `\n${screen(`Ошибок нет, предупреждений ${warns.length} — поправлю те, что можно без вашего решения.`, 'исправь предупреждения, которые не требуют решения человека; остальные не трогай', G.then(['done', dir]))}`,
     );
     exitWith(1);
   }
@@ -96,12 +98,11 @@ export function cmdDone() {
   const f = loadFeature(m.dir);
   for (const file of featureFiles(f)) saveSnapshot(file);
   reset(m.dir, 'done');
-  const out = ['', `Этап готов: ошибок 0, предупреждений ${warns.length}.${promoted.length ? ` Статус «на ревью»: ${promoted.join(', ')}.` : ''}`];
-  if (warns.length) {
-    const shown = warns.slice(0, 5).map((x) => line(x).replace(/^\S+\s+/, ''));
-    out.push(`Скажи человеку, что осталось:\n${shown.map((x) => `  ${x}`).join('\n')}${warns.length > 5 ? `\n  …и ещё ${warns.length - 5}` : ''}`);
-  }
-  out.push('Затем задай вопрос этапа — как, сказано в instruction:', JSON.stringify(askView(f), null, 2));
-  console.log(out.join('\n'));
+  const ready = `Этап готов: ошибок 0, предупреждений ${warns.length}.${promoted.length ? ` Статус «на ревью»: ${promoted.join(', ')}.` : ''}`;
+  const left = warns.length
+    ? `Осталось:\n${list([...warns.slice(0, 5).map((x) => line(x).replace(/^\S+\s+/, '')), ...(warns.length > 5 ? [`…и ещё ${warns.length - 5}`] : [])])}`
+    : null;
+  const { stage, questions } = askOf(f);
+  console.log(`\n${viewText(questionsView(dir, stage, questions, { lead: blocks(ready, left) }))}`);
   exitWith(0);
 }
