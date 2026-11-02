@@ -1,5 +1,5 @@
 // Ссылки на код в spec, slices, README и ADR (CD-*): требования не должны врать после переименований в коде.
-import { collect } from './findings.mjs';
+import { finding } from './findings.mjs';
 
 // Связь «требование → код» идёт из кода (AC-ID в названии теста), доки на код не ссылаются.
 // brainstorming.md и _work/ — временные артефакты этапа, их не проверяем: в протоколе аналитик пишет что угодно.
@@ -58,22 +58,27 @@ export function internalNames(text) {
 }
 
 const WHAT = { 'CD-01': 'путь или файл кода', 'CD-02': 'ссылка на код', 'CD-03': 'вызов из кода' };
+/** @typedef {{ names?: boolean, inAc?: boolean }} RefOpts */
+
+// Строка: ссылки на код (каждая один раз) и внутренние имена — если их проверяем в этом месте.
+/** @param {string} file @param {any} l @param {RefOpts} opts */
+function lineRefs(file, l, { names = true, inAc = true }) {
+  const refs = [...new Map(codeRefs(l.text).map((r) => [r.join(''), r])).values()];
+  const internal = !names || (l.inCode && !inAc) ? [] : internalNames(l.text);
+  return [
+    ...refs.map(([rule, x]) => finding(rule, file, l.n, `«${x}» — ${WHAT[/** @type {keyof typeof WHAT} */ (rule)]}`)),
+    ...internal.map((x) => finding('CD-05', file, l.n, `«${x}» — внутреннее имя из кода`)),
+  ];
+}
 // names — проверять ли внутренние имена; inAc — и в блоках AC (в slices их уже ловит SL-22).
-function checkFile(file, sc, { names = true, inAc = true } = {}) {
-  const { found, add } = collect();
-  for (const b of sc.blocks) if (!PLAIN_LANGS.has(b.lang)) add('CD-04', file, b.start, `блок кода «${b.lang}»`);
-  for (const l of sc.lines) {
-    if (/^\s*Статус:/.test(l.text)) continue;
-    const seen = new Set();
-    for (const [rule, x] of codeRefs(l.text)) {
-      if (seen.has(`${rule}${x}`)) continue;
-      seen.add(`${rule}${x}`);
-      add(rule, file, l.n, `«${x}» — ${WHAT[rule]}`);
-    }
-    if (!names || (l.inCode && !inAc)) continue;
-    for (const x of internalNames(l.text)) add('CD-05', file, l.n, `«${x}» — внутреннее имя из кода`);
-  }
-  return found;
+/** @param {string} file @param {any} sc @param {RefOpts} [opts] */
+function checkFile(file, sc, opts = {}) {
+  return [
+    ...sc.blocks
+      .filter((/** @type {any} */ b) => !PLAIN_LANGS.has(b.lang))
+      .map((/** @type {any} */ b) => finding('CD-04', file, b.start, `блок кода «${b.lang}»`)),
+    ...sc.lines.filter((/** @type {any} */ l) => !/^\s*Статус:/.test(l.text)).flatMap((/** @type {any} */ l) => lineRefs(file, l, opts)),
+  ];
 }
 
 export function checkCodeRefs(m) {
