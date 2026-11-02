@@ -2,14 +2,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { parseAdr, checkAdrs } from './adr.mjs';
+import { checkAdrs } from './adr-rules.mjs';
+import { parseAdr } from './adr.mjs';
 import { verifyApprovals, checkApprovals } from './approval.mjs';
 import { checkCodeRefs } from './code-refs.mjs';
 import { WORK_DIR } from './config.mjs';
 import { checkCut } from './cut.mjs';
 import { checkEditMarks } from './edit-marks.mjs';
 import { read, scan, header } from './md.mjs';
-import { parsePlan, checkPlan } from './plan.mjs';
+import { checkPlan } from './plan-rules.mjs';
+import { parsePlan } from './plan.mjs';
 import { parseProtocol, checkProtocol } from './protocol.mjs';
 import { checkReadSize } from './read-size.mjs';
 import { parseReview, checkReviews } from './review.mjs';

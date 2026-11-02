@@ -1,11 +1,10 @@
-// slices/README.md: покрытие, слои, проверки RM-*, gen readme.
+// slices/README.md: покрытие, слои, gen readme. Проверки RM-* — в readme-rules.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 
 import { usage } from './cli.mjs';
-import { collect } from './findings.mjs';
-import { linkReqs, basisPlain, staleReqLinks } from './links.mjs';
-import { rel, uniq, scan, isH2, inSection, sectionText, tables, col, reqIds, replaceSection } from './md.mjs';
+import { linkReqs, basisPlain } from './links.mjs';
+import { rel, scan, isH2, tables, replaceSection } from './md.mjs';
 import { registry } from './services.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
@@ -18,11 +17,6 @@ export const coverage = (m) => {
       covered.get(id).add(num);
     }
   return covered;
-};
-const sameSet = (a, b) => {
-  const A = new Set(a);
-  const B = new Set(b);
-  return A.size === B.size && [...A].every((x) => B.has(x));
 };
 
 // slices, которые делят требование: всё, кроме 001 «подготовка» — он ссылается на все FR через контракты.
@@ -46,79 +40,6 @@ export function layers(m, items = m.slices) {
     out.push(layer);
   }
   return out;
-}
-
-export function checkReadme(m) {
-  const { found, add } = collect();
-  const f = m.readmeFile;
-  if (m.readme == null) {
-    add('RM-01', f, null, 'нет README со списком slices, покрытием и порядком');
-    return found;
-  }
-  const sc = m.readmeSc;
-  const t = tables(sc.lines.filter((l) => !l.inCode)).find((x) => /^slice$/i.test(x.header[0] || ''));
-  if (!t) add('RM-02', f, null, 'нет таблицы slices');
-  else {
-    const cb = col(t, /основани/i);
-    const cd = col(t, /завис/i);
-    const rows = new Map();
-    for (const r of t.rows) {
-      const num = ((r.cells[0] || '').match(/\b\d{3}\b/) || [])[0];
-      if (num) rows.set(num, r);
-    }
-    for (const [num, sl] of m.slices) {
-      const r = rows.get(num);
-      if (!r) {
-        add('RM-02', f, t.start, `в таблице нет slice ${num}`);
-        continue;
-      }
-      if (cb >= 0 && !sameSet(reqIds(r.cells[cb]), sl.basis)) add('RM-02', f, r.n, `${num}: «Основание» в README не совпадает со slice`);
-      const deps = uniq((r.cells[cd] || '').match(/\b\d{3}\b/g) || []);
-      if (cd >= 0 && !sameSet(deps, sl.deps)) add('RM-02', f, r.n, `${num}: «Зависит от» в README не совпадает со slice`);
-    }
-    for (const num of rows.keys()) if (!m.slices.has(num)) add('RM-02', f, rows.get(num).n, `в таблице slice ${num}, файла нет`);
-  }
-
-  const covered = coverage(m);
-  const cov = tables(inSection(sc, /^Покрытие/))[0];
-  if (!cov) add('RM-02', f, null, 'нет раздела «Покрытие Dev Spec»');
-  else {
-    const inReadme = new Map();
-    for (const r of cov.rows) {
-      const id = reqIds(r.cells[0])[0];
-      if (id) inReadme.set(id, { set: r.cells.slice(1).join(' ').match(/\b\d{3}\b/g) || [], n: r.n });
-      if (id && m.spec) found.push(...staleReqLinks(f, r.n, r.cells[0], m.spec));
-    }
-    for (const [id, nums] of covered) {
-      const x = inReadme.get(id);
-      if (!x) add('RM-02', f, cov.start, `«Покрытие»: нет строки ${id}`);
-      else if (!sameSet(x.set, nums)) add('RM-02', f, x.n, `«Покрытие» ${id}: в README ${uniq(x.set).join(', ') || '—'}, по «Основание» ${[...nums].join(', ')}`);
-    }
-  }
-
-  const order = sectionText(sc, /^Порядок/);
-  if (!order) add('RM-02', f, null, 'нет раздела «Порядок работ»');
-  else {
-    const pos = new Map();
-    for (const x of order.matchAll(/\b\d{3}\b/g)) if (!pos.has(x[0])) pos.set(x[0], x.index);
-    for (const [num, sl] of m.slices) {
-      if (!pos.has(num)) add('RM-02', f, null, `«Порядок работ»: нет ${num}`);
-      for (const d of sl.deps) if (pos.has(d) && pos.has(num) && pos.get(d) > pos.get(num)) add('RM-02', f, null, `«Порядок работ»: ${num} раньше своей зависимости ${d}`);
-    }
-  }
-
-  const cross = sectionText(sc, /^Пересечения/);
-  for (const [id, nums] of covered) {
-    const beh = sharing(m, nums);
-    if (beh.length > 1 && !reqIds(cross).includes(id)) add('RM-03', f, null, `${id} в slices ${beh.join(', ')}, в «Пересечения» не описан`);
-  }
-
-  if (m.spec) {
-    const inCheck = new Set(reqIds(sectionText(sc, /^Проверка фичи/)));
-    for (const r of m.spec.reqs.values())
-      if (!r.deleted && r.id.startsWith('FR') && !inCheck.has(r.id)) add('RM-04', f, null, `${r.id} не встречается в «Проверка фичи»`);
-  }
-  return found;
 }
 
 /** @param {Ctx} ctx */

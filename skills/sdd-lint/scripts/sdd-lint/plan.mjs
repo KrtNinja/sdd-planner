@@ -1,13 +1,11 @@
-// План нарезки _work/plan.md: разбор, проверки PL-*, превью для человека в вопросе этапа.
-import { adrNums, adrTopic, reason, stubLines } from './cut.mjs';
-import { collect } from './findings.mjs';
-import { dependencyCycles } from './graph.mjs';
+// План нарезки _work/plan.md: разбор и превью для человека в вопросе этапа. Проверки PL-* — в plan-rules.mjs.
+import { adrNums, adrTopic, reason } from './cut.mjs';
 import { rel, uniq, approved, scan, reqIds } from './md.mjs';
 import { layers } from './readme.mjs';
-import { registry, parseHalves, halvesProblem } from './services.mjs';
+import { parseHalves } from './services.mjs';
 
 // План — временный артефакт этапа slices: агент пишет его, человек согласует, gen slices создаёт по нему файлы и удаляет его.
-const KEYS = ['Основание', 'Зависимости', 'Половины', 'Результат', 'Почему отдельно'];
+export const KEYS = ['Основание', 'Зависимости', 'Половины', 'Результат', 'Почему отдельно'];
 // «## 002-comments — Комментарии в задаче», «## 002 — Комментарии в задаче», «## 002 Комментарии в задаче»
 const HEAD = /^##\s+(\d{3})(?:-(\S+))?(?:\s+(?:[—–-]\s+)?(.+?))?\s*$/u;
 const KV = /^\s*(?:[-*]\s+)?\**([А-ЯЁA-Z][^:*]{1,30}?)\**\s*:\s*\**\s*(.*)$/u;
@@ -59,7 +57,7 @@ export function parsePlan(file, md) {
 }
 
 // slices, которые делят требование (без 001 «подготовка»: он ссылается на все FR через контракты).
-function sharedReqs(p) {
+export function sharedReqs(p) {
   const by = new Map();
   for (const s of p.slices) {
     if (s.num === '001' && s.type === 'подготовка') continue;
@@ -67,62 +65,7 @@ function sharedReqs(p) {
   }
   return [...by].filter(([, nums]) => nums.length > 1);
 }
-const nfrOnly = (s) => s.basis.size > 0 && [...s.basis].every((id) => id.startsWith('NFR'));
-
-export function checkPlan(m) {
-  const { found, add } = collect();
-  const p = m.plan;
-  if (!p) return found;
-  const f = p.file;
-  if (m.slices.size) {
-    add('PL-13', f, null, `в slices/ уже ${m.slices.size} файл(ов) slices`);
-    return found;
-  }
-  for (const b of p.bad) add('PL-01', f, b.n, `«${b.text}» — не заголовок slice`);
-  if (!p.slices.length) {
-    add('PL-01', f, null, 'нет ни одного slice');
-    return found;
-  }
-  for (const s of stubLines(p.md)) add('PL-14', f, s.n, s.items.map((x) => `«${x}»`).join(', '));
-  const seen = { num: new Map(), slug: new Map() };
-  for (const s of p.slices) {
-    for (const [k, v] of [['num', s.num], ['slug', s.slug]]) {
-      if (seen[k].has(v)) add('PL-03', f, s.n, `${k === 'num' ? 'номер' : 'slug'} «${v}» уже у «${seen[k].get(v)}»`);
-      else seen[k].set(v, s.title);
-    }
-  }
-  const nums = new Set(p.slices.map((s) => s.num));
-  const first = p.slices.filter((s) => s.type === 'поведение').map((s) => s.num).sort()[0];
-  const reg = registry(m);
-  for (const s of p.slices) {
-    const at = (k) => s.headN[k] || s.n;
-    for (const k of KEYS) if (s.head[k] === undefined) add('PL-02', f, s.n, `${s.num}: нет строки «${k}:»`);
-    if (m.spec) for (const id of s.basis) if (!m.spec.reqs.has(id)) add('PL-05', f, at('Основание'), `${s.num}: ${id} нет в spec.md`);
-    if (s.num !== '001' && s.num !== first && s.why !== null && !reason(s.why))
-      add('PL-06', f, at('Почему отдельно'), `${s.num} «${s.title}»: «Почему отдельно: ${s.why}» — нет Р1, Р2 или Р3`);
-    for (const d of s.deps)
-      if (d === s.num) add('PL-07', f, at('Зависимости'), `${s.num} зависит сам от себя`);
-      else if (!nums.has(d)) add('PL-07', f, at('Зависимости'), `${s.num}: зависимости ${d} в плане нет`);
-    const problem = s.halves !== null && halvesProblem(s.halves, reg);
-    if (problem) add('PL-08', f, at('Половины'), `${s.num}: ${problem}`);
-    if (reason(s.why) === '1')
-      for (const num of adrNums(s.why)) {
-        const a = m.adrs.find((x) => x.num === num);
-        if (!a) add('PL-09', f, at('Почему отдельно'), `${s.num}: ADR-${num} нет в docs/adr`);
-        else if (approved(a.status)) add('PL-09', f, at('Почему отдельно'), `${s.num}: ADR-${num} уже «${a.status}»`);
-      }
-    if (nfrOnly(s)) add('PL-11', f, at('Основание'), `${s.num}: только ${[...s.basis].join(', ')}`);
-  }
-  for (const { path } of dependencyCycles(new Map(p.slices.map((s) => [s.num, s])))) add('PL-07', f, null, `цикл зависимостей: ${path.join(' → ')}`);
-  if (m.spec) {
-    const covered = new Set(p.slices.flatMap((s) => [...s.basis]));
-    const missing = [...m.spec.reqs.values()].filter((r) => !r.deleted && !covered.has(r.id)).map((r) => r.id);
-    if (missing.length) add('PL-04', f, null, `не покрыты: ${missing.join(', ')}`);
-  }
-  for (const [id, ns] of sharedReqs(p)) add('PL-10', f, null, `${id} — в ${ns.join(', ')}`);
-  if (p.slices.length > 6) add('PL-12', f, null, `${p.slices.length} slices`);
-  return found;
-}
+export const nfrOnly = (s) => s.basis.size > 0 && [...s.basis].every((id) => id.startsWith('NFR'));
 
 // «FR-1, FR-2, FR-3, FR-7» → «FR-1…FR-3, FR-7»: план читают в терминале.
 export function compactIds(ids) {
