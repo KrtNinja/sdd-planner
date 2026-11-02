@@ -1,4 +1,5 @@
 // Папка временных артефактов фичи _work/ (WK-*): ревью, план нарезки, черновики агента.
+// @ts-check
 // Всё в ней живёт до close и коммитится: ревью читает /sdd-decide в новом контексте, после close — история git.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,16 +9,21 @@ import { collect } from './findings.mjs';
 import { git, gitInfo } from './git.mjs';
 import { scan, rel } from './md.mjs';
 
+/** @typedef {import('./model.mjs').Feature} Feature */
+
 // «_work/review/spec.md», «../_work/plan.md» — путь внутрь папки, которой после close не будет.
 const WORK_REF = new RegExp(`(?<![\\w.\\-])${WORK_DIR}/`);
 
 // Старые места до _work/: review/ в папке фичи и slices/plan.md.
+/** @param {Feature} m */
 export const legacyPaths = (m) => ({ review: path.join(m.dir, 'review'), plan: path.join(m.slicesDir, 'plan.md') });
 
 // Файлы в _work/ списком относительных путей — что именно удалит close.
+/** @param {Feature} m */
 export function workFiles(m) {
+  /** @type {string[]} */
   const out = [];
-  const walk = (d) => {
+  const walk = (/** @type {string} */ d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const f = path.join(d, e.name);
       if (e.isDirectory()) walk(f);
@@ -30,6 +36,7 @@ export function workFiles(m) {
 
 // Игнор git проверяем на файле внутри: «tmp/», «_*» в глобальном .gitignore молча прячут ревью от коммита,
 // а GigaCode по умолчанию не показывает агенту игнорируемые файлы.
+/** @param {Feature} m */
 export function workIgnored(m) {
   const g = gitInfo(m.dir);
   if (!g) return false;
@@ -41,12 +48,14 @@ export function workIgnored(m) {
   }
 }
 
+/** @param {string} file @param {import('./model.mjs').Scan} sc */
 function refsInto(file, sc) {
   const { found, add } = collect();
   for (const l of sc.lines) if (!l.inCode && WORK_REF.test(l.text)) add('WK-02', file, l.n, l.text.trim().slice(0, 80));
   return found;
 }
 
+/** @param {Feature} m */
 export function checkWork(m) {
   const { found, add } = collect();
   if (workIgnored(m)) add('WK-01', m.workDir, null, `${rel(m.workDir)}/ попадает под .gitignore`);
@@ -61,11 +70,13 @@ export function checkWork(m) {
 }
 
 // fix: перенести старые review/ и slices/plan.md в _work/. Отслеживаемое — git mv, чтобы история шла за файлом.
+/** @param {Feature} m */
 export function moveLegacy(m) {
   const old = legacyPaths(m);
+  /** @type {string[]} */
   const moves = [];
   const g = gitInfo(m.dir);
-  const mv = (from, to) => {
+  const mv = (/** @type {string} */ from, /** @type {string} */ to) => {
     if (!fs.existsSync(from)) return;
     if (fs.existsSync(to)) {
       moves.push(`${rel(from)} не перенесён: ${rel(to)} уже есть — сведите вручную`);

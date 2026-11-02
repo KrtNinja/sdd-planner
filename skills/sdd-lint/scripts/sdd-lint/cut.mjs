@@ -1,8 +1,11 @@
 // Нарезка slices: причины Р1–Р3 правдивы, сервисы из реестра, кириллица в ID, заготовки (SL-31…SL-38).
+// @ts-check
 import { finding } from './findings.mjs';
 import { checkIdTypos } from './ids.mjs';
 import { placeholders, scan, header, headerLine, uniq } from './md.mjs';
 import { registry, parseHalves, halvesProblem, serviceOfHeading, unknownService } from './services.mjs';
+
+/** @typedef {import('./model.mjs').Feature} Feature */
 
 // «Р1 — ADR: доставка событий» — ADR ещё не заведён; «Р1 — ждёт ADR-0001» — заведён.
 /** @param {string | null | undefined} why @returns {string | null} */
@@ -13,14 +16,17 @@ export const adrNums = (why) => uniq([...(why || '').matchAll(/(?<![\p{L}\d-])AD
 export const reason = (why) => ((why || '').replace(/^\**\s*/, '').match(/^[РP]([123])(?!\d)/u) || [])[1] || null;
 
 // Где в файле заготовки: [{ n, items }] — соседние строки одного раздела (AC, строка таблицы) одной группой.
+/** @typedef {{ n: number, end: number, h2: string | null, items: string[] }} StubGroup */
+/** @param {string | null | undefined} md @returns {{ n: number, items: string[] }[]} */
 export function stubLines(md) {
+  /** @type {StubGroup[]} */
   const out = [];
+  /** @type {StubGroup | null} */
   let last = null;
   for (const l of scan((md || '').replace(/<!--[\s\S]*?-->/g, (c) => c.replace(/[^\n]/g, ' '))).lines) {
     const items = placeholders(l.text);
     if (!items.length) continue;
-    const near = last && last.h2 === l.h2 && l.n - last.end <= 2 && !l.text.trim().startsWith('|');
-    if (near) {
+    if (last && last.h2 === l.h2 && l.n - last.end <= 2 && !l.text.trim().startsWith('|')) {
       last.items.push(...items);
       last.end = l.n;
     } else {
@@ -30,12 +36,16 @@ export function stubLines(md) {
   }
   return out.map(({ n, items }) => ({ n, items }));
 }
+/** @param {Feature} m */
 export const stubCount = (m) =>
   [...[...m.slices.values()].map((s) => s.md), m.readme].reduce((n, md) => n + stubLines(md).reduce((k, x) => k + x.items.length, 0), 0);
 
 // ADR фичи, у которого в «Затрагивает slices:» этот slice: тема из «Р1 — ADR: <тема>» уже заведена.
-const adrFor = (m, num) => m.featureAdrs.find((a) => ((header(a.md, 'Затрагивает slices') || '').match(/\b\d{3}\b/g) || []).includes(num));
+/** @param {Feature} m @param {string} num */
+const adrFor = (m, num) =>
+  m.featureAdrs.find((a) => /** @type {string[]} */ ((header(a.md, 'Затрагивает slices') || '').match(/\b\d{3}\b/g) || []).includes(num));
 // ADR, которые надо завести: «Р1 — ADR: <тема>» в slices, и ни один ADR фичи slice не затрагивает.
+/** @param {Feature} m */
 export function neededAdrs(m) {
   return [...m.slices.values()].filter((s) => reason(s.why) === '1' && adrTopic(s.why) && !adrFor(m, s.num)).map((s) => ({ num: s.num, topic: adrTopic(s.why) }));
 }
@@ -45,7 +55,7 @@ export function neededAdrs(m) {
 /** @typedef {import('./model.mjs').Finding} Finding */
 /** @typedef {import('./model.mjs').Slice} Slice */
 /**
- * @typedef {{ m: any, reg: any }} CutContext
+ * @typedef {{ m: Feature, reg: import('./model.mjs').Registry | null }} CutContext
  * @typedef {{ ids: string[], check: (file: string, md: string) => Finding[] }} FileRule
  * @typedef {{ ids: string[], check: (sl: Slice, c: CutContext) => Finding[] }} CutRule
  */
@@ -60,8 +70,8 @@ const CUT_FILE = [
 /** @param {Slice} sl @param {CutContext} c */
 function headingServices(sl, { reg }) {
   return sl.sc.lines
-    .filter((/** @type {any} */ x) => !x.inCode && /^##\s/.test(x.text))
-    .flatMap((/** @type {any} */ l) => {
+    .filter((x) => !x.inCode && /^##\s/.test(x.text))
+    .flatMap((l) => {
       const svc = serviceOfHeading(l.h2);
       const bad = svc && !/^front/i.test(svc) ? unknownService(svc, reg) : null;
       return bad ? [finding('SL-33', sl.file, l.n, bad)] : [];
@@ -73,7 +83,7 @@ function adrReason(sl, { m }) {
   if (reason(sl.why) !== '1') return [];
   const whyLine = headerLine(sl.md, 'Почему отдельно');
   const missing = adrNums(sl.why)
-    .filter((num) => !m.adrs.some((/** @type {any} */ a) => a.num === num))
+    .filter((num) => !m.adrs.some((a) => a.num === num))
     .map((num) => finding('SL-34', sl.file, whyLine, `ADR-${num} нет в docs/adr`));
   const topic = adrTopic(sl.why);
   if (!topic) return missing;
@@ -115,7 +125,7 @@ const CUT_SLICE = [
   },
 ];
 
-/** @param {any} m @returns {Finding[]} */
+/** @param {Feature} m @returns {Finding[]} */
 export function checkCut(m) {
   const files = [...[...m.slices.values()].map((s) => [s.file, s.md]), ...(m.readme != null ? [[m.readmeFile, m.readme]] : [])];
   const c = { m, reg: registry(m) };

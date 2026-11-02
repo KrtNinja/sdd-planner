@@ -1,5 +1,8 @@
 // Ссылки на код в spec, slices, README и ADR (CD-*): требования не должны врать после переименований в коде.
+// @ts-check
 import { finding } from './findings.mjs';
+
+/** @typedef {import('./model.mjs').Feature} Feature */
 
 // Связь «требование → код» идёт из кода (AC-ID в названии теста), доки на код не ссылаются.
 // brainstorming.md и _work/ — временные артефакты этапа, их не проверяем: в протоколе аналитик пишет что угодно.
@@ -30,6 +33,7 @@ const PLAIN_LANGS = new Set(['', 'text', 'txt', 'plain', 'mermaid']);
 const INTERNAL_RE =
   /(?<![\w-])[A-Z][a-z0-9]+[A-Za-z0-9]*?(?:Service|Controller|Repository|Repo|Handler|Port|Adapter|Gateway|Factory|Manager|UseCase|Store|Component|Provider|Module|Helper|Utils?|Impl|Mapper|Resolver|Middleware)(?![\w-])/g;
 
+/** @param {string} target */
 function isCodeLink(target) {
   const t = target.split(/[#?]/)[0];
   if (/^https?:/i.test(target)) return CODE_VIEW.test(target) && !/\.md$/i.test(t);
@@ -38,7 +42,9 @@ function isCodeLink(target) {
 }
 
 // Что в строке ссылается на код. Тексты «…» — копия продукта, адреса ссылок проверяет CD-02.
+/** @param {string} text @returns {[string, string][]} */
 export function codeRefs(text) {
+  /** @type {[string, string][]} */
   const out = [];
   for (const m of text.matchAll(LINK_RE)) if (isCodeLink(m[1])) out.push(['CD-02', m[1]]);
   for (const m of text.replace(LINK_RE, ']').matchAll(URL_RE)) if (isCodeLink(m[0])) out.push(['CD-02', m[0]]);
@@ -51,6 +57,7 @@ export function codeRefs(text) {
   return out;
 }
 
+/** @param {string} text */
 export function internalNames(text) {
   let rest = text.replace(LINK_RE, ']').replace(URL_RE, ' ').replace(/«[^«»]*»/g, ' ');
   for (const [, x] of codeRefs(text)) rest = rest.split(x).join(' ');
@@ -61,7 +68,7 @@ const WHAT = { 'CD-01': 'путь или файл кода', 'CD-02': 'ссыл�
 /** @typedef {{ names?: boolean, inAc?: boolean }} RefOpts */
 
 // Строка: ссылки на код (каждая один раз) и внутренние имена — если их проверяем в этом месте.
-/** @param {string} file @param {any} l @param {RefOpts} opts */
+/** @param {string} file @param {import('./model.mjs').Line} l @param {RefOpts} opts */
 function lineRefs(file, l, { names = true, inAc = true }) {
   const refs = [...new Map(codeRefs(l.text).map((r) => [r.join(''), r])).values()];
   const internal = !names || (l.inCode && !inAc) ? [] : internalNames(l.text);
@@ -71,16 +78,17 @@ function lineRefs(file, l, { names = true, inAc = true }) {
   ];
 }
 // names — проверять ли внутренние имена; inAc — и в блоках AC (в slices их уже ловит SL-22).
-/** @param {string} file @param {any} sc @param {RefOpts} [opts] */
+/** @param {string} file @param {import('./model.mjs').Scan} sc @param {RefOpts} [opts] */
 function checkFile(file, sc, opts = {}) {
   return [
     ...sc.blocks
-      .filter((/** @type {any} */ b) => !PLAIN_LANGS.has(b.lang))
-      .map((/** @type {any} */ b) => finding('CD-04', file, b.start, `блок кода «${b.lang}»`)),
-    ...sc.lines.filter((/** @type {any} */ l) => !/^\s*Статус:/.test(l.text)).flatMap((/** @type {any} */ l) => lineRefs(file, l, opts)),
+      .filter((b) => !PLAIN_LANGS.has(b.lang))
+      .map((b) => finding('CD-04', file, b.start, `блок кода «${b.lang}»`)),
+    ...sc.lines.filter((l) => !/^\s*Статус:/.test(l.text)).flatMap((l) => lineRefs(file, l, opts)),
   ];
 }
 
+/** @param {Feature} m */
 export function checkCodeRefs(m) {
   return [
     ...(m.spec ? checkFile(m.spec.file, m.spec.sc) : []),

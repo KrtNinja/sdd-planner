@@ -1,5 +1,8 @@
 // Пометки правок в тексте spec и slices («изменено <дата>», «добавлен после ревью»): им место в git.
+// @ts-check
 import { collect } from './findings.mjs';
+
+/** @typedef {import('./model.mjs').Feature} Feature */
 
 // «Изменено 28.10.2026», «добавлен после ревью R2»: решение живёт в самом FR и AC, история — в git.
 // «(удалён: причина)» — не пометка правки, а постоянный ID удалённого требования.
@@ -13,6 +16,7 @@ const EDIT_MARK_RES = [
   // «по ревью R2», «находка R3»
   /(?<![\p{L}])(?:ревью|находк\p{L}*)\s+R\d+/iu,
 ];
+/** @param {string} file @param {import('./model.mjs').Scan} sc @param {string} rule */
 function editMarks(file, sc, rule) {
   const { found, add } = collect();
   for (const l of sc.lines) {
@@ -27,6 +31,7 @@ function editMarks(file, sc, rule) {
   }
   return found;
 }
+/** @param {Feature} m */
 export function checkEditMarks(m) {
   return [
     ...(m.spec ? editMarks(m.spec.file, m.spec.sc, 'SP-22') : []),
