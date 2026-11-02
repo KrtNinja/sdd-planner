@@ -5,39 +5,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 
 import { GEAR, codePaths, cmdCode, mdProblems, splitGear } from '../skills/sdd-lint/scripts/sdd-lint/screen.mjs';
+import { SCREEN_ENV, workspace, runner, repo, REVIEW_ROWS, writeReview } from './helpers.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
-const GOOD = path.join(root, 'tests/fixtures/good');
 // Без SDD_VIEW: то, что видит человек в GigaCode.
-const ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: '/sdd-lint', SDD_VIEW: '' };
-
-function workspace() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-screen-test-'));
-  fs.cpSync(GOOD, dir, { recursive: true });
-  return dir;
-}
-function run(cwd, ...args) {
-  const r = spawnSync('node', [LINT, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...ENV, TMPDIR: path.join(cwd, '.tmp') } });
-  return { code: r.status, out: r.stdout + r.stderr };
-}
-function withReview(cwd) {
-  const d = path.join(cwd, 'docs/comments/_work/review');
-  fs.mkdirSync(d, { recursive: true });
-  fs.writeFileSync(
-    path.join(d, 'slices.md'),
-    '# Ревью slices — Комментарии\n\nИтог: блокеров 1, замечаний 2\n\n| # | Важность | Где | Что не так | Пункт | Предложение | Решение |\n|---|---|---|---|---|---|---|\n' +
-      '| R1 | замечание | slices/002-comments.md, AC-002-B4 | нет успешного удаления руководителем | 4 | добавить AC |  |\n' +
-      '| R2 | блокер | slices/003-mention-notifications.md | не решено, что с уведомлением, если комментарий удалили до доставки | 3 | уведомление не приходит |  |\n' +
-      '| R3 | замечание | slices/README.md | порядок работ не объясняет, почему 003 после 002 | 6 | — |  |\n',
-  );
-}
+const run = runner(SCREEN_ENV);
 
 // Слова, которыми говорят с моделью: в карточке человека их быть не должно.
 const AGENT_WORDS = /sdd_lint|instruction|preview|Скажи человеку|Передай человеку|Задай вопрос|выведи |Запусти сабагента|остановись|Сабагентов у тебя/i;
@@ -74,7 +48,7 @@ test('выводы для агента: одна строка ⚙ последн
     ['done', 'docs/comments'],
   ];
   for (const args of flows) assertScreen(args.join(' '), run(cwd, ...args).out);
-  withReview(cwd);
+  writeReview(cwd, REVIEW_ROWS.slice(0, 3));
   const walk = [
     ['ask', 'docs/comments'],
     ['choose', 'docs/comments', 'rv:slices:R2:write'],
@@ -93,10 +67,7 @@ test('выводы для агента: одна строка ⚙ последн
 });
 
 test('старт /sdd-grill: каждый шаг — карточка и строка ⚙', () => {
-  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-screen-start-'));
-  fs.mkdirSync(path.join(cwd, 'docs'));
-  fs.mkdirSync(path.join(cwd, 'services/tasks-core'), { recursive: true });
-  fs.writeFileSync(path.join(cwd, 'services/tasks-core/README.md'), '# tasks-core\n');
+  const cwd = repo({ 'services/tasks-core/README.md': '# tasks-core\n' });
   const steps = [
     ['start'],
     ['start', 'добавить панель настроек'],

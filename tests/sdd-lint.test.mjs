@@ -3,50 +3,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { spawnSync, execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
-const GOOD = path.join(root, 'tests/fixtures/good');
-// Статусы эталона: «одобрено» и «принято» с отметкой approve (отпечаток содержимого).
-const SPEC_OK = 'Статус: одобрено 27.10.2026 · 67e1fb';
-const ADR_OK = 'Статус: принято 27.10.2026 · 9aebc0';
-const FP = '[0-9a-f]{6}';
-
-function workspace() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-lint-test-'));
-  fs.cpSync(GOOD, dir, { recursive: true });
-  return dir;
-}
-// Форма команд в подсказках настраивается окружением; тесты закрепляют одну.
-const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: 'node scripts/sdd-lint.mjs', SDD_VIEW: 'json' };
-function run(cwd, ...args) {
-  const r = spawnSync('node', [LINT, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, TMPDIR: path.join(cwd, '.tmp') } });
-  return { code: r.status, out: r.stdout + r.stderr };
-}
-function check(cwd) {
-  const r = run(cwd, 'check', 'docs/comments', '--json');
-  return { code: r.code, ...JSON.parse(r.out) };
-}
-const rules = (res) => res.findings.map((f) => f.rule);
-const file = (cwd, rel) => path.join(cwd, 'docs', rel);
-function edit(cwd, rel, from, to) {
-  const f = file(cwd, rel);
-  const s = fs.readFileSync(f, 'utf8');
-  assert.ok(s.includes(from), `в ${rel} нет «${from}»`);
-  fs.writeFileSync(f, s.replace(from, to));
-}
-function caught(rule, rel, from, to) {
-  test(`${rule}: ${rel} — «${from.slice(0, 40)}»`, () => {
-    const cwd = workspace();
-    edit(cwd, rel, from, to);
-    const res = check(cwd);
-    assert.ok(rules(res).includes(rule), `ожидалось ${rule}, получено: ${rules(res).join(', ') || 'ничего'}`);
-  });
-}
+import { spawnSync } from 'node:child_process';
+import {
+  root, LINT, GOOD, SPEC_OK, ADR_OK, FP, JSON_ENV, tmpDir, workspace, git, commitAll, run, file, read, edit, check, rules, caught, ids,
+} from './helpers.mjs';
 
 test('эталонная фича: ни ошибок, ни предупреждений', () => {
   const res = check(workspace());
@@ -318,14 +279,7 @@ test('next: следующие свободные номера', () => {
   assert.equal(next('adr', 'docs/comments'), '0002');
 });
 
-function gitWorkspace() {
-  const cwd = workspace();
-  const g = (...a) => execFileSync('git', a, { cwd, stdio: 'ignore' });
-  g('init', '-q');
-  g('add', '.');
-  g('-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'base');
-  return cwd;
-}
+const gitWorkspace = () => commitAll(workspace(), 'base');
 const diffRules = (cwd) => {
   const r = run(cwd, 'diff', 'docs/comments', '--json');
   return JSON.parse(r.out).findings.map((f) => f.rule);
@@ -393,7 +347,6 @@ const fix = (cwd, ...flags) => {
   const r = run(cwd, 'fix', 'docs/comments', '--json', ...flags);
   return { code: r.code, ...JSON.parse(r.out) };
 };
-const read = (cwd, rel) => fs.readFileSync(file(cwd, rel), 'utf8');
 test('fix: на чистой фиче ничего не меняет', () => {
   const cwd = workspace();
   const r = run(cwd, 'fix', 'docs/comments');
@@ -698,7 +651,7 @@ test('без аргументов: меню с фичами, этапом и г�
   assert.match(r.out, /node scripts\/sdd-lint\.mjs approve spec\|slices\|adr comments/);
 });
 test('без аргументов вне репозитория с доками: подсказка, откуда запускать', () => {
-  const r = run(fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-lint-empty-')));
+  const r = run(tmpDir('sdd-lint-empty-'));
   assert.match(r.out, /Нет папки docs\/ — запускайте из корня/);
 });
 test('фича — slug, путь с @ или файл внутри неё', () => {
@@ -759,7 +712,6 @@ test('у каждого sdd-скилла есть argument-hint', () => {
 });
 
 const ask = (cwd) => JSON.parse(run(cwd, 'ask', 'docs/comments').out);
-const ids = (a) => a.questions.flatMap((q) => q.options.map((o) => o.id));
 test('ask: вопрос этапа с вариантами без действий, рекомендация — ревью', () => {
   const a = ask(workspace());
   assert.equal(a.stage, 'Slices на ревью');
@@ -795,7 +747,7 @@ test('ask: карточка — вопрос и варианты с номера
   assert.match(a.card, /\n4\. \*\*Одобрить\*\* — `node scripts\/sdd-lint\.mjs approve slices docs\/comments`$/);
   assert.equal(a.gear, '⚙ sdd: вопрос «Slices» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices');
   // Без SDD_VIEW=json — то же карточкой и строкой ⚙, без JSON.
-  const plain = spawnSync('node', [LINT, 'ask', 'docs/comments'], { cwd: workspace(), encoding: 'utf8', env: { ...process.env, ...CMD_ENV, SDD_VIEW: '' } }).stdout;
+  const plain = spawnSync('node', [LINT, 'ask', 'docs/comments'], { cwd: workspace(), encoding: 'utf8', env: { ...process.env, ...JSON_ENV, SDD_VIEW: '' } }).stdout;
   assert.equal(plain, `${a.card}\n\n${a.gear}\n`);
 });
 test('choose: ревью — задача сабагенту без пересказа скилла, без сабагентов — команда человеку', () => {
@@ -872,7 +824,7 @@ test('sdd-lint работает через симлинк без расшире�
   const bin = path.join(cwd, '.tmp', 'sdd-lint');
   fs.mkdirSync(path.dirname(bin), { recursive: true });
   fs.symlinkSync(LINT, bin);
-  const r = spawnSync('node', [bin, 'docs/comments'], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, TMPDIR: path.join(cwd, '.tmp') } });
+  const r = spawnSync('node', [bin, 'docs/comments'], { cwd, encoding: 'utf8', env: { ...process.env, ...JSON_ENV, TMPDIR: path.join(cwd, '.tmp') } });
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
 
@@ -939,8 +891,7 @@ test('close: замечание без решения не мешает, но н
   const cwd = gitWorkspace();
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   withReview(cwd, oneFinding('', 'замечание'));
-  execFileSync('git', ['add', '.'], { cwd });
-  execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'review'], { cwd });
+  commitAll(cwd, 'review');
   assert.match(run(cwd, 'close', 'comments').out, /Замечания ревью без решения: R1 \(`docs\/comments\/_work\/review\/slices\.md`\) — уйдут в историю git/);
   const r = run(cwd, 'close', 'comments', '--yes');
   assert.equal(r.code, 0, r.out);
@@ -957,7 +908,7 @@ test('ask: перед merge — вопрос про временные арте�
   assert.equal(first.code, 0, first.out);
   assert.match(first.out, /"id": "close:yes"/);
   // На экране — вопрос подтверждения close со своей строкой ⚙, а не переход к следующему вопросу этапа.
-  const shown = spawnSync('node', [LINT, 'choose', 'docs/comments', 'close'], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, SDD_VIEW: '' } }).stdout;
+  const shown = spawnSync('node', [LINT, 'choose', 'docs/comments', 'close'], { cwd, encoding: 'utf8', env: { ...process.env, ...JSON_ENV, SDD_VIEW: '' } }).stdout;
   assert.match(shown, /^\*\*Закрытие docs\/comments\*\* — пока ничего не удалено\./);
   assert.match(shown, /\n\n⚙ sdd: вопрос «Закрыть фичу» → \["choose","docs\/comments","<id>"\] · варианты: 1=close:no, 2=close:yes\n$/);
   assert.ok(fs.existsSync(file(cwd, 'comments/brainstorming.md')));
@@ -985,10 +936,8 @@ test('WK-03 и fix: старые review/ и slices/plan.md переезжают 
   const cwd = workspace();
   fs.mkdirSync(file(cwd, 'comments/review'), { recursive: true });
   fs.writeFileSync(file(cwd, 'comments/review/slices.md'), oneFinding('исправлено'));
-  const g = (...a) => execFileSync('git', a, { cwd, encoding: 'utf8' });
-  g('init', '-q');
-  g('add', '.');
-  g('-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'base');
+  commitAll(cwd, 'base');
+  const g = git(cwd);
   assert.ok(check(cwd).findings.some((f) => f.rule === 'WK-03' && f.file === 'docs/comments/review'));
   const r = run(cwd, 'fix', 'docs/comments');
   assert.match(r.out, /Временные артефакты перенесены в docs\/comments\/_work\/: docs\/comments\/review → docs\/comments\/_work\/review/);

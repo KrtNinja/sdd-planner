@@ -4,44 +4,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { spawnSync, execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { root, MCP, workspace, run, file, read, edit, check, rules, caught } from './helpers.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
-const GOOD = path.join(root, 'tests/fixtures/good');
-const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: 'node scripts/sdd-lint.mjs', SDD_VIEW: 'json' };
-
-function workspace() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-plan-test-'));
-  fs.cpSync(GOOD, dir, { recursive: true });
-  return dir;
-}
-function run(cwd, ...args) {
-  const r = spawnSync('node', [LINT, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, TMPDIR: path.join(cwd, '.tmp') } });
-  return { code: r.status, out: r.stdout + r.stderr };
-}
-const check = (cwd) => JSON.parse(run(cwd, 'check', 'docs/comments', '--json').out);
-const rules = (res) => res.findings.map((f) => f.rule);
-const file = (cwd, rel) => path.join(cwd, 'docs', rel);
-const read = (cwd, rel) => fs.readFileSync(file(cwd, rel), 'utf8');
-function edit(cwd, rel, from, to) {
-  const s = read(cwd, rel);
-  assert.ok(s.includes(from), `в ${rel} нет «${from}»`);
-  fs.writeFileSync(file(cwd, rel), s.replace(from, to));
-}
-function caught(rule, rel, from, to, msg) {
-  test(`${rule}: ${rel} — «${from.slice(0, 40)}»`, () => {
-    const cwd = workspace();
-    edit(cwd, rel, from, to);
-    const res = check(cwd);
-    const hit = res.findings.filter((f) => f.rule === rule);
-    assert.ok(hit.length, `ожидалось ${rule}, получено: ${rules(res).join(', ') || 'ничего'}`);
-    if (msg) assert.ok(hit.some((f) => msg.test(f.msg)), hit.map((f) => f.msg).join('\n'));
-  });
-}
 const S002 = 'comments/slices/002-comments.md';
 const S003 = 'comments/slices/003-mention-notifications.md';
 
@@ -298,11 +264,11 @@ test('правила: при недоступном sdd_lint — вопрос с
 test('MCP: ответ сервера всегда с кодом выхода — по нему агент отличает сбой сервера', () => {
   const cwd = planWorkspace(null);
   const input = ['{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}', '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"sdd_lint","arguments":{"args":["plan","comments"]}}}'].join('\n');
-  const out = execFileSync('node', [path.join(root, 'skills/sdd-lint/scripts/mcp.mjs')], { cwd, input, encoding: 'utf8', env: { ...process.env, TMPDIR: path.join(cwd, '.tmp') } });
+  const out = execFileSync('node', [MCP], { cwd, input, encoding: 'utf8', env: { ...process.env, TMPDIR: path.join(cwd, '.tmp') } });
   const res = out.trim().split('\n').map((l) => JSON.parse(l)).find((x) => x.id === 2);
   assert.match(res.result.content[0].text, /^Плана нарезки ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: запиши docs\/comments\/_work\/plan\.md по шаблону assets\/plan\.md скилла sdd-slices · затем \["plan","docs\/comments"\] · код 2$/);
   // Команда без своей строки ⚙ (check) — сервер добавляет её с кодом.
-  const chk = execFileSync('node', [path.join(root, 'skills/sdd-lint/scripts/mcp.mjs')], {
+  const chk = execFileSync('node', [MCP], {
     cwd,
     input: '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"sdd_lint","arguments":{"args":["comments"]}}}\n',
     encoding: 'utf8',

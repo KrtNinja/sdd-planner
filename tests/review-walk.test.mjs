@@ -3,54 +3,14 @@
 // Запуск из корня репозитория: node --test tests/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { workspace, run, read, edit, ids, REVIEW_ROWS, writeReview } from './helpers.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
-const GOOD = path.join(root, 'tests/fixtures/good');
-const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: 'node scripts/sdd-lint.mjs', SDD_VIEW: 'json' };
-
-function workspace() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-walk-test-'));
-  fs.cpSync(GOOD, dir, { recursive: true });
-  return dir;
-}
-function run(cwd, ...args) {
-  const r = spawnSync('node', [LINT, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...CMD_ENV, TMPDIR: path.join(cwd, '.tmp') } });
-  return { code: r.status, out: r.stdout + r.stderr };
-}
-const read = (cwd, rel) => fs.readFileSync(path.join(cwd, 'docs', rel), 'utf8');
-function edit(cwd, rel, from, to) {
-  const s = read(cwd, rel);
-  assert.ok(s.includes(from), `в ${rel} нет «${from}»`);
-  fs.writeFileSync(path.join(cwd, 'docs', rel), s.replace(from, to));
-}
 const ask = (cwd) => JSON.parse(run(cwd, 'ask', 'docs/comments').out);
-const ids = (a) => a.questions.flatMap((q) => q.options.map((o) => o.id));
 const decision = (cwd, id, key = 'slices') => read(cwd, `comments/_work/review/${key}.md`).split('\n').find((l) => l.startsWith(`| ${id} `)).split('|').slice(-2, -1)[0].trim();
-
-const ROWS = [
-  '| R1 | замечание | slices/002-comments.md, AC-002-B4 | нет успешного удаления руководителем | 4 | добавить AC |  |',
-  '| R2 | блокер | slices/003-mention-notifications.md | не решено, что с уведомлением, если комментарий удалили до доставки | 3 | уведомление не приходит |  |',
-  '| R3 | замечание | slices/README.md | порядок работ не объясняет, почему 003 после 002 | 6 | — |  |',
-  '| R4 | блокер | slices/002-comments.md, AC-002-B2 | граница длины без пары 5000 / 5001 | 2 | добавить AC на 5001 |  |',
-];
-function withReview(cwd, rows = ROWS, key = 'slices') {
-  const d = path.join(cwd, 'docs/comments/_work/review');
-  fs.mkdirSync(d, { recursive: true });
-  fs.writeFileSync(
-    path.join(d, `${key}.md`),
-    `# Ревью ${key} — Комментарии\n\nИтог: блокеров 2, замечаний 2\n\n| # | Важность | Где | Что не так | Пункт | Предложение | Решение |\n|---|---|---|---|---|---|---|\n${rows.join('\n')}\n`,
-  );
-}
 
 test('разбор: блокер — блок находки и «Как решаем?», один вопрос, «Напишу решение» рекомендован первым', () => {
   const cwd = workspace();
-  withReview(cwd);
+  writeReview(cwd);
   const a = ask(cwd);
   assert.equal(a.questions.length, 1);
   const q = a.questions[0];
@@ -72,7 +32,7 @@ test('разбор: блокер — блок находки и «Как реш�
 
 test('разбор: «Напишу решение» ждёт ответ, ответ — /sdd-decide в сабагенте, без сабагентов — здесь', () => {
   const cwd = workspace();
-  withReview(cwd);
+  writeReview(cwd);
   const w = run(cwd, 'choose', 'docs/comments', 'rv:slices:R2:write');
   assert.match(w.out, /^Напишите решение по R2 одним сообщением — проведу его через `\/sdd-decide`\.\n\n⚙ sdd: жди ответ → \["choose","docs\/comments","rv:slices:R2:write","<ответ человека>"\]\n$/);
   const r = run(cwd, 'choose', 'docs/comments', 'rv:slices:R2:write', 'Уведомление не приходит');
@@ -92,15 +52,15 @@ test('разбор: «Напишу решение» ждёт ответ, отв�
 
 test('разбор: «Принимаю рекомендации» — decide «да»; без «Предложения» варианта нет', () => {
   const cwd = workspace();
-  withReview(cwd);
+  writeReview(cwd);
   assert.match(run(cwd, 'choose', 'docs/comments', 'rv:slices:R2:accept').out, /\["prompt","sdd-decide","comments","slices:R2","да"\]/);
-  withReview(cwd, [ROWS[2].replace('| замечание |', '| блокер |')]);
+  writeReview(cwd, [REVIEW_ROWS[2].replace('| замечание |', '| блокер |')]);
   assert.ok(!ids(ask(cwd)).includes('rv:slices:R3:accept'));
 });
 
 test('разбор: «Затрудняюсь» — вопрос в slice из «Где», «Решение» — открытый вопрос, следующий блокер', () => {
   const cwd = workspace();
-  withReview(cwd);
+  writeReview(cwd);
   const r = run(cwd, 'choose', 'docs/comments', 'rv:slices:R2:open');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /^R2 → открытый вопрос: `docs\/comments\/slices\/003-mention-notifications\.md:\d+`/);
@@ -112,7 +72,7 @@ test('разбор: «Затрудняюсь» — вопрос в slice из «
 
 test('разбор: «Игнорировать» — «отклонено», строка в «Снято на ревью», gate review отдаёт её ревьюеру', () => {
   const cwd = workspace();
-  withReview(cwd);
+  writeReview(cwd);
   const r = run(cwd, 'choose', 'docs/comments', 'rv:slices:R2:ignore');
   assert.equal(r.code, 0, r.out);
   assert.equal(decision(cwd, 'R2'), 'отклонено: не исправлять');
@@ -130,7 +90,7 @@ test('разбор: «Игнорировать» — «отклонено», с�
 
 test('разбор: блокеры решены — «Пройдёмся по замечаниям?» со списком; «по очереди» — очередь «к разбору»', () => {
   const cwd = workspace();
-  withReview(cwd);
+  writeReview(cwd);
   run(cwd, 'choose', 'docs/comments', 'rv:slices:R2:ignore');
   run(cwd, 'choose', 'docs/comments', 'rv:slices:R4:ignore');
   let a = ask(cwd);
@@ -149,7 +109,7 @@ test('разбор: блокеры решены — «Пройдёмся по з
 
 test('разбор: «Давай только …» — номера словами, остальные сняты; непонятный ответ — переспросить', () => {
   const cwd = workspace();
-  withReview(cwd, [ROWS[0], ROWS[2], '| R5 | замечание | spec.md | — | 1 | — |  |']);
+  writeReview(cwd, [REVIEW_ROWS[0], REVIEW_ROWS[2], '| R5 | замечание | spec.md | — | 1 | — |  |']);
   const bad = run(cwd, 'choose', 'docs/comments', 'remarks:slices:some', 'давай R9');
   assert.equal(bad.code, 0, bad.out);
   assert.match(bad.out, /^Не нашёл среди замечаний без решения: R9\. Замечания: R1, R3, R5\./);
@@ -164,7 +124,7 @@ test('разбор: «Давай только …» — номера слова�
 
 test('разбор: «Игнорировать» замечания — все сняты, финал без повтора ревью', () => {
   const cwd = workspace();
-  withReview(cwd, [ROWS[0], ROWS[2]]);
+  writeReview(cwd, [REVIEW_ROWS[0], REVIEW_ROWS[2]]);
   run(cwd, 'choose', 'docs/comments', 'remarks:slices:none');
   const a = ask(cwd);
   assert.deepEqual(ids(a).slice(0, 2), ['approve:slices', 'humanize:slices']);
@@ -173,7 +133,7 @@ test('разбор: «Игнорировать» замечания — все �
 
 test('одобрение: открытые вопросы — по одному, ответ — decide в сабагенте, затем снова «Одобрить»', () => {
   const cwd = workspace();
-  withReview(cwd, [ROWS[1]]);
+  writeReview(cwd, [REVIEW_ROWS[1]]);
   run(cwd, 'choose', 'docs/comments', 'rv:slices:R2:open');
   const a = ask(cwd);
   const approve = a.questions[0].options.find((o) => o.id === 'approve:slices');
@@ -195,7 +155,7 @@ test('одобрение: открытые вопросы — по одному,
 test('разбор spec: открытый вопрос заменяет «Нет.», «Где» без имени файла; номера R в тексте нет', () => {
   const cwd = workspace();
   edit(cwd, 'comments/spec.md', read(cwd, 'comments/spec.md').match(/^Статус:.*$/m)[0], 'Статус: на ревью');
-  withReview(cwd, ['| R1 | блокер | spec.md, FR-3 | не решено, может ли руководитель править чужой комментарий | 5 | нельзя |  |'], 'spec');
+  writeReview(cwd, ['| R1 | блокер | spec.md, FR-3 | не решено, может ли руководитель править чужой комментарий | 5 | нельзя |  |'], 'spec');
   assert.equal(ask(cwd).questions[0].header, 'Блокер R1');
   run(cwd, 'choose', 'docs/comments', 'rv:spec:R1:open');
   assert.match(read(cwd, 'comments/spec.md'), /## Открытые вопросы\n- FR-3: не решено, может ли руководитель править чужой комментарий\n/);
@@ -207,7 +167,7 @@ test('разбор spec: открытый вопрос заменяет «Нет
 
 test('triage: П<n> от decide, неизвестная находка — код 2 со списком', () => {
   const cwd = workspace();
-  withReview(cwd);
+  writeReview(cwd);
   assert.equal(run(cwd, 'triage', 'docs/comments', 'slices:R2', 'П3').code, 0);
   assert.equal(decision(cwd, 'R2'), 'П3');
   const bad = run(cwd, 'triage', 'docs/comments', 'slices:R9', 'ignore');
@@ -219,7 +179,7 @@ test('triage: П<n> от decide, неизвестная находка — ко�
 
 test('close: замечание «к разбору» — без решения', () => {
   const cwd = workspace();
-  withReview(cwd, [ROWS[0]]);
+  writeReview(cwd, [REVIEW_ROWS[0]]);
   run(cwd, 'choose', 'docs/comments', 'remarks:slices:all');
   assert.match(run(cwd, 'close', 'docs/comments').out, /Замечания ревью без решения: R1/);
 });
