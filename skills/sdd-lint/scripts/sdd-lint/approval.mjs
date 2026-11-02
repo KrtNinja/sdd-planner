@@ -28,14 +28,24 @@ export const approvalMds = (m, kind, file) =>
   kind === 'spec' ? [m.spec.md] : kind === 'slices' ? [m.readme, ...sliceMds(m)] : [m.adrs.find((a) => a.file === file).md];
 const NO_MARK = 'на ревью (статус ставил не approve)';
 const CHANGED = 'на ревью (файл менялся после approve)';
+// manual — «одобрено» без отметки, ok — отметка совпала с содержимым, changed — файл менялся после approve.
+/** @param {any} m @param {string} kind @param {string} file @param {string | undefined} fp */
+function approvalState(m, kind, file, fp) {
+  if (!fp) return 'manual';
+  return fp === fingerprint(approvalMds(m, kind, file)) ? 'ok' : 'changed';
+}
+/** @type {Record<string, string>} */
+const SHOWN = { manual: NO_MARK, changed: CHANGED };
+// Статусы в модели — как их видят ворота и вопрос этапа; m.approvals — что одобрено и в каком состоянии.
+/** @param {any} m */
 export function verifyApprovals(m) {
   m.approvals = [];
-  const one = (kind, file, status) => {
+  const one = (/** @type {string} */ kind, /** @type {string} */ file, /** @type {any} */ status) => {
     if (!approved(status)) return status;
-    const fp = (status.match(FP_RE) || [])[1];
-    const state = !fp ? 'manual' : fp === fingerprint(approvalMds(m, kind, file)) ? 'ok' : 'changed';
-    m.approvals.push({ kind, file, raw: status.replace(FP_RE, ''), state });
-    return state === 'ok' ? status.replace(FP_RE, '') : state === 'manual' ? NO_MARK : CHANGED;
+    const state = approvalState(m, kind, file, (status.match(FP_RE) || [])[1]);
+    const raw = status.replace(FP_RE, '');
+    m.approvals.push({ kind, file, raw, state });
+    return SHOWN[state] ?? raw;
   };
   if (m.spec) m.spec.status = one('spec', m.spec.file, m.spec.status);
   if (m.readme != null) m.slicesStatus = one('slices', m.readmeFile, m.slicesStatus);

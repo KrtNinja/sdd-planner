@@ -1,14 +1,14 @@
 {
  "tests": {
-  "total": 269,
-  "pass": 269,
+  "total": 272,
+  "pass": 272,
   "fail": 0,
-  "seconds": 19
+  "seconds": 20
  },
- "functions": 440,
- "crapAtLeast10": 66,
+ "functions": 446,
+ "crapAtLeast10": 62,
  "crapOver30": 4,
- "complexityAtLeast10": 63,
+ "complexityAtLeast10": 59,
  "offenders": {
   "skills/sdd-lint/scripts/sdd-lint/cmd-menu.mjs#complete": {
    "complexity": 48,
@@ -37,10 +37,6 @@
   "skills/sdd-lint/scripts/sdd-lint/readme.mjs#genReadme": {
    "complexity": 26,
    "crap": 27.2
-  },
-  "skills/sdd-lint/scripts/sdd-lint/cut.mjs#checkCut": {
-   "complexity": 26,
-   "crap": 26
   },
   "skills/sdd-lint/scripts/sdd-lint/input.mjs#classify": {
    "complexity": 24,
@@ -134,10 +130,6 @@
    "complexity": 15,
    "crap": 15.1
   },
-  "skills/sdd-lint/scripts/sdd-lint/context.mjs#checkContext": {
-   "complexity": 15,
-   "crap": 15
-  },
   "skills/sdd-lint/scripts/sdd-lint/data.mjs#parseData": {
    "complexity": 15,
    "crap": 15
@@ -218,10 +210,6 @@
    "complexity": 10,
    "crap": 11
   },
-  "skills/sdd-lint/scripts/sdd-lint/code-refs.mjs#checkFile": {
-   "complexity": 11,
-   "crap": 11
-  },
   "skills/sdd-lint/scripts/sdd-lint/context.mjs#parseContext": {
    "complexity": 11,
    "crap": 11
@@ -254,10 +242,6 @@
    "complexity": 10,
    "crap": 10
   },
-  "skills/sdd-lint/scripts/sdd-lint/approval.mjs#verifyApprovals": {
-   "complexity": 10,
-   "crap": 10
-  },
   "skills/sdd-lint/scripts/sdd-lint/cmd-ask.mjs#cmdChoose": {
    "complexity": 10,
    "crap": 10
@@ -276,19 +260,19 @@
   }
  },
  "eslint": {
-  "no-nested-ternary": 37,
-  "max-len": 128,
+  "no-nested-ternary": 35,
+  "max-len": 127,
   "max-params": 4,
-  "complexity": 51,
-  "max-statements": 27,
+  "complexity": 48,
+  "max-statements": 26,
   "max-lines-per-function": 11,
   "no-unused-vars": 4,
   "no-param-reassign": 1,
   "no-shadow": 3
  },
- "tscErrors": 974,
- "clonesCodePercent": 3.1,
- "clonesTestsPercent": 6.3,
+ "tscErrors": 960,
+ "clonesCodePercent": 3.08,
+ "clonesTestsPercent": 6.15,
  "cycles": 0,
  "sideEffects": 0,
  "unusedExports": 29

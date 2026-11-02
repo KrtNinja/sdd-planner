@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import { lintArgs } from './question.mjs';
 import { SKILLS_DIR } from './cmd-prompt.mjs';
-import { collect, line } from './findings.mjs';
+import { finding, line } from './findings.mjs';
 import { REPO, outside } from './input.mjs';
 import { dropHeader, header, isH2, read, rel, scan, setHeader } from './md.mjs';
 import { visibleLength } from './read-size.mjs';
@@ -25,6 +25,7 @@ const fill = (t, vars) => t.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '');
 export const contextFile = (m) => path.join(m.workDir, 'context.md');
 const blank = (t) => /^\s*[-*]\s*[-—–]?\s*$/.test(t);
 
+/** @param {string} file @param {string | null | undefined} md */
 export function parseContext(file, md) {
   if (md == null) return null;
   const sections = new Map();
@@ -73,27 +74,57 @@ function refProblem(ref) {
   return null;
 }
 
-export function checkContext(ctx) {
-  const { found, add } = collect();
-  const f = ctx.file;
-  if (!ctx.sources) add('CX-01', f, null, 'нет строки «Источники:»');
-  for (const s of REQUIRED) if (!ctx.sections.has(s)) add('CX-01', f, null, `нет раздела «${s}»`);
-  for (const [k, items] of ctx.sections) {
-    if (FREE.includes(k)) continue;
-    for (const it of items) {
-      if (k === ANSWERS && /не нашёл/i.test(it.text)) continue;
+// Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
+// Порядок находок: шапка и разделы, затем по каждому факту (CX-02…04), затем объём.
+/** @typedef {import('./findings.mjs').Finding} Finding */
+/** @typedef {NonNullable<ReturnType<typeof parseContext>>} Context */
+/** @typedef {{ text: string, n: number }} Fact */
+
+/** @type {{ ids: string[], check: (it: Fact, file: string) => Finding[] }[]} */
+const CONTEXT_FACT = [
+  {
+    // CX-02: у факта есть источник — путь или ссылка после « — ».
+    ids: ['CX-02'],
+    check: (it, file) => {
       const src = sourcesOf(it.text);
-      if (!src.urls.length && !src.paths.length) add('CX-02', f, it.n, it.text.slice(0, 90));
-      for (const p of src.paths) {
-        const why = refProblem(p);
-        if (why) add('CX-03', f, it.n, why);
-      }
-      if (RECO.test(it.text.split(/\s[—–]\s/)[0])) add('CX-04', f, it.n, it.text.slice(0, 90));
-    }
-  }
-  const n = visibleLength(ctx.md);
-  if (n > CONTEXT_LIMIT) add('CX-05', f, null, `${n} символов при ориентире ${CONTEXT_LIMIT} (без пробелов и разметки)`);
-  return found;
+      return src.urls.length || src.paths.length ? [] : [finding('CX-02', file, it.n, it.text.slice(0, 90))];
+    },
+  },
+  {
+    // CX-03: путь-источник существует, строка в нём есть.
+    ids: ['CX-03'],
+    check: (it, file) =>
+      sourcesOf(it.text)
+        .paths.map(refProblem)
+        .filter((why) => why !== null)
+        .map((why) => finding('CX-03', file, it.n, String(why))),
+  },
+  // CX-04: факт, а не совет.
+  { ids: ['CX-04'], check: (it, file) => (RECO.test(it.text.split(/\s[—–]\s/)[0]) ? [finding('CX-04', file, it.n, it.text.slice(0, 90))] : []) },
+];
+
+// Факты — пункты разделов, кроме «Не нашёл», «Не удалось прочитать» и «не нашёл» в ответах на вопросы.
+/** @param {Context} ctx @returns {Fact[]} */
+const factsOf = (ctx) =>
+  [...ctx.sections].filter(([k]) => !FREE.includes(k)).flatMap(([k, items]) => items.filter((it) => !(k === ANSWERS && /не нашёл/i.test(it.text))));
+
+/** @type {{ ids: string[], check: (ctx: Context) => Finding[] }[]} */
+const CONTEXT = [
+  { ids: ['CX-01'], check: (ctx) => (ctx.sources ? [] : [finding('CX-01', ctx.file, null, 'нет строки «Источники:»')]) },
+  { ids: ['CX-01'], check: (ctx) => REQUIRED.filter((s) => !ctx.sections.has(s)).map((s) => finding('CX-01', ctx.file, null, `нет раздела «${s}»`)) },
+  { ids: ['CX-02', 'CX-03', 'CX-04'], check: (ctx) => factsOf(ctx).flatMap((it) => CONTEXT_FACT.flatMap((r) => r.check(it, ctx.file))) },
+  {
+    ids: ['CX-05'],
+    check: (ctx) => {
+      const n = visibleLength(ctx.md);
+      return n > CONTEXT_LIMIT ? [finding('CX-05', ctx.file, null, `${n} символов при ориентире ${CONTEXT_LIMIT} (без пробелов и разметки)`)] : [];
+    },
+  },
+];
+
+/** @param {Context} ctx @returns {Finding[]} */
+export function checkContext(ctx) {
+  return CONTEXT.flatMap((r) => r.check(ctx));
 }
 // Находки CX-* — отдельно от проверок фичи: их показывают старт и задание сабагенту.
 export const contextFindings = (ctx) => checkContext(ctx);

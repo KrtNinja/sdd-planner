@@ -1,5 +1,5 @@
 // Нарезка slices: причины Р1–Р3 правдивы, сервисы из реестра, кириллица в ID, заготовки (SL-31…SL-38).
-import { collect } from './findings.mjs';
+import { finding } from './findings.mjs';
 import { checkIdTypos } from './ids.mjs';
 import { placeholders, scan, header, headerLine, uniq } from './md.mjs';
 import { registry, parseHalves, halvesProblem, serviceOfHeading, unknownService } from './services.mjs';
@@ -37,44 +37,87 @@ export function neededAdrs(m) {
   return [...m.slices.values()].filter((s) => reason(s.why) === '1' && adrTopic(s.why) && !adrFor(m, s.num)).map((s) => ({ num: s.num, topic: adrTopic(s.why) }));
 }
 
-export function checkCut(m) {
-  const { found, add } = collect();
-  const reg = registry(m);
-  const files = [...[...m.slices.values()].map((s) => [s.file, s.md]), ...(m.readme != null ? [[m.readmeFile, m.readme]] : [])];
-  for (const [file, md] of files) {
-    found.push(...checkIdTypos(file, md));
-    for (const s of stubLines(md)) add('SL-37', file, s.n, s.items.map((x) => `«${x}»`).join(', '));
-  }
+// Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
+// Порядок находок: по каждому файлу (slices, README) опечатки в ID и заготовки, затем правила по каждому slice.
+/** @typedef {import('./findings.mjs').Finding} Finding */
+/** @typedef {import('./slices.mjs').Slice} Slice */
+/**
+ * @typedef {{ m: any, reg: any }} CutContext
+ * @typedef {{ ids: string[], check: (file: string, md: string) => Finding[] }} FileRule
+ * @typedef {{ ids: string[], check: (sl: Slice, c: CutContext) => Finding[] }} CutRule
+ */
 
-  for (const sl of m.slices.values()) {
-    const f = sl.file;
-    const prep = /подготов/i.test(sl.type || '');
-    if (sl.halves !== null) {
-      const problem = halvesProblem(sl.halves, reg);
-      if (problem) add(parseHalves(sl.halves).ok ? 'SL-33' : 'SL-32', f, headerLine(sl.md, 'Половины'), problem);
-    }
-    for (const l of sl.sc.lines.filter((x) => !x.inCode && /^##\s/.test(x.text))) {
+/** @type {FileRule[]} */
+const CUT_FILE = [
+  { ids: ['SL-31'], check: checkIdTypos },
+  { ids: ['SL-37'], check: (file, md) => stubLines(md).map((s) => finding('SL-37', file, s.n, s.items.map((x) => `«${x}»`).join(', '))) },
+];
+
+// SL-33: сервис в заголовке «## <сервис>: …» — из реестра (фронтенд не проверяем).
+/** @param {Slice} sl @param {CutContext} c */
+function headingServices(sl, { reg }) {
+  return sl.sc.lines
+    .filter((/** @type {any} */ x) => !x.inCode && /^##\s/.test(x.text))
+    .flatMap((/** @type {any} */ l) => {
       const svc = serviceOfHeading(l.h2);
       const bad = svc && !/^front/i.test(svc) ? unknownService(svc, reg) : null;
-      if (bad) add('SL-33', f, l.n, bad);
-    }
+      return bad ? [finding('SL-33', sl.file, l.n, bad)] : [];
+    });
+}
+// SL-34 / SL-38: Р1 ссылается на заведённый ADR; «Р1 — ADR: <тема>» — ADR ещё нужен или уже заведён.
+/** @param {Slice} sl @param {CutContext} c */
+function adrReason(sl, { m }) {
+  if (reason(sl.why) !== '1') return [];
+  const whyLine = headerLine(sl.md, 'Почему отдельно');
+  const missing = adrNums(sl.why)
+    .filter((num) => !m.adrs.some((/** @type {any} */ a) => a.num === num))
+    .map((num) => finding('SL-34', sl.file, whyLine, `ADR-${num} нет в docs/adr`));
+  const topic = adrTopic(sl.why);
+  if (!topic) return missing;
+  const a = adrFor(m, sl.num);
+  const msg = a ? `«ADR: ${topic}» — ADR-${a.num} уже затрагивает slice ${sl.num}: впиши «Р1 — ждёт ADR-${a.num}»` : `нужен ADR «${topic}»`;
+  return [...missing, finding('SL-38', sl.file, whyLine, msg)];
+}
+// SL-35: Р2 (объём) правдив — в одной из половин больше 10 живых AC.
+/** @param {Slice} sl */
+function volumeReason(sl) {
+  if (reason(sl.why) !== '2') return [];
+  const live = sl.acs.filter((a) => !a.deleted);
+  const most = Math.max(...['B', 'F'].map((side) => live.filter((a) => a.side === side).length));
+  return most <= 10 ? [finding('SL-35', sl.file, headerLine(sl.md, 'Почему отдельно'), `«Почему отдельно: Р2», а в половинах не больше ${most} AC`)] : [];
+}
 
-    const r = reason(sl.why);
-    const whyLine = headerLine(sl.md, 'Почему отдельно');
-    if (r === '1') {
-      for (const num of adrNums(sl.why)) if (!m.adrs.some((a) => a.num === num)) add('SL-34', f, whyLine, `ADR-${num} нет в docs/adr`);
-      const topic = adrTopic(sl.why);
-      const a = topic && adrFor(m, sl.num);
-      if (a) add('SL-38', f, whyLine, `«ADR: ${topic}» — ADR-${a.num} уже затрагивает slice ${sl.num}: впиши «Р1 — ждёт ADR-${a.num}»`);
-      else if (topic) add('SL-38', f, whyLine, `нужен ADR «${topic}»`);
-    }
-    if (r === '2') {
-      const live = sl.acs.filter((a) => !a.deleted);
-      const most = Math.max(...['B', 'F'].map((side) => live.filter((a) => a.side === side).length));
-      if (most <= 10) add('SL-35', f, whyLine, `«Почему отдельно: Р2», а в половинах не больше ${most} AC`);
-    }
-    const ids = [...sl.basis];
-    if (ids.length && ids.every((id) => id.startsWith('NFR')) && !(sl.num === '001' && prep)) add('SL-36', f, headerLine(sl.md, 'Основание'), `«Основание: ${ids.join(', ')}» — только NFR`);
-  }
-  return found;
+/** @type {CutRule[]} */
+const CUT_SLICE = [
+  {
+    // SL-32 / SL-33: «Половины» разбираются и называют сервисы из реестра.
+    ids: ['SL-32', 'SL-33'],
+    check: (sl, { reg }) => {
+      const problem = sl.halves !== null && halvesProblem(sl.halves, reg);
+      return problem ? [finding(parseHalves(sl.halves).ok ? 'SL-33' : 'SL-32', sl.file, headerLine(sl.md, 'Половины'), problem)] : [];
+    },
+  },
+  { ids: ['SL-33'], check: headingServices },
+  { ids: ['SL-34', 'SL-38'], check: adrReason },
+  { ids: ['SL-35'], check: volumeReason },
+  {
+    // SL-36: slice только из NFR — кроме 001 «подготовка».
+    ids: ['SL-36'],
+    check: (sl) => {
+      const ids = [...sl.basis];
+      const prep001 = sl.num === '001' && /подготов/i.test(sl.type || '');
+      if (!ids.length || !ids.every((id) => id.startsWith('NFR')) || prep001) return [];
+      return [finding('SL-36', sl.file, headerLine(sl.md, 'Основание'), `«Основание: ${ids.join(', ')}» — только NFR`)];
+    },
+  },
+];
+
+/** @param {any} m @returns {Finding[]} */
+export function checkCut(m) {
+  const files = [...[...m.slices.values()].map((s) => [s.file, s.md]), ...(m.readme != null ? [[m.readmeFile, m.readme]] : [])];
+  const c = { m, reg: registry(m) };
+  return [
+    ...files.flatMap(([file, md]) => CUT_FILE.flatMap((r) => r.check(file, md))),
+    ...[...m.slices.values()].flatMap((sl) => CUT_SLICE.flatMap((r) => r.check(sl, c))),
+  ];
 }
