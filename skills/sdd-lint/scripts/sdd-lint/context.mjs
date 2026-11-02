@@ -1,4 +1,5 @@
 // Контекст фичи _work/context.md: факты из источников для всех этапов — заготовка, задания сабагенту, проверки CX-*.
+// @ts-check
 // Факты собирает сабагент, а проверяет скрипт: раздел на месте, у факта есть источник и он открывается.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,8 +9,25 @@ import { lintArgs } from './question.mjs';
 import { SKILLS_DIR } from './cmd-prompt.mjs';
 import { finding, line } from './findings.mjs';
 import { REPO, outside } from './input.mjs';
-import { dropHeader, header, isH2, read, rel, scan, setHeader } from './md.mjs';
+import { dropHeader, header, isH2, matched, read, rel, scan, setHeader } from './md.mjs';
 import { visibleLength } from './read-size.mjs';
+
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {{ text: string, n: number }} Fact */
+/**
+ * _work/context.md после разбора: шапка, разделы со списками фактов и счётчики для вопроса этапа.
+ * @typedef {object} Context
+ * @property {string} file
+ * @property {string} md
+ * @property {string | null} sources строка «Источники:»
+ * @property {boolean} checked «Проверено:» есть
+ * @property {boolean} accepted «Принято:» есть
+ * @property {Map<string, Fact[]>} sections раздел → пункты списка, пустые «-» не считаются
+ * @property {number} facts пунктов в разделах о проекте
+ * @property {boolean} filled хоть один раздел не пуст
+ * @property {Fact[]} decided «Уже решено в задаче»
+ * @property {Fact[]} unread «Не удалось прочитать»
+ */
 
 // Контекст читают целиком в окне flash-модели: факты, а не пересказ источников.
 export const CONTEXT_LIMIT = 6000;
@@ -20,21 +38,26 @@ const ANSWERS = 'Ответы на вопросы';
 const REQUIRED = [...TASK, ...PROJECT, ...FREE];
 const RECO = /(рекоменд|предлага|советую|лучше (бы )?(сделать|использовать|выбрать|взять)|стоит (сделать|использовать|добавить|выбрать)|следует|имеет смысл)/i;
 
+/** @param {string} name */
 const tpl = (name) => read(path.join(SKILLS_DIR, 'sdd-lint', 'assets', name)) || '';
+/** @param {string} t @param {Record<string, string>} vars */
 const fill = (t, vars) => t.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '');
+/** @param {Feature} m */
 export const contextFile = (m) => path.join(m.workDir, 'context.md');
+/** @param {string} t */
 const blank = (t) => /^\s*[-*]\s*[-—–]?\s*$/.test(t);
 
-/** @param {string} file @param {string | null | undefined} md */
+/** @param {string} file @param {string | null | undefined} md @returns {Context | null} */
 export function parseContext(file, md) {
   if (md == null) return null;
+  /** @type {Map<string, Fact[]>} */
   const sections = new Map();
   for (const l of scan(md).lines) {
     if (isH2(l)) {
       if (!sections.has(l.h2)) sections.set(l.h2, []);
     } else if (l.h2 && !l.inCode && /^\s*[-*]\s/.test(l.text) && !blank(l.text)) sections.get(l.h2)?.push({ text: l.text.trim(), n: l.n });
   }
-  const list = (k) => sections.get(k) || [];
+  const list = (/** @type {string} */ k) => sections.get(k) || [];
   return {
     file,
     md,
@@ -48,10 +71,12 @@ export function parseContext(file, md) {
     unread: list('Не удалось прочитать'),
   };
 }
+/** @param {Feature} m */
 export const loadContext = (m) => parseContext(contextFile(m), read(contextFile(m)));
 
 // Источник факта — после последнего « — »: `путь:строка`, [текст](путь#L12) или ссылка.
 // Имена в теле факта (`task.updated`) источником не считаются.
+/** @param {string} text */
 function sourcesOf(text) {
   const parts = text.split(/\s[—–]\s/);
   const tail = parts.length > 1 ? parts[parts.length - 1] : '';
@@ -62,8 +87,9 @@ function sourcesOf(text) {
   ].filter((p) => !/^https?:/.test(p));
   return { urls, paths };
 }
+/** @param {string} ref */
 function refProblem(ref) {
-  const m = ref.match(/^(.+?)(?::(\d+)(?:-(\d+))?)?$/);
+  const m = matched(ref, /^(.+?)(?::(\d+)(?:-(\d+))?)?$/);
   const f = m[1].replace(/^~(?=[\\/])/, os.homedir());
   if (!fs.existsSync(f)) return `нет файла ${m[1]}`;
   if (m[2] && fs.statSync(f).isFile()) {
@@ -77,8 +103,6 @@ function refProblem(ref) {
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок находок: шапка и разделы, затем по каждому факту (CX-02…04), затем объём.
 /** @typedef {import('./model.mjs').Finding} Finding */
-/** @typedef {NonNullable<ReturnType<typeof parseContext>>} Context */
-/** @typedef {{ text: string, n: number }} Fact */
 
 /** @type {{ ids: string[], check: (it: Fact, file: string) => Finding[] }[]} */
 const CONTEXT_FACT = [
@@ -127,9 +151,11 @@ export function checkContext(ctx) {
   return CONTEXT.flatMap((r) => r.check(ctx));
 }
 // Находки CX-* — отдельно от проверок фичи: их показывают старт и задание сабагенту.
+/** @param {Context} ctx */
 export const contextFindings = (ctx) => checkContext(ctx);
 
 // Заготовка: шапку пишет скрипт. Источники поменялись — отметки «Проверено» и «Принято» снимаются.
+/** @param {Feature} m @param {string} key @param {string} taskLine */
 export function syncContext(m, key, taskLine) {
   const file = contextFile(m);
   const old = read(file);
@@ -143,17 +169,20 @@ export function syncContext(m, key, taskLine) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, md);
   }
-  return { ctx: parseContext(file, md), changed, created: old == null };
+  return { ctx: /** @type {Context} */ (parseContext(file, md)), changed, created: old == null };
 }
 // «Проверено: да» — после чистой проверки; «Принято: да» — человек решил идти с тем, что нашлось.
+/** @param {Context} ctx @param {string} name */
 export function markContext(ctx, name) {
   fs.writeFileSync(ctx.file, setHeader(ctx.md, name, 'да', ['Источники', 'Проверено']));
 }
 
+/** @param {string} x */
 const sourceLine = (x) =>
   `- ${x === REPO ? 'репозиторий — текущая папка целиком' : x}${outside(x) ? ' — вне папки проекта: не откроется — запиши в «Не удалось прочитать» с причиной «вне папки проекта»' : ''}`;
 
 // Задание сабагенту: изучить источники и заполнить контекст. Файл уже есть — что исправить или дописать.
+/** @param {Feature} m @param {string[]} list @param {string} taskLine @param {string} stage */
 export function researchTask(m, list, taskLine, stage) {
   const d = rel(m.dir);
   const { ctx, changed, created } = syncContext(m, list.join('; '), taskLine);
@@ -166,6 +195,7 @@ export function researchTask(m, list, taskLine, stage) {
   }
   return fill(tpl('research.md'), { feature: d, out, stage, task: taskLine, sources: list.map(sourceLine).join('\n'), check: `sdd_lint ${lintArgs(['research', 'check', d])}` }) + tail;
 }
+/** @param {Feature} m @param {string[]} list @param {string} taskLine @param {string} question @param {string} stage */
 export function factTask(m, list, taskLine, question, stage) {
   const d = rel(m.dir);
   const { ctx } = syncContext(m, list.join('; '), taskLine);

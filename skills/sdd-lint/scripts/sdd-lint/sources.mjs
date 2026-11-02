@@ -14,7 +14,7 @@ import { setSection } from './md.mjs';
 // Ссылки на строку ставит gen links: модель пишет номера, скрипт держит #L актуальными.
 export const SRC_RE = /из протокола:/iu;
 export const SRC_REF_RE = /\[(П?\d+)\]\(([^)\s]*)\)|(?<![\p{L}\d#[])(П?\d+)(?![\p{L}\d\]])/gu;
-/** @type {[RegExp, string][]} */
+/** @type {[RegExp, import('./model.mjs').SourceSection][]} */
 const SRC_SECTIONS = [
   [/^Вне scope/, 'вне scope'],
   [/^Открытые вопросы/, 'открытый вопрос'],

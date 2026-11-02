@@ -1,4 +1,5 @@
 // Правила SP-* по Dev Spec: spec целиком, каждое требование, связь с протоколом — списками { ids, check }.
+// @ts-check
 import { mentionsData, unknownNames } from './data.mjs';
 import { finding, noStatus } from './findings.mjs';
 import { uniq, approved, noneText, sectionText, headerLine, REQ_RE, numbers, word } from './md.mjs';
@@ -8,13 +9,18 @@ import { hasProtocolTraces, protoHref } from './sources.mjs';
 // Порядок правил — порядок находок: spec целиком, затем каждое живое требование, затем связь с протоколом.
 /** @typedef {import('./model.mjs').Finding} Finding */
 /** @typedef {import('./model.mjs').Spec} Spec */
-/** @typedef {Spec['reqs'] extends Map<string, infer R> ? R : never} Req */
-/** @typedef {Spec['sources'][number]} Source */
+/** @typedef {import('./model.mjs').Req} Req */
+/** @typedef {import('./model.mjs').SourceLine} Source */
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Protocol} Protocol */
 /**
- * @typedef {{ m: any, s: Spec, p: any, decided: Set<string>, recOnly: Map<string, string>, byId: Map<string, any> }} SpecContext
+ * @typedef {{ m: Feature, s: Spec, p: Protocol | null, decided: Set<string>, recOnly: Map<string, string>,
+ *   byId: Map<string, Protocol['rows'][number] | Protocol['post'][number]> }} SpecContext
  * @typedef {{ ids: string[], check: (c: SpecContext) => Finding[] }} SpecRule
  * @typedef {{ ids: string[], check: (r: Req, c: SpecContext) => Finding[] }} ReqRule
- * @typedef {{ ids: string[], check: (src: Source, c: SpecContext) => Finding[] }} SourceRule
+ * @typedef {SpecContext & { p: Protocol }} TraceContext связь с протоколом проверяется, только когда он есть
+ * @typedef {{ ids: string[], check: (src: Source, c: TraceContext) => Finding[] }} SourceRule
+ * @typedef {{ ids: string[], check: (c: TraceContext) => Finding[] }} TraceRule
  */
 
 const SPEC_STOP_WORDS = [
@@ -29,17 +35,19 @@ const SPEC_STOP_WORDS = [
 const BOUND_RE = /(не длиннее|не короче|не больше|не более|не меньше|не менее|не позже|не раньше|максимум|минимум|до|от|≤|≥|<=|>=)\s+(\d+)(?![.,]\d)/giu;
 
 // Числа из протокола: decided — в решениях человека, recOnly — только в рекомендации агента (число → номер строки).
-/** @param {any} m @returns {SpecContext} */
-function specContext(m) {
+/** @param {Feature} m @param {Spec} s @returns {SpecContext} */
+function specContext(m, s) {
   const p = m.protocol;
+  /** @type {Set<string>} */
   const decided = new Set();
+  /** @type {Map<string, string>} */
   const recOnly = new Map();
   if (p) {
     for (const r of [...p.rows, ...p.post]) for (const x of numbers(r.dec)) decided.add(x);
     for (const r of p.rows) for (const x of numbers(r.rec)) if (!numbers(r.dec).includes(x)) recOnly.set(x, r.id);
   }
   const byId = new Map(p ? [...p.rows, ...p.post].map((r) => [r.id, r]) : []);
-  return { m, s: m.spec, p, decided, recOnly, byId };
+  return { m, s, p, decided, recOnly, byId };
 }
 
 // --- spec целиком ---
@@ -128,11 +136,11 @@ const REQ = [
 
 // --- связь с протоколом: каждая строка протокола куда-то ушла, у каждого требования есть источник ---
 // SP-21: номера в «Из протокола:» — ссылки, и ведут на нужную строку протокола.
-/** @param {Source} src @param {SpecContext} c */
+/** @param {Source} src @param {TraceContext} c */
 function refLinks(src, { s, p, byId }) {
   const known = src.refs.filter((r) => byId.has(r.id));
   const plain = known.filter((r) => !r.href).map((r) => r.id);
-  const stale = known.filter((r) => r.href && r.href !== protoHref(s.file, p.file, byId.get(r.id))).map((r) => r.id);
+  const stale = known.filter((r) => r.href && r.href !== protoHref(s.file, p.file, /** @type {{ n: number }} */ (byId.get(r.id)))).map((r) => r.id);
   return [
     ...(plain.length ? [finding('SP-21', s.file, src.n, `не ссылки: ${plain.join(', ')}`)] : []),
     ...(stale.length ? [finding('SP-21', s.file, src.n, `ссылки ведут не на ту строку протокола: ${stale.join(', ')}`)] : []),
@@ -153,7 +161,7 @@ const SOURCE = [
   { ids: ['SP-21'], check: refLinks },
 ];
 
-/** @param {SpecContext} c */
+/** @param {TraceContext} c */
 function lostRows({ s, p, byId }) {
   const traced = new Set(s.sources.flatMap((src) => src.refs.map((r) => r.id)).filter((id) => byId.has(id)));
   return [...p.rows, ...p.post]
@@ -168,7 +176,7 @@ function unsourced({ s }) {
     .map((r) => finding('SP-16', s.file, r.n, `${r.id}: под блоком нет «Из протокола:»`));
 }
 
-/** @type {SpecRule[]} */
+/** @type {TraceRule[]} */
 const TRACE = [
   { ids: ['SP-14'], check: lostRows },
   { ids: ['SP-16'], check: unsourced },
@@ -183,13 +191,14 @@ function traceFindings(c) {
     return [finding('SP-21', s.file, s.sources[0]?.n || headerLine(s.md, 'Протокол'), 'протокола нет, а spec на него ссылается')];
   }
   if (s.oldTraceLine) return [finding('SP-13', s.file, s.oldTraceLine, 'раздел «Трассировка» — старый формат')];
-  return [...s.sources.flatMap((src) => SOURCE.flatMap((r) => r.check(src, c))), ...TRACE.flatMap((r) => r.check(c))];
+  const t = { ...c, p };
+  return [...s.sources.flatMap((src) => SOURCE.flatMap((r) => r.check(src, t))), ...TRACE.flatMap((r) => r.check(t))];
 }
 
-/** @param {any} m @returns {Finding[]} */
+/** @param {Feature} m @returns {Finding[]} */
 export function checkSpec(m) {
   if (!m.spec) return [];
-  const c = specContext(m);
+  const c = specContext(m, m.spec);
   const live = [...c.s.reqs.values()].filter((r) => !r.deleted);
   return [...SPEC.flatMap((r) => r.check(c)), ...live.flatMap((req) => REQ.flatMap((r) => r.check(req, c))), ...traceFindings(c)];
 }

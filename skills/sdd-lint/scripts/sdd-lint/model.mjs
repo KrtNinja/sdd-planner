@@ -97,13 +97,15 @@
 
 /** «[4](brainstorming.md#L18)» → { id: '4', href }, «П1» без ссылки → { id: 'П1', href: null }. @typedef {{ id: string, href: string | null }} SourceRef */
 
+/** Раздел, где «Из протокола:» стоит без блока требования. @typedef {'вне scope' | 'открытый вопрос' | 'не про поведение'} SourceSection */
+
 /**
  * Строка «Из протокола:» и к чему она относится: к требованиям блока над ней или к разделу.
  * @typedef {object} SourceLine
  * @property {number} n
  * @property {string} text
  * @property {SourceRef[]} refs
- * @property {{ kind: 'req', ids: string[] } | { kind: string } | null} target kind раздела: «вне scope», «открытый вопрос», «не про поведение»
+ * @property {{ kind: 'req', ids: string[] } | { kind: SourceSection } | null} target требования блока над строкой или раздел
  */
 
 /**

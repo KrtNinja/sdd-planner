@@ -3,7 +3,7 @@
   "total": 273,
   "pass": 273,
   "fail": 0,
-  "seconds": 30
+  "seconds": 31
  },
  "functions": 450,
  "crapAtLeast10": 61,
@@ -266,8 +266,8 @@
   "no-param-reassign": 1,
   "no-shadow": 3
  },
- "tscErrors": 637,
- "tsCheckModules": 20,
+ "tscErrors": 531,
+ "tsCheckModules": 33,
  "tsCheckErrors": 0,
  "clonesCodePercent": 3.07,
  "clonesTestsPercent": 6.13,

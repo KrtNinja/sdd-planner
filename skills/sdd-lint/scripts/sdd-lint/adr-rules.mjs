@@ -1,18 +1,21 @@
 // Правила AD-* по ADR: номера всех ADR, затем каждый ADR фичи — списком { ids, check }.
+// @ts-check
 import { limitIds } from './adr.mjs';
 import { finding, noStatus } from './findings.mjs';
 import { rel, uniq, approved, inSection, hasSection, sectionText, header, reqIds } from './md.mjs';
+
+/** @typedef {import('./model.mjs').Feature} Feature */
 
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.
 // Порядок правил — порядок находок: сначала номера всех ADR, затем по каждому ADR фичи правила по очереди.
 /** @typedef {import('./model.mjs').Finding} Finding */
 /** @typedef {import('./model.mjs').Adr} Adr */
-/** @typedef {{ ids: string[], check: (a: Adr, m: any) => Finding[] }} AdrRule */
+/** @typedef {{ ids: string[], check: (a: Adr, m: Feature) => Finding[] }} AdrRule */
 
 const SECTIONS = ['Контекст', 'Варианты', 'Решение', 'Последствия', 'Не выяснено'];
 
 // AD-09: у каждого ADR в docs/adr свой номер.
-/** @param {any} m */
+/** @param {Feature} m */
 function uniqueNums(m) {
   const seen = new Map();
   return m.adrs.flatMap((/** @type {Adr} */ a) => {
@@ -48,7 +51,7 @@ function limits(a) {
     defined.set(x.id, x.n);
     return [];
   });
-  const unknown = a.sc.lines.flatMap((/** @type {any} */ l) =>
+  const unknown = a.sc.lines.flatMap((l) =>
     uniq(limitIds(l.text))
       .filter((id) => !defined.has(id))
       .map((id) => finding('AD-11', a.file, l.n, `${id} нет в «Контексте»`)),
@@ -57,18 +60,18 @@ function limits(a) {
 }
 
 // AD-06: «Контекст» ссылается на FR/NFR, и они есть в spec.
-/** @param {Adr} a @param {any} m */
-function contextReqs(a, m) {
+/** @param {Adr} a @param {Feature} m */
+function contextReqs(a, { spec }) {
   if (!hasSection(a.sc, /^Контекст/)) return [];
   const ids = reqIds(sectionText(a.sc, /^Контекст/));
   return [
     ...(ids.length ? [] : [finding('AD-06', a.file, null, '«Контекст» без FR/NFR')]),
-    ...(m.spec ? ids.filter((id) => !m.spec.reqs.has(id)).map((id) => finding('AD-06', a.file, null, `«Контекст»: ${id} нет в spec.md`)) : []),
+    ...(spec ? ids.filter((id) => !spec.reqs.has(id)).map((id) => finding('AD-06', a.file, null, `«Контекст»: ${id} нет в spec.md`)) : []),
   ];
 }
 
 // AD-07: slices из шапки и «Последствий» существуют, а из шапки — описаны в «Последствиях».
-/** @param {Adr} a @param {any} m */
+/** @param {Adr} a @param {Feature} m */
 function touchedSlices(a, m) {
   if (!m.slices.size) return [];
   const touched = (header(a.md, 'Затрагивает slices') || '').match(/\b\d{3}\b/g) || [];
@@ -99,8 +102,8 @@ const ADR = [
     ids: ['AD-08'],
     check: (a) =>
       inSection(a.sc, /^Не выяснено/)
-        .filter((/** @type {any} */ x) => !x.inCode && /^\s*[-*]\s+\S/.test(x.text) && !/блокир/i.test(x.text) && !/блокир/i.test(x.h2))
-        .map((/** @type {any} */ l) => finding('AD-08', a.file, l.n, 'не сказано, блокирует ли пункт slices')),
+        .filter((x) => !x.inCode && /^\s*[-*]\s+\S/.test(x.text) && !/блокир/i.test(x.text) && !/блокир/i.test(x.h2))
+        .map((l) => finding('AD-08', a.file, l.n, 'не сказано, блокирует ли пункт slices')),
   },
   {
     ids: ['AD-10'],
@@ -109,7 +112,7 @@ const ADR = [
   },
 ];
 
-/** @param {any} m @returns {Finding[]} */
+/** @param {Feature} m @returns {Finding[]} */
 export function checkAdrs(m) {
   return [...uniqueNums(m), ...m.featureAdrs.flatMap((/** @type {Adr} */ a) => ADR.flatMap((r) => r.check(a, m)))];
 }
