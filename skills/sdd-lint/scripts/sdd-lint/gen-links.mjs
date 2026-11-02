@@ -9,6 +9,8 @@ import { genReadme } from './readme.mjs';
 import { SRC_RE, SRC_REF_RE, hasProtocolTraces, stripProtocol, protoHref } from './sources.mjs';
 import { parseSpec } from './spec.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Старый раздел «Трассировка» → «Из протокола:» под требованиями и в разделах. Возвращает новый md.
 function migrateTrace(s) {
   const t = s.oldTraceT;
@@ -112,8 +114,9 @@ export function linkSlice(sl, spec) {
   return moved.length;
 }
 
-export function genLinks(m) {
-  if (!m.spec) usage('Нет spec.md');
+/** @param {Ctx} ctx */
+export function genLinks(ctx, m) {
+  if (!m.spec) usage(ctx, 'Нет spec.md');
   const out = [];
   const specMsg = linkSpec(m);
   if (specMsg) out.push(specMsg);
@@ -124,9 +127,9 @@ export function genLinks(m) {
     out.push(`slices: «Основание» — ссылка на spec.md, FR в «Проверяет:» — ссылки на их строки.${moved ? ` Перенесено из строк AC в «Проверяет:»: ${moved}.` : ''}`);
     f = loadFeature(m.dir);
     if (f.readme != null) {
-      genReadme(f, true);
+      genReadme(ctx, f, true);
       out.push(`${rel(f.readmeFile)}: таблицы собраны заново со ссылками.`);
     }
   }
-  console.log(out.join('\n\n'));
+  ctx.io.log(out.join('\n\n'));
 }

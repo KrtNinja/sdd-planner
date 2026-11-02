@@ -1,5 +1,4 @@
 // Команда diff: проверки DF-* по git.
-import { flags, pos } from './args.mjs';
 import { usage } from './cli.mjs';
 import { skillCode } from './config.mjs';
 import { loadFeature } from './feature.mjs';
@@ -9,15 +8,19 @@ import { rel, approved } from './md.mjs';
 import { needDir } from './pick.mjs';
 import { hasProtocolTraces } from './sources.mjs';
 
-export function cmdDiff() {
-  const dir = needDir(pos[0]);
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
+/** @param {Ctx} ctx */
+export function cmdDiff(ctx) {
+  const { flags, pos } = ctx.args;
+  const dir = needDir(ctx, pos[0]);
   const g = gitInfo(dir);
-  if (!g) usage('diff работает только в git-репозитории');
+  if (!g) usage(ctx, 'diff работает только в git-репозитории');
   const ref = flags.base || 'HEAD';
   diffChecks(dir, g, ref);
-  const c = report({ base: ref });
-  if (!flags.json) console.log(`\nСверка с ${ref}. Ошибок: ${c.err}, предупреждений: ${c.warn}`);
-  process.exit(c.err ? 1 : 0);
+  const c = report(ctx, { base: ref });
+  if (!flags.json) ctx.io.log(`\nСверка с ${ref}. Ошибок: ${c.err}, предупреждений: ${c.warn}`);
+  ctx.io.exit(c.err ? 1 : 0);
 }
 // Проверки DF-*: рабочая копия против ref. Находки — в findings.
 export function diffChecks(dir, g, ref) {

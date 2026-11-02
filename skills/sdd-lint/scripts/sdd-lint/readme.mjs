@@ -8,6 +8,8 @@ import { linkReqs, basisPlain, staleReqLinks } from './links.mjs';
 import { rel, uniq, scan, isH2, inSection, sectionText, tables, col, reqIds, replaceSection } from './md.mjs';
 import { registry } from './services.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 export const coverage = (m) => {
   const covered = new Map();
   for (const [num, sl] of m.slices)
@@ -117,8 +119,9 @@ export function checkReadme(m) {
   }
 }
 
-export function genReadme(m, quiet = false) {
-  if (!m.slices.size) usage('В slices/ нет файлов NNN-*.md');
+/** @param {Ctx} ctx */
+export function genReadme(ctx, m, quiet = false) {
+  if (!m.slices.size) usage(ctx, 'В slices/ нет файлов NNN-*.md');
   const link = (text) => (m.spec ? linkReqs(text, m.readmeFile, m.spec) : text);
   const row = (sl) =>
     `| [${sl.num} ${sl.title || sl.name}](${sl.name}) | ${sl.type || '—'} | ${sl.halves || '—'} | ${basisPlain(sl.basisRaw) || '—'} | ${sl.deps.join(', ') || '—'} | ${sl.why || '—'} |`;
@@ -181,5 +184,5 @@ export function genReadme(m, quiet = false) {
     md = replaceSection(md, /^Порядок/, 'Порядок работ', orderText);
   }
   fs.writeFileSync(m.readmeFile, md.endsWith('\n') ? md : `${md}\n`);
-  if (!quiet) console.log(`${rel(m.readmeFile)}: таблица slices, «Покрытие Dev Spec», «Порядок работ» собраны из файлов slices. Порядок: ${order}`);
+  if (!quiet) ctx.io.log(`${rel(m.readmeFile)}: таблица slices, «Покрытие Dev Spec», «Порядок работ» собраны из файлов slices. Порядок: ${order}`);
 }

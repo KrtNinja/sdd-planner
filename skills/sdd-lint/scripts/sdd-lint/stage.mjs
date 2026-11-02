@@ -8,6 +8,8 @@ import { rel, approved } from './md.mjs';
 import { openBlockers, reviewKey } from './review.mjs';
 import { legacyPaths, workFiles } from './work.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Временные артефакты этапа планирования: нужны, пока требования пишутся, в merge не идут. Убирает их /sdd-close.
 // Протокол лежит в папке фичи, остальное — в _work/; старые review/ и slices/plan.md close тоже убирает.
 export function tempArtifacts(m) {
@@ -113,7 +115,8 @@ export function stageText({ now, next }) {
 export { tipOk, tipLine } from './config.mjs';
 // Последней строкой вывода: агент переносит её в конец ответа дословно (правило в SKILL.md sdd-lint).
 // При ошибках lint check и fix строку не печатают: сначала исправить, одобрять или ревьюить рано.
-export function printTip(st) {
+/** @param {Ctx} ctx */
+export function printTip(ctx, st) {
   const t = tipLine(st.tip);
-  if (t) console.log(`\n${t}`);
+  if (t) ctx.io.log(`\n${t}`);
 }

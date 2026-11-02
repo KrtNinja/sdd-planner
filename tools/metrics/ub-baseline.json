@@ -113,11 +113,6 @@
     "coverage": 57.1429,
     "crap": 23.3352
    },
-   "skills.sdd-lint.scripts.sdd-lint.cmd-ask#run": {
-    "complexity": 21,
-    "coverage": 83.871,
-    "crap": 22.8504
-   },
    "skills.sdd-lint.scripts.sdd-lint.cmd-fix#fixFeature": {
     "complexity": 22,
     "coverage": 97.1429,
@@ -387,6 +382,11 @@
     "complexity": 10,
     "coverage": 100,
     "crap": 10
+   },
+   "skills.sdd-lint.scripts.sdd-lint.cmd-ask#act": {
+    "complexity": 21,
+    "coverage": 83.871,
+    "crap": 22.8504
    }
   }
  },

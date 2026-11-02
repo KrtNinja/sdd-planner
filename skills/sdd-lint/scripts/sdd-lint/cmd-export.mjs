@@ -1,5 +1,4 @@
 // Команда export: требования фичи в JSON для зоны реализации — единственный интерфейс между зонами.
-import { pos } from './args.mjs';
 import { gateClosed } from './cmd-check.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { rel } from './md.mjs';
@@ -7,6 +6,8 @@ import { needDir } from './pick.mjs';
 import { layers } from './readme.mjs';
 import { serviceOfHeading, servicesOf } from './services.mjs';
 import { stageOf } from './stage.mjs';
+
+/** @typedef {import('./io.mjs').Ctx} Ctx */
 
 // Разметку markdown знает только планирование: реализация читает этот JSON, а не файлы slices.
 // Тест ссылается на AC строкой <feature>/<AC-ID> — так AC-002-1 разных фич не смешиваются.
@@ -27,8 +28,9 @@ function acOf(feature, ac) {
   };
 }
 
-export function cmdExport() {
-  const m = loadFeature(needDir(pos[0]));
+/** @param {Ctx} ctx */
+export function cmdExport(ctx) {
+  const m = loadFeature(needDir(ctx, ctx.args.pos[0]));
   runChecks(m);
   const closed = gateClosed(m, 'build');
   const layerOf = new Map(layers(m).flatMap((ls, i) => ls.map((n) => [n, i + 1])));
@@ -57,7 +59,7 @@ export function cmdExport() {
     slices,
     adrs: m.featureAdrs.map((a) => ({ num: a.num, file: rel(a.file), status: a.status, title: ((a.md.match(/^#\s+ADR-\d+:\s*(.*)$/m) || [])[1] || '').trim() })),
   };
-  console.log(JSON.stringify(out, null, 2));
+  ctx.io.log(JSON.stringify(out, null, 2));
   // Код как у gate build: 3 — реализацию начинать нельзя; JSON печатается всё равно.
-  process.exit(closed ? 3 : 0);
+  ctx.io.exit(closed ? 3 : 0);
 }

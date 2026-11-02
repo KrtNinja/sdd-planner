@@ -1,7 +1,6 @@
 // Команды plan и done: проверка плана нарезки и конец этапа одной командой — с лимитом прогонов.
 import fs from 'node:fs';
 
-import { pos } from './args.mjs';
 import { askOf } from './ask.mjs';
 import { gateClosed } from './cmd-check.mjs';
 import { closedScreen } from './guide.mjs';
@@ -15,40 +14,41 @@ import { G, blocks, list, screen } from './screen.mjs';
 import { MAX_RUNS, bump, mark, reset } from './runs.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 
-const exitWith = (code) => process.exit(code);
-
+/** @typedef {import('./io.mjs').Ctx} Ctx */
 
 // План проверяет скрипт, а не модель: покрытие, причины, зависимости, сервисы.
-export function cmdPlan() {
-  const m = loadFeature(needDir(pos[0]));
+/** @param {Ctx} ctx */
+export function cmdPlan(ctx) {
+  const { pos } = ctx.args;
+  const m = loadFeature(needDir(ctx, pos[0]));
   const dir = rel(m.dir);
   if (!m.plan) {
-    console.log(screen(`Плана нарезки ещё нет: ${rel(m.planFile)}.`, `запиши ${rel(m.planFile)} по шаблону assets/plan.md скилла sdd-slices`, G.then(['plan', dir])));
-    exitWith(2);
+    ctx.io.log(screen(`Плана нарезки ещё нет: ${rel(m.planFile)}.`, `запиши ${rel(m.planFile)} по шаблону assets/plan.md скилла sdd-slices`, G.then(['plan', dir])));
+    ctx.io.exit(2);
   }
   runChecks(m);
   const closed = gateClosed(m, 'slices');
   if (closed) {
-    console.log(closedScreen('slices', closed));
-    exitWith(3);
+    ctx.io.log(closedScreen('slices', closed));
+    ctx.io.exit(3);
   }
   const own = findings.filter((x) => x.rule.startsWith('PL'));
   findings.length = 0;
   findings.push(...own);
-  const c = report();
+  const c = report(ctx);
   const { runs } = bump(m.dir, 'plan');
   if (c.err) {
-    if (runs < MAX_RUNS) console.log(`\n${screen(`План нарезки не готов: ошибок ${c.err}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, `исправь ${rel(m.planFile)}`, G.then(['plan', dir]))}`);
+    if (runs < MAX_RUNS) ctx.io.log(`\n${screen(`План нарезки не готов: ошибок ${c.err}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, `исправь ${rel(m.planFile)}`, G.then(['plan', dir]))}`);
     else {
       reset(m.dir, 'plan');
-      console.log(`\n${screen(`Ошибки в плане нарезки не ушли за ${MAX_RUNS} прогона — список выше. Как быть: поправить план вместе или вы поправите сами?`, 'коротко объясни человеку, что не вышло и почему', G.stop)}`);
+      ctx.io.log(`\n${screen(`Ошибки в плане нарезки не ушли за ${MAX_RUNS} прогона — список выше. Как быть: поправить план вместе или вы поправите сами?`, 'коротко объясни человеку, что не вышло и почему', G.stop)}`);
     }
-    exitWith(1);
+    ctx.io.exit(1);
   }
   reset(m.dir, 'plan');
   const warn = c.warn ? `предупреждений ${c.warn} — повод склеить slices: поправь план или оставь, человек увидит их рядом с планом` : null;
-  console.log(`\n${screen(`План нарезки без ошибок: ${m.plan.slices.length} slices.`, warn, G.call(['ask', dir]))}`);
-  exitWith(0);
+  ctx.io.log(`\n${screen(`План нарезки без ошибок: ${m.plan.slices.length} slices.`, warn, G.call(['ask', dir]))}`);
+  ctx.io.exit(0);
 }
 
 // Черновик стал «на ревью»: статус меняет скрипт, а не агент.
@@ -65,33 +65,35 @@ function promote(m) {
 
 // Конец этапа: fix → (ошибки — исправить и снова done) → «на ревью», снимок для guard, вопрос этапа.
 // Предупреждения агент правит один раз; что осталось, видит человек.
-export function cmdDone() {
-  const { m, changed, notes } = fixFeature(needDir(pos[0]));
+/** @param {Ctx} ctx */
+export function cmdDone(ctx) {
+  const { pos } = ctx.args;
+  const { m, changed, notes } = fixFeature(ctx, needDir(ctx, pos[0]));
   const dir = rel(m.dir);
   const errs = findings.filter((x) => x.level === 'err');
   const warns = findings.filter((x) => x.level === 'warn');
   const { runs, prev } = bump(m.dir, 'done');
-  console.log(fixedText(changed));
-  for (const n of notes) console.log(`\n${n}`);
+  ctx.io.log(fixedText(changed));
+  for (const n of notes) ctx.io.log(`\n${n}`);
 
   if (errs.length) {
-    console.log('');
-    report();
-    if (runs < MAX_RUNS) console.log(`\n${screen(`Этап не готов: ошибок ${errs.length}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, 'исправь ошибки', G.then(['done', dir]))}`);
+    ctx.io.log('');
+    report(ctx);
+    if (runs < MAX_RUNS) ctx.io.log(`\n${screen(`Этап не готов: ошибок ${errs.length}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, 'исправь ошибки', G.then(['done', dir]))}`);
     else {
       reset(m.dir, 'done');
-      console.log(`\n${screen(`Ошибки не ушли за ${MAX_RUNS} прогона — список выше. Как быть?`, 'коротко объясни человеку, что не вышло и почему', G.stop)}`);
+      ctx.io.log(`\n${screen(`Ошибки не ушли за ${MAX_RUNS} прогона — список выше. Как быть?`, 'коротко объясни человеку, что не вышло и почему', G.stop)}`);
     }
-    exitWith(1);
+    ctx.io.exit(1);
   }
   if (warns.length && !prev?.warnTried) {
     mark(m.dir, 'done', { warnTried: true });
-    console.log('');
-    report();
-    console.log(
+    ctx.io.log('');
+    report(ctx);
+    ctx.io.log(
       `\n${screen(`Ошибок нет, предупреждений ${warns.length} — поправлю те, что можно без вашего решения.`, 'исправь предупреждения, которые не требуют решения человека; остальные не трогай', G.then(['done', dir]))}`,
     );
-    exitWith(1);
+    ctx.io.exit(1);
   }
 
   const promoted = promote(m);
@@ -103,6 +105,6 @@ export function cmdDone() {
     ? `Осталось:\n${list([...warns.slice(0, 5).map((x) => line(x).replace(/^\S+\s+/, '')), ...(warns.length > 5 ? [`…и ещё ${warns.length - 5}`] : [])])}`
     : null;
   const { stage, questions } = askOf(f);
-  console.log(`\n${viewText(questionsView(dir, stage, questions, { lead: blocks(ready, left) }))}`);
-  exitWith(0);
+  ctx.io.log(`\n${viewText(questionsView(dir, stage, questions, { lead: blocks(ready, left) }))}`);
+  ctx.io.exit(0);
 }

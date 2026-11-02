@@ -2,17 +2,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { pos, CMD_INFO, CHOICES, SLOTS, FLAGS, COMMANDS } from './args.mjs';
+import { CMD_INFO, CHOICES, SLOTS, FLAGS, COMMANDS } from './args.mjs';
 import { askOf } from './ask.mjs';
-import { promptSkills } from './cmd-prompt.mjs';
+import { SELF, promptSkills } from './cmd-prompt.mjs';
 import { code, lintCmd, skillCode, lintCode } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { git } from './git.mjs';
 import { DOCS, isDir, listFeatures, resolveFeature, pickChoice } from './pick.mjs';
 import { stageOf, tipLine } from './stage.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Без аргументов: фичи с этапом и командами, которые можно скопировать.
-export function cmdMenu() {
+/** @param {Ctx} ctx */
+export function cmdMenu(ctx) {
   const known = listFeatures();
   const out = ['**sdd-lint** — проверки планирования SDD', ''];
   let tip = null;
@@ -48,8 +51,8 @@ export function cmdMenu() {
   out.push('', `Закрыть фичу перед merge — ${skillCode('sdd-close', ex)}: убирает протокол и ${code('_work/')} (ревью, план нарезки) — после подтверждения.`);
   out.push('', `Справка по команде: ${lintCode('help', '<команда>')}. Путь к фиче дописывает Tab после @: ${code(`@${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`)}`);
   if (tip) out.push('', tip);
-  console.log(out.join('\n'));
-  process.exit(0);
+  ctx.io.log(out.join('\n'));
+  ctx.io.exit(0);
 }
 
 function distance(a, b) {
@@ -61,14 +64,16 @@ function distance(a, b) {
   return d[a.length][b.length];
 }
 // «aprove docs/x» — не фича, а опечатка в команде.
-export function checkTypo() {
+/** @param {Ctx} ctx */
+export function checkTypo(ctx) {
+  const { pos } = ctx.args;
   const w = pos[0];
   if (!w || /[\\/.]/.test(w) || resolveFeature(w)) return;
   const near = COMMANDS.map((c) => [c, distance(w.toLowerCase(), c)]).filter(([c, n]) => n <= (c.length > 4 ? 2 : 1)).sort((a, b) => a[1] - b[1]);
   if (!near.length) return;
   const fixed = lintCmd(near[0][0], ...pos.slice(1));
-  console.error(`Нет команды «${w}». Может, ${near[0][0]}? ${code(fixed)}`);
-  process.exit(2);
+  ctx.io.error(`Нет команды «${w}». Может, ${near[0][0]}? ${code(fixed)}`);
+  ctx.io.exit(2);
 }
 
 // Варианты для Tab: «значение\tописание» по строке. words — слова после имени команды, последнее — дописываемое.
@@ -139,13 +144,14 @@ export function complete(words) {
 }
 
 // Скрипт для bash / zsh с путём к этому файлу: работает и через alias, и через ссылку в PATH.
-export function cmdCompletion() {
-  const shell = pos[0];
-  if (!['bash', 'zsh'].includes(shell)) pickChoice('completion');
-  const self = fs.realpathSync(process.argv[1]).replace(/'/g, `'\\''`);
+/** @param {Ctx} ctx */
+export function cmdCompletion(ctx) {
+  const shell = ctx.args.pos[0];
+  if (!['bash', 'zsh'].includes(shell)) pickChoice(ctx, 'completion');
+  const self = SELF.replace(/'/g, `'\\''`);
   const run = `node '${self}' __complete`;
   if (shell === 'bash') {
-    console.log(`# sdd-lint: Tab-дополнение для bash. В ~/.bashrc: source <(sdd-lint completion bash)
+    ctx.io.log(`# sdd-lint: Tab-дополнение для bash. В ~/.bashrc: source <(sdd-lint completion bash)
 _sdd_lint() {
   local IFS=$'\\n' out
   out=$(${run} "\${COMP_WORDS[@]:1:COMP_CWORD}" 2>/dev/null) || return 0
@@ -154,7 +160,7 @@ _sdd_lint() {
 }
 complete -F _sdd_lint sdd-lint sdd-lint.mjs`);
   } else {
-    console.log(`# sdd-lint: Tab-дополнение для zsh. В ~/.zshrc после compinit: source <(sdd-lint completion zsh)
+    ctx.io.log(`# sdd-lint: Tab-дополнение для zsh. В ~/.zshrc после compinit: source <(sdd-lint completion zsh)
 _sdd_lint() {
   local -a lines vals disp dirs
   local line v
@@ -171,5 +177,5 @@ _sdd_lint() {
 }
 compdef _sdd_lint sdd-lint sdd-lint.mjs`);
   }
-  process.exit(0);
+  ctx.io.exit(0);
 }

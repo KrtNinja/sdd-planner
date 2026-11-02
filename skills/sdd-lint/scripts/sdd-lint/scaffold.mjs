@@ -12,6 +12,8 @@ import { genReadme } from './readme.mjs';
 import { G, screen } from './screen.mjs';
 import { parseHalves, halvesLine, halfHeading } from './services.mjs';
 
+/** @typedef {import('./io.mjs').Ctx} Ctx */
+
 // Заготовки в «<…>»: агент заменяет их текстом, SL-37 не даёт забыть ни одну.
 const acStub = (num, side) => ['```', `AC-${num}-${side}? <имя>`, '  WHEN <условие>', '  THEN <наблюдаемый исход>', '```', 'Проверяет: <FR-n>', ''];
 
@@ -65,11 +67,12 @@ function sliceText(m, plan, s) {
   return md.join('\n');
 }
 
-export function genSlices(m) {
+/** @param {Ctx} ctx */
+export function genSlices(ctx, m) {
   const dir = rel(m.dir);
   const stop = (msg) => {
-    console.log(msg);
-    process.exit(1);
+    ctx.io.log(msg);
+    ctx.io.exit(1);
   };
   if (!m.plan) stop(`Нет ${rel(m.planFile)} — сначала план нарезки (скилл sdd-slices).`);
   if (m.slices.size) stop(`В ${dir}/slices/ уже есть файлы slices — по плану создаются только новые. Меняйте файлы; решения — через sdd-decide.`);
@@ -92,15 +95,15 @@ export function genSlices(m) {
   fs.rmSync(m.planFile);
   const f = loadFeature(m.dir);
   const hadReadme = f.readme != null;
-  genReadme(f, true);
+  genReadme(ctx, f, true);
   const after = loadFeature(m.dir);
   const count = (file) => stubLines(fs.readFileSync(file, 'utf8')).reduce((k, x) => k + x.items.length, 0);
   const stubs = [...made, after.readmeFile].map((file) => `${path.basename(file)} — ${count(file)}`).join(', ');
-  console.log(
+  ctx.io.log(
     [
       `Созданы по плану в \`${dir}/slices/\`: ${made.map((x) => path.basename(x)).join(', ')}; README.md ${hadReadme ? 'собран заново' : 'создан'}. План удалён.`,
       `Заготовок «<…>» к заполнению: ${stubs}.`,
     ].join('\n\n'),
   );
-  process.exit(0);
+  ctx.io.exit(0);
 }

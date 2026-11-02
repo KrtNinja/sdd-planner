@@ -1,8 +1,9 @@
 // Находки проверок и отчёт: текст или --json.
-import { flags } from './args.mjs';
 import { cmds } from './config.mjs';
 import { rel, uniq } from './md.mjs';
 import { RULES } from './rules.mjs';
+
+/** @typedef {import('./io.mjs').Ctx} Ctx */
 
 export const findings = [];
 export const hasErrors = () => findings.some((x) => x.level === 'err');
@@ -15,21 +16,22 @@ export const add = (rule, file, line, msg) => {
 const LEVEL = { err: 'ОШИБКА', warn: 'ВНИМАНИЕ', info: 'ИНФО' };
 export const line = (x) => `**${LEVEL[x.level]}** \`${x.rule}\` \`${x.file}${x.line ? `:${x.line}` : ''}\` — ${x.msg}`;
 export const item = (x) => `- ${line(x)}`;
-export function report(extra = {}) {
+/** @param {Ctx} ctx */
+export function report(ctx, extra = {}) {
   const order = { err: 0, warn: 1, info: 2 };
   findings.sort((a, b) => order[a.level] - order[b.level] || a.file.localeCompare(b.file) || (a.line || 0) - (b.line || 0));
   const counts = { err: 0, warn: 0, info: 0 };
   for (const x of findings) counts[x.level] += 1;
-  if (flags.json) {
+  if (ctx.args.flags.json) {
     const hints = Object.fromEntries(uniq(findings.map((x) => x.rule)).map((r) => [r, cmds(RULES[r][1])]));
-    console.log(JSON.stringify({ findings, hints, counts, ...extra }, null, 2));
+    ctx.io.log(JSON.stringify({ findings, hints, counts, ...extra }, null, 2));
     return counts;
   }
-  for (const x of findings) console.log(item(x));
+  for (const x of findings) ctx.io.log(item(x));
   const fired = uniq(findings.filter((x) => x.level !== 'info').map((x) => x.rule)).sort();
   if (fired.length) {
-    console.log('\nКак исправить:');
-    for (const r of fired) console.log(`- \`${r}\` — ${cmds(RULES[r][1])}`);
+    ctx.io.log('\nКак исправить:');
+    for (const r of fired) ctx.io.log(`- \`${r}\` — ${cmds(RULES[r][1])}`);
   }
   return counts;
 }
