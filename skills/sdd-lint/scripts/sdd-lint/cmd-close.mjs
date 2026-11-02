@@ -11,7 +11,8 @@ import { findings, report } from './findings.mjs';
 import { genLinks } from './gen-links.mjs';
 import { rel } from './md.mjs';
 import { needDir } from './pick.mjs';
-import { questionsView } from './question.mjs';
+import { questionsView, viewText } from './question.mjs';
+import { G, blocks, codePaths, list, screen } from './screen.mjs';
 import { tempArtifacts } from './stage.mjs';
 import { legacyPaths } from './work.mjs';
 
@@ -30,13 +31,13 @@ export function cmdClose() {
   const m = loadFeature(needDir(target));
   const dir = rel(m.dir);
   if (!tempArtifacts(m).length) {
-    console.log(`Временных артефактов нет: ${dir} уже закрыта.`);
+    console.log(screen(`Временных артефактов нет: ${dir} уже закрыта.`, G.stop));
     process.exit(0);
   }
   const s = closeSummary(m);
   if (!flags.yes) {
-    if (flags.json) console.log(JSON.stringify(questionsView(dir, `Закрытие ${dir}`, [closeQuestion(m, s)]), null, 2));
-    else console.log(`${closePreview(s)}\n\nПодтвердить: ${lintCode('close', dir, '--yes')}`);
+    if (flags.json) console.log(viewText(questionsView(dir, `Закрытие ${dir}`, [closeQuestion(m, s)])));
+    else console.log(blocks(closePreview(s), `Подтвердить: ${lintCode('close', dir, '--yes')}`));
     process.exit(0);
   }
 
@@ -52,9 +53,12 @@ export function cmdClose() {
   runChecks(loadFeature(m.dir));
   const c = report();
   console.log(
-    `\nУдалено: ${gone.join(', ')}. В spec нет ссылок на протокол, ссылки на FR в slices обновлены.` +
-      (s.risks.length ? `\nЗакрыто с последствиями:\n${s.risks.map((x) => `  - ${x}`).join('\n')}` : '') +
-      `\nЗакоммитьте удаление вместе с остальными документами. Решения дальше — ${skillCode('sdd-decide', m.name)}: правит FR и AC напрямую.`,
+    (findings.length ? '\n' : '') +
+    blocks(
+      `Удалено: ${gone.map(codePaths).join(', ')}. В spec нет ссылок на протокол, ссылки на FR в slices обновлены.`,
+      s.risks.length ? `Закрыто с последствиями:\n${list(s.risks.map(codePaths))}` : null,
+      `Закоммитьте удаление вместе с остальными документами. Решения дальше — ${skillCode('sdd-decide', m.name)}: правит FR и AC напрямую.`,
+    ),
   );
   process.exit(c.err ? 1 : 0);
 }

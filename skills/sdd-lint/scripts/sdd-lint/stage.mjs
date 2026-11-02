@@ -107,7 +107,7 @@ export function stageOf(m) {
 export function stageText({ now, next }) {
   if (!next.length) return now;
   if (next.length === 1) return `${now}. Следующий шаг: ${next[0]}`;
-  return `${now}. Следующий шаг:\n${next.map((x, i) => `  ${i + 1}. ${x}`).join('\n')}`;
+  return `${now}. Следующий шаг:\n\n${next.map((x, i) => `${i + 1}. ${x}`).join('\n')}`;
 }
 
 export { tipOk, tipLine } from './config.mjs';

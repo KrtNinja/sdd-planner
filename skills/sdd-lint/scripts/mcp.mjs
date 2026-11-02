@@ -9,7 +9,7 @@ import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 const LINT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'sdd-lint.mjs');
-const VERSION = '0.6.0';
+const VERSION = '0.7.0';
 
 const TOOL = {
   name: 'sdd_lint',
@@ -22,7 +22,8 @@ const TOOL = {
     '["done","docs/comments"] — конец этапа: fix, «на ревью» и вопрос этапа, ["plan","docs/comments"] — проверка плана нарезки, ' +
     '["gate","spec","docs/comments"], ["approve","slices","docs/comments"], ' +
     '["export","docs/comments"] — требования в JSON для реализации, ["help","gen"]. ' +
-    'Возвращает вывод скрипта и код выхода (0 — ок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты).',
+    'Вывод — карточка для человека (он уже видит её на экране, не пересказывай) и последняя строка «⚙ sdd: …» — что делать тебе, ' +
+    'с кодом выхода в конце (0 — ок, 1 — ошибки, 2 — неверный вызов, 3 — ворота закрыты). Словарь строки ⚙ — в правилах планирования.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -39,13 +40,22 @@ const runLint = (args) =>
     execFile(
       process.execPath,
       [LINT, ...args],
-      { cwd: process.cwd(), env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' }, maxBuffer: 16 * 1024 * 1024 },
+      { cwd: process.cwd(), env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0', SDD_VIEW: 'screen' }, maxBuffer: 16 * 1024 * 1024 },
       (err, stdout, stderr) => {
         const code = err ? (typeof err.code === 'number' ? err.code : null) : 0;
         resolve({ code, out: [stdout, stderr].filter(Boolean).join('\n').trimEnd(), spawnError: code === null ? String(err) : null });
       },
     );
   });
+
+// Код выхода — в строку ⚙: она последняя и единственная для агента. Нет её у команды (check, trace) — своя.
+function withCode(out, code) {
+  const lines = String(out).trimEnd().split('\n');
+  const last = lines.length - 1;
+  if (lines[last]?.startsWith('⚙ sdd:')) lines[last] += ` · код ${code}`;
+  else lines.push('', `⚙ sdd: код ${code}`);
+  return lines.join('\n').replace(/^\n+/, '');
+}
 
 const handle = async ({ id, method, params }) => {
   switch (method) {
@@ -69,7 +79,7 @@ const handle = async ({ id, method, params }) => {
         return send({ id, error: { code: -32602, message: 'args — массив строк' } });
       const r = await runLint(args);
       if (r.spawnError) return send({ id, result: { isError: true, content: [{ type: 'text', text: r.spawnError }] } });
-      return send({ id, result: { content: [{ type: 'text', text: `${r.out}\n\n[код выхода: ${r.code}]` }] } });
+      return send({ id, result: { content: [{ type: 'text', text: withCode(r.out, r.code) }] } });
     }
     default:
       if (id !== undefined) send({ id, error: { code: -32601, message: `Метод не поддерживается: ${method}` } });

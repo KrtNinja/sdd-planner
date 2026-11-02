@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { flags, pos } from './args.mjs';
 import { usage } from './cli.mjs';
-import { lintCode } from './config.mjs';
+import { code, lintCode } from './config.mjs';
 import { loadFeature, featureFiles } from './feature.mjs';
 import { add, report } from './findings.mjs';
 import { gitInfo, gitShow } from './git.mjs';
@@ -65,11 +65,10 @@ export function cmdGuard() {
     if (bad) out.push(`Защищённые части изменены в ${bad} файл(ах) — верните их как были.`);
     if (noBase.length)
       out.push(
-        `Не с чем сверить ${noBase.length} файл(ов): нет снимка и версии в git — ${noBase.map(rel).join(', ')}.`,
-        `  Снимок снимают до humanizer: ${lintCode('snapshot', '<файл>')}. Если humanizer уже прошёл, сверьте защищённые части глазами.`,
+        `Не с чем сверить ${noBase.length} файл(ов): нет снимка и версии в git — ${noBase.map((f) => code(rel(f))).join(', ')}. Снимок снимают до humanizer: ${lintCode('snapshot', '<файл>')}. Если humanizer уже прошёл, сверьте защищённые части глазами.`,
       );
     if (ok) out.push(`Защищённые части не тронуты в ${ok} файл(ах).`);
-    console.log(`\n${out.join('\n')}`);
+    console.log(`\n${out.join('\n\n')}`);
   }
   process.exit(bad || noBase.length ? 1 : 0);
 }

@@ -128,5 +128,5 @@ export function genLinks(m) {
       out.push(`${rel(f.readmeFile)}: таблицы собраны заново со ссылками.`);
     }
   }
-  console.log(out.join('\n'));
+  console.log(out.join('\n\n'));
 }

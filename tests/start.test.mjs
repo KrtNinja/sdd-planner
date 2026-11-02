@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
-const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: 'node scripts/sdd-lint.mjs' };
+const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: 'node scripts/sdd-lint.mjs', SDD_VIEW: 'json' };
 
 // Пустой репозиторий с доками; files — { 'путь': 'текст' }.
 function repo(files = {}) {
@@ -48,16 +48,14 @@ function fillContext(cwd, slug, sections) {
 test('start без аргументов: вопрос «Какую задачу будем делать?», ответ — в start', () => {
   const r = run(repo(), 'start');
   assert.equal(r.code, 0);
-  assert.match(r.out, /^Задачи нет\. Спроси человека дословно и жди ответа:/);
-  assert.match(r.out, /«Какую задачу будем делать\? .+@путь \(Tab дополнит\)\.»/);
-  assert.match(r.out, /Ответ человека передай дословно: sdd_lint \["start","<ответ>"\]\./);
+  assert.match(r.out, /^Какую задачу будем делать\? .+`@путь` \(Tab дополнит\)\.\n\n⚙ sdd: жди ответ → \["start","<ответ человека>"\]\n$/);
   assert.doesNotMatch(r.out, /Начатые/);
 });
 test('start без аргументов: начатые фичи — в вопросе, продолжить можно по имени', () => {
   const cwd = repo(SERVICES);
   run(cwd, 'start', 'исполнитель передаёт задачу коллеге', '--slug', 'task-handover');
   const r = run(cwd, 'start');
-  assert.match(r.out, /«Начатые: task-handover — чтобы продолжить, напишите имя\.»/);
+  assert.match(r.out, /\n\nНачатые: task-handover — чтобы продолжить, напишите имя\.\n\n⚙ sdd: /);
   const again = run(cwd, 'start', 'task-handover');
   assert.match(again.out, /"id": "src:repo"/);
 });
@@ -65,9 +63,9 @@ test('start без аргументов: начатые фичи — в вопр
 // ---------- путь 2: задача фразой ----------
 test('задача фразой: имя папки придумывает агент, человека не спрашивают', () => {
   const r = run(repo(), 'start', 'добавить панель настроек пользователя');
-  assert.match(r.out, /^Задача: «добавить панель настроек пользователя»\./);
-  assert.match(r.out, /Человека не спрашивай/);
-  assert.match(r.out, /sdd_lint \["start","добавить панель настроек пользователя","--slug","<имя>"\]/);
+  assert.match(r.out, /^⚙ sdd: придумай имя папки фичи по задаче «добавить панель настроек пользователя»: /);
+  assert.match(r.out, /человека не спрашивай/);
+  assert.match(r.out, / · вызови \["start","добавить панель настроек пользователя","--slug","<имя>"\]\n$/);
   assert.equal(fs.readdirSync(path.join(repo(), 'docs')).length, 0);
 });
 test('задача фразой и имя: протокол из шаблона, затем вопрос об источниках с описью папки', () => {
@@ -79,12 +77,12 @@ test('задача фразой и имя: протокол из шаблона,
   assert.match(md, /^Статус: идёт$/m);
   assert.match(md, /^Запрос: «добавить панель настроек пользователя»$/m);
   assert.match(md, /^Источники: </m);
-  assert.match(r.out, /^Создан docs\/user-settings\/brainstorming\.md\./);
-  assert.match(r.out, /--rename/);
+  assert.match(r.out, /^Создан `docs\/user-settings\/brainstorming\.md`\./);
+  assert.match(json(r.out).gear, / · другое имя папки → \["start","docs\/user-settings","--rename","<имя>"\]$/);
   const q = json(r.out);
   assert.equal(q.questions[0].question, 'Есть дополнительная документация или код, которые помогут понять, как устроен проект?');
-  assert.match(q.preview, /Папка фичи: docs\/user-settings/);
-  assert.match(q.preview, /services\/ — README: 2/);
+  assert.match(q.preview, /Папка фичи: `docs\/user-settings`/);
+  assert.match(q.preview, /^- `services\/` — README: 2/m);
   assert.deepEqual(optionIds(r.out), ['src:repo', 'src:give', 'src:new']);
   assert.equal(recommended(r.out), 'src:repo');
 });
@@ -98,28 +96,28 @@ test('имя папки проверяет скрипт: кириллица, з�
   assert.match(run(cwd, 'start', 'панель настроек', '--slug', 'Панель').out, /не подходит: латиница/);
   assert.match(run(cwd, 'start', 'панель настроек', '--slug', 'adr').out, /«adr» занято/);
   run(cwd, 'start', 'панель настроек', '--slug', 'settings');
-  assert.match(run(cwd, 'start', 'что-то другое совсем', '--slug', 'settings').out, /Папка docs\/settings уже занята — запрос «панель настроек»/);
+  assert.match(run(cwd, 'start', 'что-то другое совсем', '--slug', 'settings').out, /папка docs\/settings уже занята \(запрос «панель настроек»\)/);
 });
 test('ссылки и пути рядом с задачей — источники: вопроса нет, сразу задание сабагенту', () => {
   const cwd = repo({ ...SERVICES, 'specs/settings.md': '# Настройки\n' });
   const r = run(cwd, 'start', 'добавить панель настроек, смотри @specs/settings.md и https://wiki.example.ru/x', '--slug', 'settings');
   assert.match(read(cwd, 'docs/settings/brainstorming.md'), /^Источники: specs\/settings\.md; https:\/\/wiki\.example\.ru\/x$/m);
   assert.match(r.out, /Изучаю источники/);
-  assert.match(r.out, /Вызови инструмент sdd_lint с args \["research","context","docs\/settings"\] и выполни то, что он вернёт\./);
-  assert.match(r.out, /Сабагентов у тебя нет — выполни сам здесь/);
+  assert.match(r.out, /\n⚙ sdd: сабагент \["research","context","docs\/settings"\] · отчёт сабагента не пересказывай · затем \["start","docs\/settings"\] · без сабагентов — то же здесь/);
 });
 test('путь, которого нет: «Не нашёл» и подсказка про @ и Tab', () => {
   const r = run(repo(), 'start', 'панель настроек @specs/nope.md');
-  assert.match(r.out, /^Не нашёл: specs\/nope\.md\./);
-  assert.match(r.out, /начните с @ — Tab дополнит/);
+  assert.match(r.out, /^Не нашёл `specs\/nope\.md`\./);
+  assert.match(r.out, /начните с `@` — Tab дополнит/);
+  assert.match(r.out, /\n⚙ sdd: жди ответ → \["start",/);
 });
 test('старая форма: «task-handover "фраза"» и одно имя без задачи', () => {
   const cwd = repo();
   run(cwd, 'start', 'task-handover "Хочу, чтобы исполнитель мог передать задачу коллеге"');
   assert.match(read(cwd, 'docs/task-handover/brainstorming.md'), /^Запрос: «Хочу, чтобы исполнитель мог передать задачу коллеге»$/m);
   const r = run(cwd, 'start', 'comments');
-  assert.match(r.out, /^Задачи нет/);
-  assert.match(r.out, /sdd_lint \["start","<ответ>","--slug","comments"\]/);
+  assert.match(r.out, /^Какую задачу будем делать\?/);
+  assert.match(r.out, /⚙ sdd: жди ответ → \["start","<ответ человека>","--slug","comments"\]/);
 });
 
 // ---------- путь 3: задача файлом ----------
@@ -135,7 +133,7 @@ test('задача файлом: имя папки из имени файла, �
 test('задача файлом с общим именем (task.md) — имя придумывает агент', () => {
   const cwd = repo({ 'inbox/task.md': '# Задача\n' });
   const r = run(cwd, 'start', 'вот задача @inbox/task.md');
-  assert.match(r.out, /^Задача: файл inbox\/task\.md\./);
+  assert.match(r.out, /^⚙ sdd: придумай имя папки фичи по задаче файл inbox\/task\.md:/);
   assert.match(r.out, /--slug","<имя>"/);
 });
 test('задача файлом, новый проект: изучается только файл задачи, «ничего не нашёл» не спрашивают', () => {
@@ -152,8 +150,8 @@ test('задача файлом, новый проект: изучается т�
   });
   assert.equal(run(cwd, 'research', 'check', 'docs/user-settings').code, 0);
   const ready = run(cwd, 'start', 'docs/user-settings');
-  assert.match(ready.out, /^Старт готов/);
-  assert.match(ready.out, /«Уже решено в задаче» — 1: до первого раунда допиши/);
+  assert.match(ready.out, /\n⚙ sdd: старт готов · фича docs\/user-settings · /);
+  assert.match(ready.out, /«Уже решено в задаче» 1 — до первого раунда допиши/);
 });
 
 // ---------- ответы на вопрос об источниках ----------
@@ -161,8 +159,8 @@ test('choose src:give — человек отвечает словами, отв
   const cwd = repo({ ...SERVICES, '../front-docs-start-test/README.md': '# front\n' });
   run(cwd, 'start', 'панель настроек пользователя', '--slug', 'settings');
   const r = run(cwd, 'choose', 'docs/settings', 'src:give');
-  assert.match(r.out, /^Передай человеку дословно и жди ответа:\n\nПришлите пути или ссылки/);
-  assert.match(r.out, /Ответ человека передай дословно: sdd_lint с args \["start","docs\/settings","--sources","<ответ человека>"\]\./);
+  assert.match(r.out, /^Пришлите пути или ссылки/);
+  assert.match(r.out, /\n\n⚙ sdd: жди ответ → \["start","docs\/settings","--sources","<ответ человека>"\]\n$/);
   const a = run(cwd, 'start', 'docs/settings', '--sources', 'Да, вот @services/notify-service/ и https://wiki.example.ru/s');
   assert.match(read(cwd, 'docs/settings/brainstorming.md'), /^Источники: репозиторий; services\/notify-service; https:\/\/wiki\.example\.ru\/s$/m);
   assert.match(a.out, /research","context"/);
@@ -172,22 +170,23 @@ test('ответ «нет» без источников: в папке пуст�
   run(cwd, 'start', 'панель настроек пользователя', '--slug', 'settings');
   const r = run(cwd, 'start', 'docs/settings', '--sources', 'нет');
   assert.match(read(cwd, 'docs/settings/brainstorming.md'), /^Источники: нет$/m);
-  assert.match(r.out, /^Старт готов/);
-  assert.match(r.out, /источников нет\. Что есть сейчас .+ спрашивай у человека/);
+  assert.match(r.out, /⚙ sdd: старт готов/);
+  assert.match(r.out, /контекста нет, источников нет: что есть сейчас .+ спрашивай коротко/);
 });
 test('choose src:new — изучать нечего, старт готов: «спрашивай, как должно быть»', () => {
   const cwd = repo(SERVICES);
   run(cwd, 'start', 'панель настроек пользователя', '--slug', 'settings');
   const r = run(cwd, 'choose', 'docs/settings', 'src:new');
-  assert.match(r.out, /^Старт готов — дальше шаги скилла со 2-го\./);
-  assert.match(r.out, /новый проект\. Спрашивай, как должно быть/);
-  assert.match(r.out.trim(), /Выполняй то, что сказано в выводе выше\.$/);
+  assert.match(r.out, /^Начинаем brainstorming `docs\/settings`/);
+  assert.match(r.out, /\n⚙ sdd: старт готов · фича docs\/settings · контекста нет, новый проект: спрашивай, как должно быть/);
+  assert.match(r.out, / · дальше по скиллу со 2-го шага\n$/);
+  assert.equal(r.out.split('\n').filter((l) => l.startsWith('⚙ sdd:')).length, 1);
 });
 test('непонятный ответ про источники — переспросить, пути без @ не теряются', () => {
   const cwd = repo();
   run(cwd, 'start', 'панель настроек пользователя', '--slug', 'settings');
   assert.match(run(cwd, 'start', 'docs/settings', '--sources', 'ну спросите у Пети').out, /Из ответа не понял/);
-  assert.match(run(cwd, 'start', 'docs/settings', '--sources', '../nope-dir-start-test/docs').out, /Не нашёл \.\.\/nope-dir-start-test\/docs/);
+  assert.match(run(cwd, 'start', 'docs/settings', '--sources', '../nope-dir-start-test/docs').out, /Не нашёл `\.\.\/nope-dir-start-test\/docs`/);
 });
 
 test('ответ словами: «хватит того, что в репозитории» — репозиторий; «A/B-тест» и «фронт/бэк» в задаче — не пути', () => {
@@ -233,10 +232,10 @@ test('research check: разделы, источник у факта, путь �
   });
   let r = run(cwd, 'research', 'check', 'docs/handover');
   assert.equal(r.code, 1, r.out);
-  assert.match(r.out, /CX-03 .*строк 5, а ссылка на 40/);
-  assert.match(r.out, /CX-03 .*нет файла services\/admin\/README\.md/);
-  assert.match(r.out, /CX-02 .*Права хранятся в профиле/);
-  assert.match(r.out, /CX-04 .*Лучше сделать/);
+  assert.match(r.out, /CX-03.*строк 5, а ссылка на 40/);
+  assert.match(r.out, /CX-03.*нет файла services\/admin\/README\.md/);
+  assert.match(r.out, /CX-02.*Права хранятся в профиле/);
+  assert.match(r.out, /CX-04.*Лучше сделать/);
   assert.doesNotMatch(read(cwd, ctxFile('handover')), /^Проверено:/m);
   // Имя в теле факта источником не считается: проверяется только то, что после « — ».
   fs.writeFileSync(path.join(cwd, ctxFile('handover')), read(cwd, ctxFile('handover')).replace(/## Роли и доступ\n\n[\s\S]*?\n\n## Данные/, '## Роли и доступ\n\n- Событие `task.updated` уходит при правке — `services/tasks-core/README.md:4`\n\n## Данные'));
@@ -245,7 +244,7 @@ test('research check: разделы, источник у факта, путь �
   assert.match(r.out, /проверено, фактов о проекте — 1/);
   assert.match(read(cwd, ctxFile('handover')), /^Проверено: да$/m);
   fs.writeFileSync(path.join(cwd, ctxFile('handover')), read(cwd, ctxFile('handover')).replace('## Ограничения', 'x'));
-  assert.match(run(cwd, 'research', 'check', 'docs/handover').out, /CX-01 .*нет раздела «Ограничения»/);
+  assert.match(run(cwd, 'research', 'check', 'docs/handover').out, /CX-01.*нет раздела «Ограничения»/);
   fs.writeFileSync(path.join(cwd, ctxFile('handover')), read(cwd, ctxFile('handover')).replace('x', `## Ограничения\n\n${'- длинный факт без смысла — `services/tasks-core/README.md:1`\n'.repeat(160)}`));
   assert.match(run(cwd, 'research', 'check', 'docs/handover').out, /CX-05/);
 });
@@ -254,9 +253,9 @@ test('start после исследования: чистый контекст �
   run(cwd, 'research', 'context', 'docs/handover');
   fillContext(cwd, 'handover', { 'Роли и доступ': ['- Роли owner и member — `services/tasks-core/README.md:3`'] });
   const r = run(cwd, 'start', 'docs/handover');
-  assert.match(r.out, /^Старт готов/);
-  assert.match(r.out, /Контекст: docs\/handover\/_work\/context\.md, фактов о проекте — 1\. Прочитай его целиком/);
-  assert.match(r.out, /Протокол пуст — начинай с design tree/);
+  assert.match(r.out, /⚙ sdd: старт готов/);
+  assert.match(r.out, / · прочитай docs\/handover\/_work\/context\.md целиком \(фактов 1\): /);
+  assert.match(r.out, / · протокол пуст — начни с design tree · /);
   assert.match(read(cwd, ctxFile('handover')), /^Проверено: да$/m, 'проверку без вызова check делает start');
 });
 test('start: ошибки контекста — две попытки сабагента со списком, третья — дальше с предупреждением', () => {
@@ -265,12 +264,12 @@ test('start: ошибки контекста — две попытки саба�
   fillContext(cwd, 'handover', { 'Роли и доступ': ['- Роли owner и member — `services/tasks-core/README.md:3`', '- Без источника'] });
   for (const n of [1, 2]) {
     const r = run(cwd, 'start', 'docs/handover');
-    assert.match(r.out, new RegExp(`не прошёл проверку — попытка ${n} из 2:\\n  ОШИБКА\\s+CX-02`));
+    assert.match(r.out, new RegExp(`не прошёл проверку — изучаю заново, попытка ${n} из 2:\\n- \\*\\*ОШИБКА\\*\\* \`CX-02\``));
     assert.match(r.out, /research","context","docs\/handover"/);
   }
-  assert.match(run(cwd, 'research', 'context', 'docs/handover').out, /## Исправь в файле\n\n- CX-02/);
+  assert.match(run(cwd, 'research', 'context', 'docs/handover').out, /## Исправь в файле\n\n- `CX-02`/);
   const r = run(cwd, 'start', 'docs/handover');
-  assert.match(r.out, /^Старт готов/);
+  assert.match(r.out, /⚙ sdd: старт готов/);
   assert.match(r.out, /В контексте остались ошибки \(1\)/);
 });
 test('ничего не нашлось — вопрос «Есть ещё документация?», «Продолжаем» — старт готов', () => {
@@ -281,7 +280,7 @@ test('ничего не нашлось — вопрос «Есть ещё док
   assert.equal(json(r.out).questions[0].question, 'По задаче в источниках ничего не нашёл. Есть ещё документация или код?');
   assert.equal(recommended(r.out), 'ctx:more');
   const go = run(cwd, 'choose', 'docs/handover', 'ctx:go');
-  assert.match(go.out, /^Старт готов/);
+  assert.match(go.out, /⚙ sdd: старт готов/);
   assert.match(read(cwd, ctxFile('handover')), /^Принято: да$/m);
 });
 test('не открылась папка вне проекта — подсказка /directory add; «готово» — изучить заново', () => {
@@ -294,7 +293,7 @@ test('не открылась папка вне проекта — подска�
   assert.match(task.out, new RegExp(`- ${rel.replace(/[.]/g, '\\.')} — вне папки проекта`));
   fillContext(cwd, 'handover', { 'Роли и доступ': ['- Роли owner и member — `services/tasks-core/README.md:3`'], 'Не удалось прочитать': [`- ${rel} — вне папки проекта`] });
   const r = run(cwd, 'start', 'docs/handover');
-  assert.match(json(r.out).preview, new RegExp(`/directory add ${rel.replace(/[.]/g, '\\.')}`));
+  assert.match(json(r.out).preview, new RegExp(`\`/directory add ${rel.replace(/[.]/g, '\\.')}\``));
   assert.equal(recommended(r.out), 'ctx:go');
   assert.match(run(cwd, 'choose', 'docs/handover', 'ctx:more').out, /напишите «готово»/);
   const again = run(cwd, 'start', 'docs/handover', '--sources', 'готово');
@@ -321,14 +320,14 @@ test('продолжение в новом окне: решений N и пос�
   const f = path.join(cwd, 'docs/settings/brainstorming.md');
   fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('|---|---|---|---|---|\n', '|---|---|---|---|---|\n| 1 | Продукт и UI | Кто видит панель? | Только владелец | да |\n'));
   const r = run(cwd, 'start', '@docs/settings/');
-  assert.match(r.out, /Протокол: решений 1, последнее — #1 «Кто видит панель\?»/);
-  assert.match(r.out, /«Продолжаем docs\/settings: решений 1\. Всё нужное — в протоколе и контексте, историю чата держать не нужно\.»/);
+  assert.match(r.out, / · решений 1, последнее #1 «Кто видит панель\?» — продолжи с веток без решения · /);
+  assert.match(r.out, /^Продолжаем `docs\/settings`: решений 1\. Всё нужное — в протоколе и контексте, историю чата держать не нужно\./);
 });
 test('rename: другое имя папки, пока идёт brainstorming', () => {
   const cwd = repo();
   run(cwd, 'start', 'панель настроек пользователя', '--slug', 'settings');
   const r = run(cwd, 'start', 'docs/settings', '--rename', 'user-settings');
-  assert.match(r.out, /^Папка docs\/settings теперь docs\/user-settings/);
+  assert.match(r.out, /^Папка `docs\/settings` теперь `docs\/user-settings`\./);
   assert.ok(fs.existsSync(path.join(cwd, 'docs/user-settings/brainstorming.md')));
   assert.match(run(cwd, 'start', 'docs/user-settings', '--rename', 'Bad Name').out, /не подходит/);
 });
@@ -338,13 +337,13 @@ test('протокол готов: start не начинает заново, а 
   const f = path.join(cwd, 'docs/settings/brainstorming.md');
   fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('Статус: идёт', 'Статус: готов'));
   const r = run(cwd, 'start', 'settings');
-  assert.match(r.out, /^Протокол docs\/settings готов/);
+  assert.match(r.out, /^Протокол `docs\/settings` готов/);
   assert.ok(optionIds(r.out).includes('window:sdd-spec'));
 });
 test('файл задачи внутри docs/ — документ, а не фича', () => {
   const cwd = repo({ 'docs/inbox/notes.md': '# Заметки\n' });
   const r = run(cwd, 'start', 'docs/inbox/notes.md');
-  assert.match(r.out, /^Задача: файл docs\/inbox\/notes\.md\./);
+  assert.match(r.out, /^⚙ sdd: придумай имя папки фичи по задаче файл docs\/inbox\/notes\.md:/);
   assert.ok(!fs.existsSync(path.join(cwd, 'docs/inbox/brainstorming.md')));
 });
 test('help и Tab: start и research в справке, флаги start дополняются', () => {

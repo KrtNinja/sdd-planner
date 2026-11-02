@@ -5,10 +5,11 @@ import path from 'node:path';
 import { gateClosed } from './cmd-check.mjs';
 import { stubLines } from './cut.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
-import { findings, line } from './findings.mjs';
+import { findings, item } from './findings.mjs';
 import { linkBasis } from './links.mjs';
 import { rel } from './md.mjs';
 import { genReadme } from './readme.mjs';
+import { G, screen } from './screen.mjs';
 import { parseHalves, halvesLine, halfHeading } from './services.mjs';
 
 // Заготовки в «<…>»: агент заменяет их текстом, SL-37 не даёт забыть ни одну.
@@ -77,7 +78,7 @@ export function genSlices(m) {
   const closed = gateClosed(m, 'slices');
   if (closed) stop(`Файлы не созданы: ${closed[0]}. ${closed[1]}.`);
   const errs = findings.filter((x) => x.level === 'err' && x.rule.startsWith('PL'));
-  if (errs.length) stop(`${errs.map(line).join('\n')}\n\nФайлы не созданы: в плане ошибки. Исправь ${rel(m.planFile)} и проверь: sdd_lint ["plan","${dir}"].`);
+  if (errs.length) stop(screen(`${errs.map(item).join('\n')}\n\nФайлы не созданы: в плане ошибки.`, `исправь ${rel(m.planFile)}`, G.then(['plan', dir])));
 
   const plan = m.plan;
   const made = [];
@@ -97,9 +98,9 @@ export function genSlices(m) {
   const stubs = [...made, after.readmeFile].map((file) => `${path.basename(file)} — ${count(file)}`).join(', ');
   console.log(
     [
-      `Созданы по плану в ${dir}/slices/: ${made.map((x) => path.basename(x)).join(', ')}; README.md ${hadReadme ? 'собран заново' : 'создан'}. План удалён.`,
+      `Созданы по плану в \`${dir}/slices/\`: ${made.map((x) => path.basename(x)).join(', ')}; README.md ${hadReadme ? 'собран заново' : 'создан'}. План удалён.`,
       `Заготовок «<…>» к заполнению: ${stubs}.`,
-    ].join('\n'),
+    ].join('\n\n'),
   );
   process.exit(0);
 }

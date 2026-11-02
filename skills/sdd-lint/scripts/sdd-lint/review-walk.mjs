@@ -4,22 +4,22 @@
 // из очереди по одному. Всё разобрано — «Одобрить» и «Убрать AI стиль»; decide что-то поменял — ещё
 // «Повторить ревью». «Одобрить» с открытыми вопросами сначала спрашивает их по одному.
 // Решения пишет скрипт (triage) или /sdd-decide в сабагенте; очередь — колонка «Решение» файла ревью.
-import { code, showCmd, skill, lintCmd } from './config.mjs';
+import { code, showCmd, skill, skillCode, lintCmd } from './config.mjs';
 import { isEmptyCell, plural, rel } from './md.mjs';
 import { openQuestions, openTarget } from './open-questions.mjs';
-import { ANSWER, itemBlock, lintArgs, taskFor, walkQuestion } from './question.mjs';
+import { ANSWER, itemBlock, walkQuestion } from './question.mjs';
+import { blocks, bold, codePaths, list } from './screen.mjs';
 import { changedByReview, openBlockers, queuedRemarks, reviewKey, untriagedRemarks } from './review.mjs';
 
 const short = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 // Решение проводит /sdd-decide в сабагенте: в окно приходит список изменений, скилл не копится в окне
 // на каждую находку. Сабагентов нет — тот же скилл здесь. next — вызов после него (нет — вопрос этапа).
-const SUB_DECIDE =
-  'Ты сабагент: человеку вопросов не задавай. Когда done вернёт вопрос этапа, не задавай его — последним сообщением выведи ' +
-  'список изменений (файл → ID → что изменилось). Без ответа человека дальше нельзя — выведи вопрос последним сообщением и остановись.';
+// Что сабагенту делать иначе, чем человеку в окне, — флаг --sub у prompt; note — уточнение задачи (--note).
 export function decideAction(m, ref, decision, next, note = '') {
   const args = ['prompt', 'sdd-decide', m.name, ref, decision];
-  return { subagent: taskFor(args, `${note}${SUB_DECIDE}`), here: args, next };
+  const say = `Провожу решение по ${/:R\d+$/.test(ref) ? ref.split(':')[1] : 'вопросу'} через ${skillCode('sdd-decide')} в сабагенте: протокол → FR → AC. В конце покажу, что изменилось.`;
+  return { subagent: [...args, '--sub', ...(note.trim() ? ['--note', note.trim()] : [])], here: args, next, say };
 }
 
 function artifact(m, what, num) {
@@ -43,7 +43,11 @@ const reviewOption = (m, x, again) => ({
   id: `review-here:${x.key}`,
   label: again ? 'Повторить ревью в сабагенте' : 'Ревью в сабагенте',
   description: `свежий контекст, находки — в ${x.dir}/_work/review/${x.key}.md`,
-  action: { subagent: taskFor(['prompt', 'sdd-review', m.name, ...x.rest]), fallback: showCmd(skill('sdd-review', m.name, ...x.rest)) },
+  action: {
+    subagent: ['prompt', 'sdd-review', m.name, ...x.rest],
+    say: `Запускаю ревью ${x.of} в сабагенте, в чистом контексте. Находки придут таблицей, затем разберём их по одной.`,
+    fallback: blocks(`Сабагентов нет — запустите ревью в новом окне: ${code(skill('sdd-review', m.name, ...x.rest))}`, showCmd(skill('sdd-review', m.name, ...x.rest)).split('\n\n').slice(1)),
+  },
 });
 const windowOption = (m, x) => ({ id: `review-window:${x.key}`, label: 'Ревью в новом контексте/окне', description: 'вы запускаете команду сами', action: { show: showCmd(skill('sdd-review', m.name, ...x.rest)) } });
 const humanizeOption = (x) => ({
@@ -52,12 +56,9 @@ const humanizeOption = (x) => ({
   description: 'humanizer в сабагенте, затем guard',
   action: {
     snapshot: x.target,
-    subagent:
-      `Загрузи скилл humanizer и примени его к ${x.files}: ` +
-      'меняй только прозу вне блоков кода; ID, строки шапки, заголовки, таблицы, тексты в «ёлочках», числа и сроки не трогай. ' +
-      `Затем вызови sdd_lint с args ${lintArgs(['guard', x.target])}; при ошибках верни защищённые части как были и повтори guard. ` +
-      'Последним сообщением — итог guard.',
-    fallback: `${x.what === 'slices' ? `${code(skill('humanizer'))} по каждому файлу в ${code(`${x.dir}/slices/`)}` : code(skill('humanizer', x.target))}, затем ${code(lintCmd('guard', x.target))}`,
+    subagent: ['prompt', 'humanize', x.target],
+    say: `Убираю AI стиль из ${x.of} в сабагенте, затем проверю скриптом, что ID, таблицы и тексты на месте.`,
+    fallback: `Сабагентов нет — сделайте сами: ${x.what === 'slices' ? `${code(skill('humanizer'))} по каждому файлу в ${code(`${x.dir}/slices/`)}` : code(skill('humanizer', x.target))}, затем ${code(lintCmd('guard', x.target))}`,
   },
 });
 // Одобрение держат открытые вопросы (SP-06, SL-10): сначала они — по одному, ответ человека проводит decide,
@@ -68,20 +69,28 @@ function approveOption(m, x) {
   const open = openQuestions(m, x.what);
   if (!open.length) return { id, label, description: lintCmd(...x.approve), action: { lint: x.approve } };
   const q = open[0];
-  const block = itemBlock(`Открытый вопрос 1 из ${open.length} — ${rel(q.file)}:${q.n}`, [['Вопрос', q.text]]);
+  const block = itemBlock(`${bold(`Открытый вопрос 1 из ${open.length}`)} · ${code(`${rel(q.file)}:${q.n}`)}`, [['Вопрос', q.text]]);
   return {
     id,
     label,
     description: `сначала ${plural(open.length, 'открытый вопрос', 'открытых вопроса', 'открытых вопросов')} — по одному, затем ${lintCmd(...x.approve)}`,
     action: {
-      wait: `${block}\n\nКак решаем? Напишите решение одним сообщением.`,
+      wait: blocks(block, `${bold('Как решаем?')} Напишите решение одним сообщением.`),
       then: ['choose', x.dir, id, ANSWER],
       answer: (text) => decideAction(m, q.text, text, ['choose', x.dir, id], `Вопрос — из «Открытые вопросы» ${rel(q.file)}:${q.n}: решение его закрывает, убери его оттуда. `),
     },
   };
 }
 
-const findingBlock = (r) => itemBlock(`#: ${r.id}`, [['Важность', r.level], ['Где', r.where], ['Что не так', r.what], ['Пункт', r.point], ['Предложение', r.proposal]]);
+// Блок находки: заголовок — что это и откуда, поля — списком (так их не склеит ни один markdown).
+const KIND = { блокер: 'Блокер', замечание: 'Замечание' };
+const findingBlock = (x) => (r, left) =>
+  itemBlock(`${bold(`${KIND[r.level] || r.level} ${r.id}`)} · ревью ${x.of}${left > 1 ? ` · ${r.blocker ? 'блокеров' : 'замечаний'} к разбору: ${left}` : ''}`, [
+    ['Где', r.where],
+    ['Что не так', r.what],
+    ['Предложение', isEmptyCell(r.proposal) ? undefined : r.proposal],
+    ['Пункт чек-листа', r.point],
+  ]);
 function findingOptions(m, x, r) {
   const ref = `${x.key}:${r.id}`;
   const id = (k) => `rv:${ref}:${k}`;
@@ -92,7 +101,7 @@ function findingOptions(m, x, r) {
       label: 'Напишу решение',
       description: 'следующим сообщением; проведу через /sdd-decide',
       recommended: true,
-      action: { wait: `Напишите решение по ${r.id} одним сообщением.`, then: ['choose', x.dir, id('write'), ANSWER], answer: (text) => decideAction(m, ref, text) },
+      action: { wait: `Напишите решение по ${r.id} одним сообщением — проведу его через ${skillCode('sdd-decide')}.`, then: ['choose', x.dir, id('write'), ANSWER], answer: (text) => decideAction(m, ref, text) },
     },
     isEmptyCell(r.proposal) ? null : { id: id('accept'), label: 'Принимаю рекомендации', description: `«${short(r.proposal, 70)}» — через /sdd-decide`, action: decideAction(m, ref, 'да') },
     target
@@ -118,7 +127,7 @@ function remarksQuestion(m, x, rows) {
     walk: true,
     header: 'Замечания',
     question: 'Пройдёмся по замечаниям?',
-    preview: [`Замечания ревью — ${rows.length}:`, ...rows.map((r) => `  ${r.id} · ${short(r.where || '—', 40)} · ${short(r.what, 90)}`)].join('\n'),
+    preview: blocks(`${bold(`Замечания ревью ${x.of}`)} · ${rows.length}`, list(rows.map((r) => `${bold(r.id)} · ${codePaths(short(r.where || '—', 40))} · ${short(r.what, 90)}`))),
     options: [
       { id: `remarks:${x.key}:all`, label: 'Давай по очереди', description: 'по одному: блок замечания и «Как решаем?»', recommended: true, action: { lint: ['triage', x.dir, x.key, 'remarks', 'all'] } },
       {
@@ -141,7 +150,7 @@ function remarksQuestion(m, x, rows) {
   };
 }
 function reviewWalk(m, x, rv) {
-  const finding = (kind) => ({ header: (r) => `${kind} ${r.id}`, block: findingBlock, options: (r) => findingOptions(m, x, r) });
+  const finding = (kind) => ({ header: (r) => `${kind} ${r.id}`, block: findingBlock(x), options: (r) => findingOptions(m, x, r) });
   const blocker = walkQuestion({ items: openBlockers(rv), ...finding('Блокер') });
   if (blocker) return blocker;
   const fresh = untriagedRemarks(rv);

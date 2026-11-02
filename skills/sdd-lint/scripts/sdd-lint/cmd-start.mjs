@@ -8,6 +8,7 @@ import { stageName } from './guide.mjs';
 import { REPO, inventory } from './input.mjs';
 import { header, rel } from './md.mjs';
 import { needDir, pickChoice } from './pick.mjs';
+import { G, screen } from './screen.mjs';
 import { acceptContext, addSources, renameFeature, researchList, sourcesOf, startFrom, taskOf } from './start.mjs';
 
 // Вывод — один следующий шаг для агента; код 0, даже когда шаг — вопрос человеку.
@@ -43,7 +44,7 @@ export function cmdResearch() {
   const { task, list } = researchInput(m);
   const stage = stageName(m);
   if (what === 'context') {
-    console.log(list.length ? researchTask(m, list, task.line, stage) : 'Источников нет — изучать нечего. Последним сообщением напиши: «Источников нет».');
+    console.log(list.length ? researchTask(m, list, task.line, stage) : screen('Источников нет — изучать нечего.', 'последним сообщением напиши «Источников нет»'));
     process.exit(0);
   }
   if (what === 'fact') {
@@ -56,10 +57,10 @@ export function cmdResearch() {
   findings.push(...contextFindings(ctx));
   const c = report();
   if (c.err) {
-    console.log(`\nОшибок: ${c.err}. Исправь ${rel(ctx.file)} и снова sdd_lint ["research","check","${rel(m.dir)}"].`);
+    console.log(`\n${screen(`Ошибок в \`${rel(ctx.file)}\`: ${c.err}.`, `исправь ${rel(ctx.file)}`, G.then(['research', 'check', rel(m.dir)]))}`);
     process.exit(1);
   }
   markContext(loadContext(m), 'Проверено');
-  console.log(`\n${rel(ctx.file)}: проверено, фактов о проекте — ${ctx.facts}.${c.warn ? ` Предупреждений ${c.warn}: поправь, если это просто.` : ''}`);
+  console.log(`\n${screen(`\`${rel(ctx.file)}\`: проверено, фактов о проекте — ${ctx.facts}.`, c.warn ? `предупреждений ${c.warn} — поправь, если это просто` : null)}`);
   process.exit(0);
 }

@@ -3,13 +3,14 @@
 import path from 'node:path';
 
 import { pendingAdrs } from './adr.mjs';
-import { askView } from './ask.mjs';
+import { askOf } from './ask.mjs';
 import { skillCode } from './config.mjs';
 import { neededAdrs } from './cut.mjs';
 import { loadFeature } from './feature.mjs';
 import { approved, rel } from './md.mjs';
 import { DOCS, listFeatures } from './pick.mjs';
-import { pickText } from './question.mjs';
+import { pickText, questionsView, viewText } from './question.mjs';
+import { G, blocks, list, screen } from './screen.mjs';
 import { stageOf, tempArtifacts } from './stage.mjs';
 
 const ready = (m) => !!m.protocol && /готов/i.test(m.protocol.status || '');
@@ -50,13 +51,15 @@ export function chooseFeature(stage, argsFor) {
   const ok = all.filter((m) => eligible(m, stage));
   if (ok.length === 1) return { dir: ok[0].dir, note: `Фича не указана — беру единственную, где можно ${WHAT[stage]}: ${rel(ok[0].dir)}.` };
   if (!ok.length) {
-    const lines = all.map((m) => `- ${m.name} — ${stageOf(m).now}`);
     return {
-      text: [
-        `Фич, где можно ${WHAT[stage]}, нет.`,
-        ...(all.length ? ['Фичи и этапы:', ...lines] : [`В ${DOCS}/ пока нет фич.`]),
-        `Скажи это человеку одним сообщением, добавь: «Новая фича начинается с ${skillCode('sdd-grill')}». Остановись.`,
-      ].join('\n'),
+      text: screen(
+        blocks(
+          `Фич, где можно ${WHAT[stage]}, нет.`,
+          all.length ? `Фичи и этапы:\n${list(all.map((m) => `${m.name} — ${stageOf(m).now}`))}` : `В ${DOCS}/ пока нет фич.`,
+          `Новая фича начинается с ${skillCode('sdd-grill')}.`,
+        ),
+        G.stop,
+      ),
     };
   }
   const more = ok.slice(4).map((m) => m.name);
@@ -65,7 +68,7 @@ export function chooseFeature(stage, argsFor) {
     question: `Какую фичу берём — ${WHAT[stage]}?${more.length ? ` Другие: ${more.join(', ')} — напишите имя.` : ''}`,
     options: ok.slice(0, 4).map((m) => ({ id: m.name, label: m.name, description: stageOf(m).now })),
   };
-  return { text: pickText('Фича не указана. Задай вопрос — как сказано в instruction:', q, argsFor('<id>')) };
+  return { text: pickText('Фича не указана.', q, argsFor('<id>')) };
 }
 
 // Строка человеку в начале этапа: что сейчас будет и где он решает.
@@ -78,12 +81,12 @@ const HELLO = {
   adr: (d) => `ADR по ${d}: сначала проверю, нужен ли он; нужен — дам 2–3 варианта, выбираете вы.`,
   decide: (d) => `Провожу решение по ${d} сверху вниз: протокол → FR → AC; в конце покажу, что изменилось.`,
 };
-export const helloLine = (m, stage) => (HELLO[stage] ? `Скажи человеку одной строкой: «${HELLO[stage](rel(m.dir), m)}»` : null);
+export const helloLine = (m, stage) => (HELLO[stage] ? HELLO[stage](rel(m.dir), m) : null);
 
 // Ворота закрыты: не тупик, а вопрос этапа — что сделать сейчас (продолжить прошлый этап, одобрить, ревью).
-export const closedText = (m, stage, closed) =>
-  [
-    `ВОРОТА ${stage}: закрыты — ${closed[0]}.`,
-    `Скажи человеку одной строкой: «${closed[1]}». Затем задай вопрос этапа — как сказано в instruction: он предложит, что сделать сейчас.`,
-    JSON.stringify(askView(m), null, 2),
-  ].join('\n');
+// Ворота закрыты, а вопроса этапа нет (build читает зона реализации): человеку — что сделать, агенту — стоп.
+export const closedScreen = (stage, closed) => screen(`Ворота ${stage} закрыты — ${closed[0]}. ${closed[1]}`, G.stop);
+export function closedText(m, stage, closed) {
+  const { stage: now, questions } = askOf(m);
+  return viewText(questionsView(rel(m.dir), now, questions, { lead: `Ворота ${stage} закрыты — ${closed[0]}. ${closed[1]}` }));
+}

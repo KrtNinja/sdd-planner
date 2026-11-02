@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LINT = process.env.SDD_LINT || path.join(root, 'skills/sdd-lint/scripts/sdd-lint.mjs');
 const GOOD = path.join(root, 'tests/fixtures/good');
-const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: 'node scripts/sdd-lint.mjs' };
+const CMD_ENV = { SDD_SKILL_PREFIX: '/', SDD_LINT_CMD: 'node scripts/sdd-lint.mjs', SDD_VIEW: 'json' };
 
 function workspace() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-plan-test-'));
@@ -150,17 +150,17 @@ test('gate slices: путь фичи из любого вида аргумент
   const cwd = planWorkspace(null);
   const r = run(cwd, 'gate', 'slices', '@docs/comments/');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /^Фича: docs\/comments$/m);
-  assert.match(r.out, /^ {2}FR-10 {2}Уведомление может прийти с задержкой/m);
+  assert.match(r.out, /\n⚙ sdd: ворота slices открыты · фича docs\/comments · /);
+  assert.match(r.out, /^- \*\*FR-10\*\* Уведомление может прийти с задержкой/m);
   assert.match(r.out, /^Сервисы: frontend, tasks-core, notify-service/m);
-  assert.match(r.out, /ADR фичи \(прочитай\): docs\/adr\/0001-mention-notifications\.md «предложено»/);
-  assert.match(r.out, /^Сейчас: плана нет — начни с него: docs\/comments\/_work\/plan\.md\.$/m);
+  assert.match(r.out, /ADR фичи:\n- `docs\/adr\/0001-mention-notifications\.md` «предложено»/);
+  assert.match(r.out, / · плана нет — начни с него: docs\/comments\/_work\/plan\.md · /);
 });
 test('plan: чистый план — без ошибок, латинская P в причине не ошибка', () => {
   const r = run(planWorkspace(), 'plan', 'docs/comments');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /План без ошибок: 3 slices\./);
-  assert.match(r.out, /sdd_lint \["ask","docs\/comments"\]/);
+  assert.match(r.out, /План нарезки без ошибок: 3 slices\./);
+  assert.match(r.out, /\n⚙ sdd: вызови \["ask","docs\/comments"\]\n$/);
 });
 test('plan: покрытие, причины, зависимости, сервисы — ошибки с номером строки; лимит прогонов', () => {
   const bad = PLAN.replace('FR-9, FR-10, NFR-3', 'FR-9, FR-10')
@@ -174,9 +174,11 @@ test('plan: покрытие, причины, зависимости, серви
   assert.match(r.out, /не покрыты: NFR-3/);
   assert.match(r.out, /«notify service» — не имя сервиса: верно «notify-service»/);
   assert.match(r.out, /прогон 1 из 3/);
+  assert.match(r.out, /\n⚙ sdd: исправь docs\/comments\/_work\/plan\.md · затем \["plan","docs\/comments"\]\n$/);
   run(cwd, 'plan', 'docs/comments');
   r = run(cwd, 'plan', 'docs/comments');
-  assert.match(r.out, /не ушли за 3 прогона\. Покажи человеку список/);
+  assert.match(r.out, /не ушли за 3 прогона — список выше\. Как быть/);
+  assert.match(r.out, / · стоп\n$/);
 });
 test('plan: Р1 по принятому ADR, требование в двух slices, slice из NFR, больше 6 — предупреждения', () => {
   const extra = [4, 5, 6, 7].map((n) => `\n## 00${n}-part-${n} — Часть ${n}\nОснование: NFR-2\nЗависимости: 002\nПоловины: только tasks-core\nРезультат: часть ${n}\nПочему отдельно: Р3 — раньше\n`).join('');
@@ -190,21 +192,22 @@ test('plan: Р1 по принятому ADR, требование в двух sl
 test('ask: план — человеку списком до вопроса, «Да» рекомендовано, других вопросов нет', () => {
   const a = ask(planWorkspace());
   assert.equal(a.stage, 'План нарезки ждёт согласия (docs/comments/_work/plan.md)');
-  assert.match(a.instruction, /^Сначала выведи preview дословно/);
+  assert.ok(a.card.startsWith(a.preview));
   assert.match(a.preview, /^- 003 Уведомления об упоминаниях — поведение, после 001, 002$/m);
   assert.match(a.preview, /Основание: FR-1…FR-7, NFR-1, NFR-2/);
   assert.match(a.preview, /Почему отдельно: Р1 — ждёт ADR-0001 \(ADR-0001 «предложено»\)/);
   assert.match(a.preview, /Покрыты все 13 требований/);
   assert.deepEqual(ids(a), ['plan:yes', 'plan:edit']);
-  assert.equal(a.questions[0].options[0].label, 'Да, создать файлы slices (рекомендую)');
+  assert.equal(a.questions[0].options[0].label, 'Да, создать файлы slices');
+  assert.equal(a.questions[0].options[0].recommended, true);
   assert.match(a.questions[0].options[0].description, /создаст 3 файла/);
 });
 test('choose plan:yes — файлы по плану с заготовками, README, план удалён; дальше — заполнить', () => {
   const cwd = planWorkspace();
   const r = run(cwd, 'choose', 'docs/comments', 'plan:yes');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /Созданы по плану в docs\/comments\/slices\/: 001-contracts\.md, 002-comments\.md, 003-mention-notifications\.md/);
-  assert.match(r.out, /продолжай нарезку с шага «Заполни заготовки»/);
+  assert.match(r.out, /Созданы по плану в `docs\/comments\/slices\/`: 001-contracts\.md, 002-comments\.md, 003-mention-notifications\.md/);
+  assert.match(r.out, /\n⚙ sdd: дальше по скиллу sdd-slices с шага «Заполни заготовки» · скилла нет в контексте — вызови \["prompt","sdd-slices","comments"\]\n$/);
   assert.ok(!fs.existsSync(file(cwd, 'comments/_work/plan.md')));
   const s3 = read(cwd, S003);
   assert.match(s3, /^Половины: tasks-core \+ notify-service \+ frontend, принимаются вместе$/m);
@@ -259,15 +262,16 @@ test('done: ошибки — исправить и снова done; предуп
   edit(cwd, S002, 'Проверяет: [FR-1](../spec.md#L29)\n', '');
   let r = run(cwd, 'done', 'docs/comments');
   assert.equal(r.code, 1);
-  assert.match(r.out, /Не готово: ошибок \d+\. Исправь их и снова sdd_lint \["done","docs\/comments"\] — прогон 1 из 3\./);
+  assert.match(r.out, /Этап не готов: ошибок \d+, исправляю — прогон 1 из 3\.\n\n⚙ sdd: исправь ошибки · затем \["done","docs\/comments"\]\n$/);
   edit(cwd, S002, 'AC-002-B1 Кто комментирует\n  WHEN Дина', 'AC-002-B1 Кто комментирует\n  WHEN Олег Ким');
   fs.writeFileSync(file(cwd, S002), read(cwd, S002).replace('```\n\n```\nAC-002-B2', '```\nПроверяет: FR-1\n\n```\nAC-002-B2'));
   r = run(cwd, 'done', 'docs/comments');
   assert.equal(r.code, 1, r.out);
-  assert.match(r.out, /ошибок нет, предупреждений 1\. Исправь те, что можно без решения человека/);
+  assert.match(r.out, /Ошибок нет, предупреждений 1 — поправлю те, что можно без вашего решения\./);
+  assert.match(r.out, /⚙ sdd: исправь предупреждения, которые не требуют решения человека; остальные не трогай · затем \["done","docs\/comments"\]/);
   r = run(cwd, 'done', 'docs/comments');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /Скажи человеку, что осталось:\n {2}SL-24/);
+  assert.match(r.out, /Осталось:\n- `SL-24`/);
 });
 
 // ---------- fallback: MCP-сервер не отвечает ----------
@@ -284,7 +288,7 @@ test('правила: при недоступном sdd_lint — вопрос с
   const md = fs.readFileSync(path.join(root, 'rules/AGENTS.planning.md'), 'utf8');
   const sec = md.slice(md.indexOf('### Если sdd_lint не отвечает'));
   assert.ok(sec.length > 30, 'нет раздела');
-  assert.match(sec, /без строки «\[код выхода: N\]»/);
+  assert.match(sec, /без строки «⚙ sdd:»/);
   assert.match(sec, /найди его поиском инструментов/);
   assert.match(sec, /1\. «Подожди, сейчас перезапущу его» \(рекомендую\)/);
   assert.match(sec, /2\. «Попробуй из корня»/);
@@ -296,7 +300,15 @@ test('MCP: ответ сервера всегда с кодом выхода —
   const input = ['{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}', '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"sdd_lint","arguments":{"args":["plan","comments"]}}}'].join('\n');
   const out = execFileSync('node', [path.join(root, 'skills/sdd-lint/scripts/mcp.mjs')], { cwd, input, encoding: 'utf8', env: { ...process.env, TMPDIR: path.join(cwd, '.tmp') } });
   const res = out.trim().split('\n').map((l) => JSON.parse(l)).find((x) => x.id === 2);
-  assert.match(res.result.content[0].text, /Плана нет: запиши docs\/comments\/_work\/plan\.md[\s\S]*\[код выхода: 2\]$/);
+  assert.match(res.result.content[0].text, /^Плана нарезки ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: запиши docs\/comments\/_work\/plan\.md по шаблону assets\/plan\.md скилла sdd-slices · затем \["plan","docs\/comments"\] · код 2$/);
+  // Команда без своей строки ⚙ (check) — сервер добавляет её с кодом.
+  const chk = execFileSync('node', [path.join(root, 'skills/sdd-lint/scripts/mcp.mjs')], {
+    cwd,
+    input: '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"sdd_lint","arguments":{"args":["comments"]}}}\n',
+    encoding: 'utf8',
+    env: { ...process.env, TMPDIR: path.join(cwd, '.tmp') },
+  });
+  assert.match(JSON.parse(chk.trim()).result.content[0].text, /\n\n⚙ sdd: код 0$/);
 });
 test('prompt: в шапке — вопрос из правил и абсолютный путь к скрипту для вариантов 2 и 3', () => {
   const r = run(workspace(), 'prompt', 'sdd-slices', 'comments');

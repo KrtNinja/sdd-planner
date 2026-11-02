@@ -1,0 +1,101 @@
+// Вывод на экран: карточка человеку (markdown) и одна строка «⚙ sdd: …» агенту — последней.
+//
+// GigaCode показывает человеку вывод MCP-инструмента целиком и рендерит его как markdown: канала
+// «только для модели» нет. Поэтому всё, что человек читает, — готовая карточка, её пишет скрипт.
+// Модель карточку не перепечатывает: flash-модель склеивает строки и теряет форматирование.
+// Агенту остаётся одна строка ⚙: что сделать дальше и с какими args. Что значит каждая её часть —
+// в правилах планирования (rules/AGENTS.planning.md, «Вывод sdd_lint»).
+//
+// Карточка устойчива к любому markdown-рендеру: абзацы через пустую строку, поля и перечни —
+// списком, без отступов пробелами. Проверка — mdProblems: её гоняют тесты на всех выводах.
+import { LINT_CMD } from './config.mjs';
+
+export const GEAR = '⚙ sdd:';
+// args для sdd_lint в строке ⚙ — массив JSON, как его передают в инструмент.
+export const A = (args) => JSON.stringify(args);
+export const gearLine = (...parts) => `${GEAR} ${parts.flat().filter(Boolean).join(' · ')}`;
+// Блоки карточки — через пустую строку.
+export const blocks = (...xs) => xs.flat().filter((x) => x != null && String(x).trim() !== '').map((x) => String(x).trim()).join('\n\n');
+export const screen = (card, ...parts) => blocks(card, gearLine(...parts));
+// Карточка и строка ⚙ из готового вывода — когда choose показывает вывод другой команды.
+export function splitGear(text) {
+  const lines = String(text).trimEnd().split('\n');
+  const i = lines.findLastIndex((l) => l.startsWith(GEAR));
+  return i < 0 ? { card: lines.join('\n').trim(), gear: null } : { card: lines.slice(0, i).join('\n').trim(), gear: lines[i] };
+}
+
+// Части строки ⚙. Словарь закрытый: новый вид действия — сначала в правила, потом сюда.
+export const G = {
+  // Вопрос с вариантами: заголовки — для инструмента выбора, ids по номерам карточки.
+  ask: (headers, then, ids, free = false) => [
+    `${headers.length > 1 ? 'вопросы' : 'вопрос'} ${headers.map((h) => `«${h}»`).join(', ')} → ${A(then)}`,
+    `варианты: ${ids.map((id, i) => `${i + 1}=${id}`).join(', ')}`,
+    free ? 'своими словами — вместо <id>' : null,
+  ],
+  wait: (then) => `жди ответ → ${A(then)}`,
+  call: (args) => `вызови ${A(args)}`,
+  sub: (args) => `сабагент ${A(args)}`,
+  then: (args) => `затем ${A(args)}`,
+  report: 'отчёт сабагента — человеку',
+  quiet: 'отчёт сабагента не пересказывай',
+  same: 'без сабагентов — то же здесь',
+  noSub: (text) => `без сабагентов — скажи «${text}»`,
+  say: (text) => `скажи «${text}»`,
+  skill: 'дальше по скиллу',
+  stop: 'стоп',
+};
+
+export const bold = (s) => `**${s}**`;
+export const field = (k, v) => `- **${k}:** ${v || '—'}`;
+export const list = (items) => items.filter(Boolean).map((x) => `- ${x}`).join('\n');
+
+// Пути к файлам и папкам доков — inline-кодом; то, что уже в бэктиках, не трогаем.
+const PATH_RE =
+  /(?<![`\w./:@-])((?:[\w.@-]+\/)*[\w.@-]+\.(?:md|json|ya?ml)(?::\d+)?|(?:[\w.@-]+\/)+[\w@-]+\.[A-Za-z0-9]{1,6}(?::\d+)?|(?:[\w.@-]+\/)+)(?![`\w])/g;
+const outsideCode = (s, f) =>
+  String(s ?? '')
+    .split(/(`[^`\n]*`)/)
+    .map((part, i) => (i % 2 ? part : f(part)))
+    .join('');
+export const codePaths = (s) => outsideCode(s, (x) => x.replace(PATH_RE, '`$1`'));
+// Команды скиллов и lint в описаниях вариантов — inline-кодом: в карточке их видно, в инструменте
+// выбора описание остаётся текстом без бэктиков.
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const CMD_RE = new RegExp(
+  `(?<![\\w/\`])((?:\\/(?:sdd-[a-z]+|humanizer)\\b|${esc(LINT_CMD)}(?=\\s|$))(?: (?:"[^"]*"|[A-Za-z0-9_.@/:|<>-]+))*)`,
+  'g',
+);
+export const cmdCode = (s) => outsideCode(s, (x) => x.replace(CMD_RE, '`$1`'));
+
+// Где markdown развалится: строка с отступом без маркера списка, абзац сразу после пункта списка
+// (ленивое продолжение приклеит его к пункту), строки абзаца подряд без пустой строки.
+// Таблицы и блоки кода не проверяются. Возвращает [номер строки, что не так].
+export function mdProblems(text) {
+  const out = [];
+  let fence = false;
+  let prev = 'blank';
+  const lines = String(text).split('\n');
+  lines.forEach((l, i) => {
+    if (/^\s*```/.test(l)) {
+      fence = !fence;
+      prev = 'blank';
+      return;
+    }
+    if (fence) return;
+    const kind = !l.trim()
+      ? 'blank'
+      : /^\s*([-*+]|\d+\.)\s/.test(l)
+        ? 'item'
+        : /^\s*\|/.test(l)
+          ? 'table'
+          : /^#{1,6}\s/.test(l)
+            ? 'head'
+            : 'text';
+    if (kind === 'item' && /^\s+/.test(l) && prev !== 'item') out.push([i + 1, 'вложенный пункт без родителя']);
+    if (kind === 'text' && /^\s/.test(l)) out.push([i + 1, 'отступ без маркера списка']);
+    else if (kind === 'text' && prev === 'item') out.push([i + 1, 'текст сразу после списка — приклеится к пункту']);
+    else if (kind === 'text' && prev === 'text') out.push([i + 1, 'две строки абзаца подряд — склеятся']);
+    prev = kind;
+  });
+  return out;
+}

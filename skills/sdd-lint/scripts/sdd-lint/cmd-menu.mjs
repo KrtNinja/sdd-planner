@@ -14,19 +14,17 @@ import { stageOf, tipLine } from './stage.mjs';
 // Без аргументов: фичи с этапом и командами, которые можно скопировать.
 export function cmdMenu() {
   const known = listFeatures();
-  const out = ['sdd-lint — проверки планирования SDD', ''];
+  const out = ['**sdd-lint** — проверки планирования SDD', ''];
   let tip = null;
   if (!isDir(DOCS)) out.push(`Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
   else if (!known.length) out.push(`В ${DOCS}/ пока нет фич. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.`);
   else {
-    out.push(`Фичи в ${DOCS}/:`);
-    const w = Math.max(...known.map((f) => f.length));
+    out.push(`Фичи в ${code(`${DOCS}/`)}:`, '');
     for (const f of known) {
       const st = stageOf(loadFeature(path.join(DOCS, f)));
-      out.push(`  ${f.padEnd(w)}  ${st.now}`);
       // Тот же шаг, что в строке Tip: рекомендованный, а не первый по списку.
       const step = st.next.find((x) => st.tip && x.includes(st.tip)) || st.next.find((x) => !x.startsWith('по желанию')) || st.next[0];
-      if (step) out.push(`  ${' '.repeat(w)}  → ${step}`);
+      out.push(`- **${f}** — ${st.now}${step ? ` → ${step}` : ''}`);
     }
     // Фича одна — её шаг уходит в подсказку строки ввода; при нескольких выбор за человеком.
     if (known.length === 1) tip = tipLine(stageOf(loadFeature(path.join(DOCS, known[0]))).tip);
@@ -46,8 +44,7 @@ export function cmdMenu() {
     [lintCmd('next', 'FR|NFR|AC|slice|adr', ex), CMD_INFO.next],
     [lintCmd('export', ex), CMD_INFO.export],
   ];
-  const w = Math.max(...rows.map(([c]) => c.length));
-  out.push('', 'Команды:', ...rows.map(([c, d]) => `  ${code(c)}${' '.repeat(w - c.length)}  ${d}`));
+  out.push('', 'Команды:', '', ...rows.map(([c, d]) => `- ${code(c)} — ${d}`));
   out.push('', `Закрыть фичу перед merge — ${skillCode('sdd-close', ex)}: убирает протокол и ${code('_work/')} (ревью, план нарезки) — после подтверждения.`);
   out.push('', `Справка по команде: ${lintCode('help', '<команда>')}. Путь к фиче дописывает Tab после @: ${code(`@${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`)}`);
   if (tip) out.push('', tip);
