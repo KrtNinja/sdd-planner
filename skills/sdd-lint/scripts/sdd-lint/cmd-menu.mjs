@@ -9,12 +9,13 @@ import { skill, lintCmd } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { git } from './git.mjs';
 import { DOCS, isDir, listFeatures, resolveFeature, pickChoice } from './pick.mjs';
-import { stageOf } from './stage.mjs';
+import { stageOf, tipLine } from './stage.mjs';
 
 // Без аргументов: фичи с этапом и командами, которые можно скопировать.
 export function cmdMenu() {
   const known = listFeatures();
   const out = ['sdd-lint — проверки планирования SDD', ''];
+  let tip = null;
   if (!isDir(DOCS)) out.push(`Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
   else if (!known.length) out.push(`В ${DOCS}/ пока нет фич. Новая начинается с ${skill('sdd-grill')} — он спросит задачу.`);
   else {
@@ -23,9 +24,12 @@ export function cmdMenu() {
     for (const f of known) {
       const st = stageOf(loadFeature(path.join(DOCS, f)));
       out.push(`  ${f.padEnd(w)}  ${st.now}`);
-      const step = st.next.find((x) => !x.startsWith('по желанию')) || st.next[0];
+      // Тот же шаг, что в строке Tip: рекомендованный, а не первый по списку.
+      const step = st.next.find((x) => st.tip && x.includes(st.tip)) || st.next.find((x) => !x.startsWith('по желанию')) || st.next[0];
       if (step) out.push(`  ${' '.repeat(w)}  → ${step}`);
     }
+    // Фича одна — её шаг уходит в подсказку строки ввода; при нескольких выбор за человеком.
+    if (known.length === 1) tip = tipLine(stageOf(loadFeature(path.join(DOCS, known[0]))).tip);
   }
   const ex = known[0] || '<feature>';
   const rows = [
@@ -46,6 +50,7 @@ export function cmdMenu() {
   out.push('', 'Команды:', ...rows.map(([c, d]) => `  ${c.padEnd(w)}  ${d}`));
   out.push('', `Закрыть фичу перед merge — ${skill('sdd-close', ex)}: убирает протокол и _work/ (ревью, план нарезки) — после подтверждения.`);
   out.push('', `Справка по команде: ${lintCmd('help', '<команда>')}. Путь к фиче дописывает Tab после @: @${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`);
+  if (tip) out.push('', tip);
   console.log(out.join('\n'));
   process.exit(0);
 }

@@ -7,7 +7,7 @@ import { flags, pos } from './args.mjs';
 import { diffChecks } from './cmd-diff.mjs';
 import { skill } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
-import { findings, report } from './findings.mjs';
+import { findings, hasErrors, report } from './findings.mjs';
 import { linkSpec, linkSlice } from './gen-links.mjs';
 import { gitInfo } from './git.mjs';
 import { fixIdTypos } from './ids.mjs';
@@ -17,7 +17,7 @@ import { genReadme } from './readme.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 import { moveLegacy } from './work.mjs';
 import { hasProtocolTraces } from './sources.mjs';
-import { stageOf, stageText } from './stage.mjs';
+import { printTip, stageOf, stageText, tipLine } from './stage.mjs';
 
 // Модель пишет «FR-?» и «AC-003-B?», номера строк не считает, README и ссылки не трогает:
 // всё это скрипт делает здесь, затем проверяет фичу и сверяет её с git.
@@ -125,11 +125,12 @@ export function cmdFix() {
     for (const n of notes) console.log(n);
     if (findings.length) console.log('');
   }
-  const c = report({ stage: st.now, next: st.next, fixed: changed, notes });
+  const c = report({ stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip), fixed: changed, notes });
   if (!flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
     console.log(`\n${stageText(st)}`);
     console.log(`Ошибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
+    if (!c.err) printTip(st);
   }
   process.exit(c.err ? 1 : 0);
 }

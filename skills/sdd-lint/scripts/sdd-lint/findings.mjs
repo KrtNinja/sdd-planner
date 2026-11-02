@@ -5,6 +5,7 @@ import { rel, uniq } from './md.mjs';
 import { RULES } from './rules.mjs';
 
 export const findings = [];
+export const hasErrors = () => findings.some((x) => x.level === 'err');
 export const add = (rule, file, line, msg) => {
   const [level] = RULES[rule];
   findings.push({ rule, level, file: rel(file), line: line || null, msg });

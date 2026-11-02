@@ -5,24 +5,25 @@ import { slicesBrief } from './brief.mjs';
 import { neededAdrs } from './cut.mjs';
 import { skill, lintCmd } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
-import { findings, line, report } from './findings.mjs';
+import { findings, hasErrors, line, report } from './findings.mjs';
 import { rel, approved } from './md.mjs';
 import { pickChoice, needDir } from './pick.mjs';
 import { adrTopicStep, findingStep, reviewStep } from './gate-extra.mjs';
 import { chooseFeature, closedText, helloLine } from './guide.mjs';
 import { saveSnapshot } from './snapshot.mjs';
-import { stageOf, stageText } from './stage.mjs';
+import { printTip, stageOf, stageText, tipLine } from './stage.mjs';
 
 export function cmdCheck() {
   const m = loadFeature(needDir(pos[0]));
   runChecks(m);
   if (flags.snapshot) for (const f of featureFiles(m)) saveSnapshot(f);
   const st = stageOf(m);
-  const c = report({ stage: st.now, next: st.next });
+  const c = report({ stage: st.now, next: st.next, tip: hasErrors() ? null : tipLine(st.tip) });
   if (!flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
     console.log(`\n${stageText(st)}`);
     console.log(`Ошибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
+    if (!c.err) printTip(st);
   }
   process.exit(c.err ? 1 : 0);
 }

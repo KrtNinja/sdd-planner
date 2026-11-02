@@ -12,7 +12,7 @@ import { read, rel, approved, header, today } from './md.mjs';
 import { pickChoice, needDir } from './pick.mjs';
 import { openBlockers, reviewKey } from './review.mjs';
 import { snapPath, protectedParts, diffParts } from './snapshot.mjs';
-import { stageOf, stageText } from './stage.mjs';
+import { printTip, stageOf, stageText } from './stage.mjs';
 
 // Ставит «одобрено <дата>» / «принято <дата>», если артефакт чист: lint без ошибок
 // (с учётом нового статуса — например, SP-06 «одобрено с открытыми вопросами»)
@@ -97,6 +97,8 @@ export function cmdApprove() {
   }
   fs.writeFileSync(target, next);
   console.log(`${rel(target)}: Статус: ${word} ${date} · ${fp}`);
-  console.log(stageText(stageOf(loadFeature(d))));
+  const st = stageOf(loadFeature(d));
+  console.log(stageText(st));
+  printTip(st);
   process.exit(0);
 }
