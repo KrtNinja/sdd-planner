@@ -1,4 +1,5 @@
 // Команда approve: ставит «одобрено» / «принято», если чисто, включая RV-* и HG-*.
+// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -14,6 +15,8 @@ import { snapPath, protectedParts, diffParts } from './snapshot.mjs';
 import { printTip, stageOf, stageText } from './stage.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
+/** @typedef {import('./model.mjs').Approval['kind']} Kind */
+/** @typedef {import('./model.mjs').Review} Review */
 
 // Ставит «одобрено <дата>» / «принято <дата>», если артефакт чист: lint без ошибок
 // (с учётом нового статуса — например, SP-06 «одобрено с открытыми вопросами»)
@@ -21,16 +24,20 @@ import { printTip, stageOf, stageText } from './stage.mjs';
 /** @param {Ctx} ctx */
 export function cmdApprove(ctx) {
   const { pos } = ctx.args;
-  const what = pos[0];
+  // Не spec, slices или adr — pickChoice завершает вызов.
+  const what = /** @type {Kind} */ (pos[0]);
   if (!['spec', 'slices', 'adr'].includes(what)) pickChoice(ctx, 'approve');
   const d = needDir(ctx, pos[1], 1);
   const m = loadFeature(d);
   const dir = rel(m.dir);
+  /** @type {(msg: string, code?: number) => never} */
   const refuse = (msg, code = 3) => {
     ctx.io.log(`НЕ ОДОБРЕНО: ${msg}`);
-    ctx.io.exit(code);
+    return ctx.io.exit(code);
   };
+  /** @type {string} */
   let target;
+  /** @type {string[]} */
   let scope;
   let word = 'одобрено';
   if (what === 'spec') {
@@ -64,7 +71,13 @@ export function cmdApprove(ctx) {
   const raw = header(md, 'Статус');
   if (raw === null) refuse(`в ${rel(target)} нет строки «Статус:» — добавьте её по шаблону`);
   // Статус после проверки отпечатка: «одобрено» руками или после правки — не одобрено, approve ставит заново.
-  const cur = what === 'spec' ? m.spec.status : what === 'slices' ? m.slicesStatus : m.adrs.find((a) => a.file === target).status;
+  // Артефакт есть — его наличие проверено выше.
+  const cur =
+    what === 'spec'
+      ? /** @type {import('./model.mjs').Spec} */ (m.spec).status
+      : what === 'slices'
+        ? m.slicesStatus
+        : /** @type {import('./model.mjs').Adr} */ (m.adrs.find((a) => a.file === target)).status;
   if (approved(cur)) {
     ctx.io.log(`${rel(target)}: уже «${cur}».`);
     ctx.io.exit(0);
@@ -82,7 +95,8 @@ export function cmdApprove(ctx) {
   // блокеры последнего ревью этого артефакта
   const rv = m.reviews.get(reviewKey(what, what === 'adr' ? path.basename(target).slice(0, 4) : null));
   // В общем lint RV-01 — предупреждение; одобрение он блокирует — здесь это ошибка.
-  for (const r of openBlockers(rv)) findings.push({ ...finding('RV-01', rv.file, r.n, `${r.id}: блокер без решения`), level: 'err' });
+  // Блокеры есть только у найденного ревью.
+  for (const r of openBlockers(rv)) findings.push({ ...finding('RV-01', /** @type {Review} */ (rv).file, r.n, `${r.id}: блокер без решения`), level: 'err' });
 
   // guard: защищённые части против снимка, если он снят
   for (const f of scope.filter((x) => fs.existsSync(x) && fs.existsSync(snapPath(x)))) {

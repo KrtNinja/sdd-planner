@@ -1,4 +1,5 @@
 // Команда prompt: скилл sdd-* и его файлы одним текстом.
+// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +19,7 @@ export const SELF = fileURLToPath(new URL('../sdd-lint.mjs', import.meta.url));
 export const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
 export const promptSkills = () => (isDir(SKILLS_DIR) ? fs.readdirSync(SKILLS_DIR).filter((x) => /^sdd-[a-z]+$/.test(x) && x !== 'sdd-lint' && fs.existsSync(path.join(SKILLS_DIR, x, 'SKILL.md'))) : []);
 // Аргументы с пробелами — в кавычках: у /sdd-decide вопрос и решение не должны слиться в одну строку.
+/** @param {string[]} args */
 const shownArgs = (args) => args.map((a) => (/\s/.test(a) || a === '' ? `"${a.replace(/"/g, '\\"')}"` : a)).join(' ');
 // Скилл в сабагенте (--sub): человек его не видит, итог — последним сообщением.
 const SUB =
@@ -25,6 +27,7 @@ const SUB =
   'список изменений (файл → ID → что изменилось). Без ответа человека дальше нельзя — выведи вопрос последним сообщением и остановись.';
 
 // Задача сабагенту убрать AI стиль: humanizer, затем guard скриптом. target — spec.md, ADR или папка фичи (slices).
+/** @param {string} target */
 export function humanizeTask(target) {
   const files = /\.md$/.test(target) ? target : `каждому файлу в ${target.replace(/\/$/, '')}/slices/`;
   return [
@@ -36,11 +39,12 @@ export function humanizeTask(target) {
     'Последним сообщением — итог guard.',
   ].join('\n');
 }
-/** @param {Ctx} ctx */
+// name — скилл из списка promptSkills: SKILL.md у него есть.
+/** @param {Ctx} ctx @param {string} name @param {string[]} args */
 export function skillPrompt(ctx, name, args) {
   const { flags } = ctx.args;
   const dir = path.join(SKILLS_DIR, name);
-  const body = read(path.join(dir, 'SKILL.md')).replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+  const body = /** @type {string} */ (read(path.join(dir, 'SKILL.md'))).replace(/^---\n[\s\S]*?\n---\n/, '').trim();
   let links = uniq([...body.matchAll(/\]\(((?:references|assets)\/[^)\s]+\.md)\)/g)].map((x) => x[1]));
   // Ревьюеру — только чеклист своего режима.
   if (name === 'sdd-review') links = links.filter((f) => !f.startsWith('references/') || f === `references/${args[1]}.md`);

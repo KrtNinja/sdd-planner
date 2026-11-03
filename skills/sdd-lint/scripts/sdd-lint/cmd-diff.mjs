@@ -1,10 +1,11 @@
 // Команда diff: проверки DF-* по git.
+// @ts-check
 import { usage } from './cli.mjs';
 import { skillCode } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { collect, report } from './findings.mjs';
 import { gitInfo, gitShow, gitList } from './git.mjs';
-import { rel, approved } from './md.mjs';
+import { approved } from './md.mjs';
 import { needDir } from './pick.mjs';
 import { hasProtocolTraces } from './sources.mjs';
 
@@ -22,6 +23,7 @@ export function cmdDiff(ctx) {
   ctx.io.exit(c.err ? 1 : 0);
 }
 // Проверки DF-*: рабочая копия против ref. Возвращает находки.
+/** @param {string} dir @param {import('./git.mjs').GitInfo} g @param {string} ref */
 export function diffChecks(dir, g, ref) {
   const { found, add } = collect();
   const cur = loadFeature(dir);
@@ -30,7 +32,7 @@ export function diffChecks(dir, g, ref) {
     (f) => gitShow(g, ref, f),
     (d) => gitList(g, ref, d),
   );
-  const norm = (s) => s.replace(/\s+/g, ' ').trim();
+  const norm = (/** @type {string} */ s) => s.replace(/\s+/g, ' ').trim();
 
   // протокол только дописывается
   if (base.protocol && cur.protocol) {

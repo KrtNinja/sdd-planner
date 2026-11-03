@@ -1,4 +1,5 @@
 // Команда triage: решение человека по находке ревью — в файлы скриптом, а не правкой таблицы моделью.
+// @ts-check
 // open — в открытые вопросы артефакта; ignore — снять: «отклонено» в ревью и строка в «Снято на ревью» протокола;
 // П<n> / «исправлено» — решение провёл /sdd-decide; remarks — какие замечания разбирать, остальные снять.
 import fs from 'node:fs';
@@ -13,11 +14,16 @@ import { DECISION, findRow, untriagedRemarks, withDecisions } from './review.mjs
 import { codePaths } from './screen.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Review} Review */
+/** @typedef {import('./model.mjs').ReviewRow} ReviewRow */
 
+/** @param {string | null | undefined} s */
 const cell = (s) => (s || '—').replace(/\|/g, '/').replace(/\s+/g, ' ').trim();
 
 // Снятые находки — в протокол, раздел «Снято на ревью»: gate review отдаёт его ревьюеру, и тот их не поднимает.
 // Протокола нет (фича закрыта) — остаётся только «отклонено» в файле ревью.
+/** @param {Feature} m @param {string} key @param {ReviewRow[]} rows */
 function addDropped(m, key, rows) {
   if (!m.protocol || !rows.length) return false;
   const lines = rows.map((r) => `| ${today()} | ${key} ${r.id} | ${cell(r.where)} | ${cell(r.what)} | ${r.blocker ? 'блокер' : 'замечание'}: не исправлять |`);
@@ -38,21 +44,24 @@ function addDropped(m, key, rows) {
   return true;
 }
 
+/** @param {Review} rv @param {Map<string, string>} decisions */
 function save(rv, decisions) {
   fs.writeFileSync(rv.file, withDecisions(rv, decisions));
 }
 
 // Номера замечаний из ответа человека: «R3, R5», «3 и 5», «r3 r5».
+/** @param {string} text */
 const pickedIds = (text) => [...new Set([...String(text).matchAll(/(?:^|[^\p{L}\d])R?\s*(\d+)(?!\d)/giu)].map((x) => `R${x[1]}`))];
 
 /** @param {Ctx} ctx */
 export function cmdTriage(ctx) {
   const { pos } = ctx.args;
   // Вывод triage — текст человеку; пути — кодом. Строку ⚙ добавляет choose (что дальше).
-  const say = (msg) => ctx.io.log(codePaths(msg));
+  const say = (/** @type {string} */ msg) => ctx.io.log(codePaths(msg));
+  /** @type {(msg: string) => never} */
   const fail = (msg) => {
     say(msg);
-    ctx.io.exit(2);
+    return ctx.io.exit(2);
   };
   const m = loadFeature(needDir(ctx, pos[0]));
   const [ref, verb, ...rest] = pos.slice(1);
@@ -67,6 +76,7 @@ export function cmdTriage(ctx) {
     if (!pending.length) fail(`В ${file} нет замечаний без решения.`);
     const arg = rest.join(' ').trim();
     const all = pending.map((r) => r.id);
+    /** @type {string[]} */
     let take;
     if (arg === 'all') take = all;
     else if (arg === 'none') take = [];
@@ -78,8 +88,10 @@ export function cmdTriage(ctx) {
       take = ids;
     }
     const drop = pending.filter((r) => !take.includes(r.id));
-    save(rv, new Map([...take.map((id) => [id, DECISION.queue]), ...drop.map((r) => [r.id, DECISION.ignore])]));
+    const decisions = /** @type {[string, string][]} */ ([...take.map((id) => [id, DECISION.queue]), ...drop.map((r) => [r.id, DECISION.ignore])]);
+    save(rv, new Map(decisions));
     const logged = addDropped(m, key, drop);
+    /** @type {string[]} */
     const out = [];
     if (take.length) out.push(`К разбору: ${take.join(', ')} — по одному.`);
     if (drop.length) out.push(`Сняты: ${drop.map((r) => r.id).join(', ')} — «отклонено» в ${file}${logged ? `, ${plural(drop.length, 'строка', 'строки', 'строк')} в «${DROPPED_TITLE}» протокола: повторное ревью их не поднимет` : ''}.`);
