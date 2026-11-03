@@ -61,7 +61,7 @@ test('md: setHeader — замена, вставка после первого �
   assert.equal(setHeader('# T\n\nСтатус: a\n', 'Статус', 'b'), '# T\n\nСтатус: b\n');
   assert.equal(setHeader('# T\nТип: x\nОснование: y\n', 'Статус', 'b', ['Нет', 'Основание', 'Тип']), '# T\nТип: x\nОснование: y\n\nСтатус: b\n');
   assert.equal(setHeader('Тип: x\nтекст', 'Статус', 'b', ['Тип']), 'Тип: x\n\nСтатус: b\nтекст');
-  assert.equal(setHeader('# T\nтекст', 'Статус', 'b', ['Тип']), '# T\n\nСтатус: b\nтекст');
+  assert.equal(setHeader('# T\nтекст\nещё', 'Статус', 'b', ['Тип']), '# T\n\nСтатус: b\nтекст\nещё');
 });
 
 test('md: hasSection — только заголовок ## с подходящим названием', () => {

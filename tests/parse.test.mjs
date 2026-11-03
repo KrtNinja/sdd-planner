@@ -65,6 +65,7 @@ test('data: unknownNames — пары «Имя Фамилия», которых 
   assert.deepEqual(unknownNames('«Пётр Сидоров» в кавычках — не имя', d), []);
   assert.deepEqual(unknownNames('Пётр Сидоров', { people: [], objects: new Set(), objNames: new Set() }), []);
   assert.deepEqual(unknownNames('Борис Петров', d), ['Борис Петров']);
+  assert.deepEqual(unknownNames('Петрова Мария', d), ['Петрова Мария']);
 });
 
 const PROTOCOL = `# Brainstorming — Поиск

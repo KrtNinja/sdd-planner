@@ -89,8 +89,9 @@ export function setHeader(md, key, value, after = []) {
   const re = new RegExp(`^${key}:.*$`, 'm');
   if (re.test(md)) return md.replace(re, () => `${key}: ${value}`);
   const ls = md.split('\n');
-  const i = after.map((k) => ls.findIndex((t) => t.startsWith(`${k}:`))).find((x) => x >= 0);
-  ls.splice(i === undefined ? 1 : i + 1, 0, '', `${key}: ${value}`);
+  // Вставить после строки с первым найденным ключом из after (номер строки с 1; не найден — 0), иначе после заголовка.
+  const at = /** @type {number} */ ([...after.map((k) => ls.findIndex((t) => t.startsWith(`${k}:`)) + 1), 1].find(Boolean));
+  ls.splice(at, 0, '', `${key}: ${value}`);
   return ls.join('\n');
 }
 /** @param {string} md @param {string} key */

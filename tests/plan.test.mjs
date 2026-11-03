@@ -45,6 +45,7 @@ test('plan: parsePlan — заголовки, первое значение кл
   assert.deepEqual([...b.basis], ['FR-1', 'FR-2', 'FR-3', 'NFR-1']);
   assert.deepEqual([a.basisRaw, a.halves, a.result, a.why], ['контракты', null, null, null]);
   assert.deepEqual([a.deps, b.deps, c.deps], [[], ['001'], ['002']]);
+  assert.equal(parsePlan('/x/plan.md', '## 001-a — A\nОснование:\n').slices[0].basisRaw, '');
   assert.equal(parsePlan('/x/plan.md', null), null);
 });
 
