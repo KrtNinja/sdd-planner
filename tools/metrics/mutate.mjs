@@ -9,6 +9,8 @@
 //   node metrics/mutate.mjs gate [--base origin/main] [--from <dir>] [--fresh]
 //       собрать снимок в .metrics/mutate/: tools/metrics/mutate/ (без --fresh) и поверх него части из <dir>;
 //       сводка; с --base — код 1, если в функциях, которые задел diff, выжили мутанты; печатает снимок для коммита
+//   node metrics/mutate.mjs survivors [модуль ...]
+//       выжившие по снимку tools/metrics/mutate/: «файл:строка было → стало [форма]», модуль — имя без .mjs
 //   node metrics/mutate.mjs pull <run-id>
 //       снимок из лога CI → tools/metrics/mutate/ (коммитит человек, отдельным коммитом, как базовые линии)
 //
@@ -127,6 +129,16 @@ function survivors(snap, form) {
     .map(([, , , start, , was, now]) => `${form.file}:${src.subarray(0, start).toString().split('\n').length} ${was} → ${now}`);
 }
 
+function cmdSurvivors() {
+  const want = process.argv.slice(3);
+  const snaps = ednFiles(SNAPSHOT)
+    .map((f) => readSnap(SNAPSHOT, f))
+    .filter((s) => !want.length || want.includes(path.basename(s.source, '.mjs')));
+  const forms = snaps.flatMap((snap) => (snap.forms ?? []).filter((form) => form.survived > 0).map((form) => ({ snap, form })));
+  for (const { snap, form } of forms) for (const s of survivors(snap, form)) console.log(`${s} [${form.id}]`);
+  console.log(`Выживших: ${forms.reduce((acc, { form }) => acc + form.survived, 0)} в ${forms.length} функциях`);
+}
+
 function summary(snaps) {
   const forms = snaps.flatMap((s) => (s.forms ?? []).map((form) => ({ snap: s, form })));
   const sum = (k) => forms.reduce((acc, { form }) => acc + form[k], 0);
@@ -186,7 +198,7 @@ function cmdPull() {
   console.log(`tools/metrics/mutate/: ${Object.keys(files).length} файлов из прогона ${id}`);
 }
 
-const COMMANDS = { files: cmdFiles, collect: cmdCollect, gate: cmdGate, pull: cmdPull };
+const COMMANDS = { files: cmdFiles, collect: cmdCollect, gate: cmdGate, survivors: cmdSurvivors, pull: cmdPull };
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const cmd = COMMANDS[process.argv[2]];
   if (!cmd) {

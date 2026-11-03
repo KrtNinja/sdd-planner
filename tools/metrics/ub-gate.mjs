@@ -3,6 +3,8 @@
 //
 //   node metrics/ub-gate.mjs             — сводка и код 1, если хуже базовой линии (нет её — только сводка)
 //   node metrics/ub-gate.mjs --baseline  — записать базовую линию (коммитит человек)
+//   node metrics/ub-gate.mjs --baseline-mutate — в базовой линии обновить только mutate: он считается по снимку
+//                                           в репозитории и локально совпадает с CI; crap и dry — из лога ub-mode
 //
 // Пороги ub-mode: CRAP < 10 у каждой функции, повторов со сходством ≥ 0.8 нет, выживших мутантов нет.
 // Пока код до них не дорос, гейт держит «не хуже»: новых нарушителей нет, старые не ухудшились.
@@ -56,7 +58,11 @@ console.log(`dryer: ${now.dry ? `пар со сходством ≥ ${DRY_MIN}: 
 for (const p of now.dry?.pairs.slice(0, 15) ?? []) console.log(`  ${p.score}\t${p.left}  ↔  ${p.right}`);
 console.log(`mutator: ${now.mutate ? `функций с выжившими: ${now.mutate.survivedForms}` : 'снимка нет'}`);
 
-if (process.argv.includes('--baseline')) {
+if (process.argv.includes('--baseline-mutate')) {
+  const base = JSON.parse(fs.readFileSync(BASELINE, 'utf8'));
+  console.log(`mutate: функций с выжившими ${base.mutate?.survivedForms ?? '—'} → ${now.mutate?.survivedForms ?? '—'}`);
+  fs.writeFileSync(BASELINE, `${JSON.stringify({ ...base, mutate: now.mutate }, null, 1)}\n`);
+} else if (process.argv.includes('--baseline')) {
   fs.writeFileSync(BASELINE, `${JSON.stringify(now, null, 1)}\n`);
   console.log(`Базовая линия записана: ${rel(BASELINE)}`);
 } else if (fs.existsSync(BASELINE)) {
