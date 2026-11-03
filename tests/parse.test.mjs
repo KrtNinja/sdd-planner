@@ -206,3 +206,15 @@ test('spec: пустой и отсутствующий документ, уда�
     sources: [], oldTraceT: null, oldTraceLine: 2, title: 'X',
   });
 });
+
+test('slices: несколько AC, кириллица, удаление и незаполненный номер сохраняют строки', () => {
+  const md = '```\nАС-003-В2 (удалён) [FR-1]\nAC-003-3 пример\nAC-003-?\n```\nПроверяет: FR-2\n\nПроза\nПроверяет: FR-9';
+  const s = parseSlice('003-x.md', md);
+  assert.deepEqual(s.multi, [{ n: 1, count: 2 }]);
+  assert.equal(s.pending, 1);
+  assert.deepEqual(s.strayChecks, [9]);
+  assert.deepEqual(s.acs, [
+    { id: 'AC-003-B2', acNum: '003', side: 'B', k: 2, n: 2, deleted: true, oldRefs: ['FR-1'], refs: ['FR-1', 'FR-2'], body: s.sc.blocks[0].lines.slice(1) },
+    { id: 'AC-003-3', acNum: '003', side: '', k: 3, n: 3, deleted: false, oldRefs: [], refs: ['FR-2'], body: s.sc.blocks[0].lines.slice(2) },
+  ].map((a) => ({ ...a, stub: false, h2: null, checks: { n: 6, text: 'Проверяет: FR-2' }, block: 0, text: s.sc.blocks[0].lines.map((l) => l.text).join('\n') })));
+});
