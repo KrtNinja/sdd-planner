@@ -65,7 +65,7 @@ const optionLine = (o) => `${o.n}. ${bold(o.label)}${o.recommended ? ' (реко
  * @param {{ questions: Question[], then: string[], stage?: string | null, free?: boolean, lead?: string | null, extra?: (string | null)[] }} opts
  * @returns {QuestionView}
  */
-export function questionView({ questions, then, stage = null, free = false, lead = null, extra = [] }) {
+function questionView({ questions, then, stage = null, free = false, lead = null, extra = [] }) {
   let n = 0;
   // preview (план нарезки, блок находки) человек читает до вопроса: в инструменте выбора ему не место.
   const preview = questions.map((q) => q.preview).filter(Boolean).join('\n\n') || null;
