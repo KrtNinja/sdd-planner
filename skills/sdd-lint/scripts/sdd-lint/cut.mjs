@@ -47,7 +47,9 @@ const adrFor = (m, num) =>
 // ADR, которые надо завести: «Р1 — ADR: <тема>» в slices, и ни один ADR фичи slice не затрагивает.
 /** @param {Feature} m */
 export function neededAdrs(m) {
-  return [...m.slices.values()].filter((s) => reason(s.why) === '1' && adrTopic(s.why) && !adrFor(m, s.num)).map((s) => ({ num: s.num, topic: adrTopic(s.why) }));
+  return [...m.slices.values()]
+    .filter((s) => reason(s.why) === '1' && adrTopic(s.why) && !adrFor(m, s.num))
+    .map((s) => ({ num: s.num, topic: /** @type {string} */ (adrTopic(s.why)) }));
 }
 
 // Правило — { ids, check }: ids — какие ID из rules.mjs оно выдаёт, check — его находки массивом.

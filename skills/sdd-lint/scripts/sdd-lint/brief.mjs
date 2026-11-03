@@ -1,10 +1,14 @@
 // Бриф этапа slices для агента: требования, сервисы, ADR и с какого шага продолжать — печатает gate slices.
+// @ts-check
 import { stubCount } from './cut.mjs';
 import { rel } from './md.mjs';
 import { G, blocks, bold, list } from './screen.mjs';
 import { registry } from './services.mjs';
 
+/** @typedef {import('./model.mjs').Feature} Feature */
+
 // Правило FR одной строкой: текст до «Пример:», первое предложение.
+/** @param {import('./model.mjs').Req} r */
 function gist(r) {
   const body = r.text.replace(/^\s*N?FR-\d+\s*/, '').split(/Пример:/)[0].replace(/\s+/g, ' ').trim();
   const first = body.match(/^.*?[.!?](?=\s|$)/)?.[0] || body;
@@ -12,6 +16,7 @@ function gist(r) {
 }
 
 // Человеку и агенту — одна карточка (требования, сервисы, ADR); с какого шага продолжать — в строку ⚙.
+/** @param {Feature & { spec: import('./model.mjs').Spec }} m */
 export function slicesBrief(m) {
   const dir = rel(m.dir);
   const reqs = [...m.spec.reqs.values()].filter((r) => !r.deleted);

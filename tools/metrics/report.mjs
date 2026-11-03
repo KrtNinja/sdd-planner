@@ -48,7 +48,7 @@ async function eslint() {
 
 function tsc() {
   const bin = path.join(TOOLS, 'node_modules/.bin/tsc');
-  const args = ['--allowJs', '--checkJs', '--noEmit', '--target', 'es2022', '--module', 'nodenext', '--moduleResolution', 'nodenext',
+  const args = ['--allowJs', '--checkJs', '--noEmit', '--target', 'es2023', '--module', 'nodenext', '--moduleResolution', 'nodenext',
     '--noUnusedLocals', '--skipLibCheck', '--typeRoots', path.join(TOOLS, 'node_modules/@types'), '--types', 'node',
     path.join(CODE, 'sdd-lint.mjs'), path.join(CODE, 'mcp.mjs')];
   const r = spawnSync(bin, args, { cwd: REPO, encoding: 'utf8', maxBuffer: 1 << 26 });

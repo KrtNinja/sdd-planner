@@ -1,4 +1,5 @@
 // Аргументы этапа после фичи — их разбирает скрипт, а не модель: тема ADR, находка ревью для decide,
+// @ts-check
 // режим ревью; затронутые требованием slices и AC (trace FR-n).
 import { neededAdrs } from './cut.mjs';
 import { reviewTargets } from './guide.mjs';
@@ -10,10 +11,20 @@ import { code, skillCode } from './config.mjs';
 
 // Шаг после фичи: { card, parts } — дополнение к выводу открытых ворот (карточка и части строки ⚙),
 // { stop, text } — готовый вывод целиком: вопрос или стоп, этап дальше не идёт.
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Slice} Slice */
+/** @typedef {import('./question.mjs').Question} Question */
+/**
+ * Шаг после фичи: дополнение к выводу ворот или готовый вывод со стопом.
+ * @typedef {{ card: string | null, parts?: string[], stop?: undefined, mode?: string, num?: string | null }
+ *   | { stop: true, text: string, card?: undefined }} GateStep
+ */
 const AC_ID = /\bAC-\d{3}-[BF]?\d+\b/g;
+/** @param {string} s */
 const short = (s, n = 90) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 // Тема ADR: названа — дальше; нет — темы, которых ждут slices (Р1 — ADR: …); нет и их — кандидатов ищет сабагент.
+/** @param {Feature} m @param {string | undefined} topic @returns {GateStep} */
 export function adrTopicStep(m, topic) {
   const d = rel(m.dir);
   const needed = neededAdrs(m);
@@ -22,6 +33,7 @@ export function adrTopicStep(m, topic) {
     return { card: `Тема ADR: «${topic}»${by.length ? ` — её ждёт slice ${by.join(', ')} (Р1)` : ''}.` };
   }
   if (needed.length) {
+    /** @type {Question} */
     const q = {
       header: 'Тема ADR',
       question: 'Какое решение оформляем в ADR? Другая тема — напишите её.',
@@ -48,6 +60,7 @@ export function adrTopicStep(m, topic) {
 }
 
 // Находка ревью для /sdd-decide: «R2» или «slices:R2», если R2 есть в нескольких ревью.
+/** @param {Feature} m @param {string} arg @returns {GateStep} */
 export function findingStep(m, arg) {
   const d = rel(m.dir);
   const [key, id] = arg.includes(':') ? arg.split(':') : [null, arg];
@@ -59,6 +72,7 @@ export function findingStep(m, arg) {
     return { stop: true, text: screen(`Находки ${arg} нет. Есть: ${have}. Какую вы имели в виду?`, G.wait(['gate', 'decide', d, '<ответ человека>'])) };
   }
   if (hit.length > 1) {
+    /** @type {Question} */
     const q = {
       header: 'Находка',
       question: `${id} есть в нескольких ревью. Какая?`,
@@ -74,7 +88,7 @@ export function findingStep(m, arg) {
         ['Где', r.where],
         ['Что не так', r.what],
         ['Предложение', r.proposal],
-        ...(undecided(r) ? [] : [['Решение уже есть', `«${r.decision}»`]]),
+        .../** @type {[string, string][]} */ (undecided(r) ? [] : [['Решение уже есть', `«${r.decision}»`]]),
       ]),
       ids.length ? `Что на ней держится:\n${impact(m, ids)}` : null,
     ),
@@ -83,15 +97,19 @@ export function findingStep(m, arg) {
 }
 
 // Режим ревью: не назван — что ждёт ревью; одно — берём, несколько — вопрос.
+/** @param {Feature} m @param {string | undefined} arg @param {string | undefined} [num] @returns {GateStep} */
 export function reviewStep(m, arg, num) {
   const d = rel(m.dir);
-  let [mode, n] = (arg || '').split(':');
-  n = n || num;
+  const parts = (arg || '').split(':');
+  let mode = parts[0];
+  /** @type {string | undefined} */
+  let n = parts[1] || num;
   const targets = reviewTargets(m);
   if (!mode) {
     if (targets.length === 1) [mode, n] = [targets[0].mode, targets[0].num];
     else if (!targets.length) return { stop: true, text: screen('Ревью ничего не ждёт: всё одобрено. Что смотрим заново — spec, slices или ADR?', G.wait(['gate', 'review', d, '<ответ человека>'])) };
     else {
+      /** @type {Question} */
       const q = { header: 'Ревью', question: 'Что смотрим?', options: targets.slice(0, 4).map((t, i) => ({ id: t.num ? `adr:${t.num}` : t.mode, label: t.label, recommended: i === 0 })) };
       return { stop: true, text: pickText(null, q, ['gate', 'review', d, '<id>']) };
     }
@@ -104,6 +122,7 @@ export function reviewStep(m, arg, num) {
     if (!n && nums.length === 1) n = nums[0];
     if (!n || !nums.includes(n.padStart(4, '0'))) {
       if (!nums.length) return { stop: true, text: screen('У фичи нет ADR — ревьюить нечего.', G.stop) };
+      /** @type {Question} */
       const q = { header: 'ADR', question: 'Какой ADR смотрим?', options: m.featureAdrs.slice(0, 4).map((a) => ({ id: `adr:${a.num}`, label: `ADR ${a.num}`, description: `«${a.status || '—'}»` })) };
       return { stop: true, text: pickText(null, q, ['gate', 'review', d, '<id>']) };
     }
@@ -113,6 +132,7 @@ export function reviewStep(m, arg, num) {
   return { card: droppedText(m, reviewKey(mode, adrNum)), parts: [`режим ${mode}${adrNum ? ` ${adrNum}` : ''}`], mode, num: adrNum };
 }
 // Находки, которые человек снял на прошлых ревью этого артефакта («Снято на ревью» в протоколе): ревьюер их не поднимает.
+/** @param {Feature} m @param {string} key */
 function droppedText(m, key) {
   const rows = (m.protocol?.dropped || []).filter((x) => x.review.split(/\s+/)[0] === key);
   if (!rows.length) return null;
@@ -120,14 +140,18 @@ function droppedText(m, key) {
 }
 
 // Что держится на требовании: строки протокола, slices, где оно в «Основание», и AC, которые его проверяют.
+/** @param {Feature} m @param {string[]} ids */
 export function impact(m, ids) {
+  /** @type {string[]} */
   const out = [];
   const s = m.spec;
   for (const id of ids) {
     if (/^AC-/.test(id)) {
       const sl = [...m.slices.values()].find((x) => x.acs.some((a) => a.id === id));
       const ac = sl?.acs.find((a) => a.id === id);
-      out.push(ac ? `- ${bold(id)} ${code(`${rel(sl.file)}:${ac.n}`)} — проверяет: ${ac.refs.join(', ') || '—'}` : `- ${bold(id)} — нет в slices`);
+      out.push(
+        ac ? `- ${bold(id)} ${code(`${rel(/** @type {Slice} */ (sl).file)}:${ac.n}`)} — проверяет: ${ac.refs.join(', ') || '—'}` : `- ${bold(id)} — нет в slices`,
+      );
       continue;
     }
     const r = s?.reqs.get(id);
@@ -135,11 +159,13 @@ export function impact(m, ids) {
       out.push(`- ${bold(id)} — нет в spec.md`);
       continue;
     }
-    const proto = uniq(s.sources.filter((x) => x.target?.ids?.includes(id)).flatMap((x) => x.refs.map((y) => `#${y.id}`)));
+    // требование нашлось — значит, spec есть.
+    const spec = /** @type {import('./model.mjs').Spec} */ (s);
+    const proto = uniq(spec.sources.filter((x) => x.target?.kind === 'req' && x.target.ids.includes(id)).flatMap((x) => x.refs.map((y) => `#${y.id}`)));
     const slices = [...m.slices.values()].filter((x) => x.basis.has(id)).map((x) => x.num);
     const acs = [...m.slices.values()].flatMap((x) => x.acs.filter((a) => a.refs.includes(id) && !a.deleted).map((a) => `${a.id} ${rel(x.file)}:${a.n}`));
     out.push(
-      `- ${bold(id)} ${code(`${rel(s.file)}:${r.n}`)} — ${short(r.text.replace(/^\s*N?FR-\d+\s*/, '').split(/Пример:/)[0].replace(/\s+/g, ' ').trim(), 70)}`,
+      `- ${bold(id)} ${code(`${rel(spec.file)}:${r.n}`)} — ${short(r.text.replace(/^\s*N?FR-\d+\s*/, '').split(/Пример:/)[0].replace(/\s+/g, ' ').trim(), 70)}`,
       `  - протокол: ${proto.join(', ') || '—'}`,
       `  - slices (Основание): ${slices.join(', ') || '—'}`,
       `  - AC: ${acs.map(codePaths).join('; ') || '—'}`,

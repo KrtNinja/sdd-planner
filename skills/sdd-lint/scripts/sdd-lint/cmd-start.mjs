@@ -8,7 +8,8 @@ import { REPO, inventory } from './input.mjs';
 import { header, rel } from './md.mjs';
 import { needDir, pickChoice } from './pick.mjs';
 import { G, screen } from './screen.mjs';
-import { acceptContext, addSources, renameFeature, researchList, sourcesOf, startFrom, taskOf } from './start.mjs';
+import { researchList, sourcesOf, taskOf } from './start-sources.mjs';
+import { acceptContext, addSources, renameFeature, startFrom } from './start.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
 

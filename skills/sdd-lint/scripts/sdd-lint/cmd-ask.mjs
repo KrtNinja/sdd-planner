@@ -10,7 +10,7 @@ import { ANSWER, viewText, waitText } from './question.mjs';
 import { G, blocks, gearLine, screen, splitGear } from './screen.mjs';
 import { saveSnapshot } from './snapshot.mjs';
 import { tempArtifacts } from './stage.mjs';
-import { startQuestion } from './start.mjs';
+import { startQuestion } from './start-sources.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
 

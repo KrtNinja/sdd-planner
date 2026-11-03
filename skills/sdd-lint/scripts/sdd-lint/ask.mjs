@@ -1,4 +1,5 @@
 // Вопрос человеку на этапе: варианты с рекомендацией и задания для них (ask / choose).
+// @ts-check
 import { pendingAdrs } from './adr.mjs';
 import { showCmd, skill } from './config.mjs';
 import { neededAdrs, stubCount } from './cut.mjs';
@@ -11,6 +12,10 @@ import { G } from './screen.mjs';
 import { artifactQuestion } from './review-walk.mjs';
 import { tempArtifacts, stageOf } from './stage.mjs';
 
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./question.mjs').Question} Question */
+/** @typedef {import('./question.mjs').Option} Option */
+
 // Что спросить в конце этапа и что сделать по ответу — данные скрипта, а не текст для модели.
 // Агент задаёт вопросы из ask инструментом выбора и передаёт id варианта в choose.
 // Действие: lint — выполняет choose (after — что дальше, retry — при коде 2 переспросить);
@@ -22,14 +27,18 @@ import { tempArtifacts, stageOf } from './stage.mjs';
 // Варианты разбора ревью и одобрения — в review-walk.mjs.
 // Новый этап — рекомендуем новый контекст: flash-модели и заполненное окно тянут хвост
 // прошлого этапа. Продолжение того же этапа (cont) — здесь: контекст ещё нужен.
+/** @param {Feature} m @param {string} now @param {string} name @param {string} label @returns {Question} */
 function nextSkillQuestion(m, now, name, label, cont = false) {
+  /** @type {Option} */
   const here = { id: `here:${name}`, label: 'Здесь, в этом окне', description: skill(name, m.name), action: { here: ['prompt', name, m.name] } };
+  /** @type {Option} */
   const fresh = { id: `window:${name}`, label: 'В новом контексте/окне', description: `${skill(name, m.name)} — запускаете сами, чистый контекст`, action: { show: showCmd(skill(name, m.name)) } };
   const options = cont ? [here, fresh] : [fresh, here];
   options[0].recommended = true;
   return { header: 'Следующий этап', question: `${now}. ${label}?`, options };
 }
 // Согласие с планом нарезки: «Да» создаёт файлы скриптом (gen slices), а не руками агента.
+/** @param {Feature & { plan: import('./model.mjs').Plan }} m @returns {Question} */
 function planQuestion(m) {
   const dir = rel(m.dir);
   const errs = errorsOf(checkPlan(m)).length;
@@ -67,6 +76,7 @@ function planQuestion(m) {
   };
 }
 // ADR, который slice ждёт, но его ещё нет: «Р1 — ADR: <тема>».
+/** @param {Feature} m @returns {Question[]} */
 function newAdrQuestions(m) {
   return neededAdrs(m).map((x) => ({
     header: 'Нужен ADR',
@@ -79,9 +89,11 @@ function newAdrQuestions(m) {
   }));
 }
 // Пока план не согласован или заготовки не заполнены — один вопрос: решение о нарезке важнее ADR, их черёд после.
+/** @param {Feature} m @returns {{ stage: string, questions: Question[] }} */
 export function askOf(m) {
   const st = stageOf(m);
   const adrQs = () => [...newAdrQuestions(m), ...pendingAdrs(m).map((a) => artifactQuestion(m, 'adr', a.num))];
+  /** @type {Question[]} */
   let qs = [];
   if (m.slices.size && m.spec && !approved(m.spec.status)) qs = [artifactQuestion(m, 'spec'), ...adrQs()];
   else if (m.slices.size && approved(m.slicesStatus)) {
@@ -106,7 +118,7 @@ export function askOf(m) {
       ];
   } else if (m.slices.size && stubCount(m)) qs = [nextSkillQuestion(m, st.now, 'sdd-slices', 'Продолжить заполнение', true)];
   else if (m.slices.size) qs = [artifactQuestion(m, 'slices'), ...adrQs()];
-  else if (m.plan && m.spec && approved(m.spec.status)) qs = [planQuestion(m)];
+  else if (m.plan && m.spec && approved(m.spec.status)) qs = [planQuestion(/** @type {Feature & { plan: import('./model.mjs').Plan }} */ (m))];
   else if (m.spec && approved(m.spec.status)) qs = [nextSkillQuestion(m, st.now, 'sdd-slices', 'Резать slices'), ...adrQs()];
   else if (m.spec) qs = [artifactQuestion(m, 'spec'), ...adrQs()];
   else if (m.protocol && /готов/i.test(m.protocol.status || '')) qs = [nextSkillQuestion(m, st.now, 'sdd-spec', 'Писать Dev Spec')];
@@ -121,6 +133,7 @@ export function askOf(m) {
 
 // Вопросы этапа. Действия в вывод не идут: их выполняет choose по id.
 // Человек видит карточку вопроса, агент — строку ⚙: заголовки для инструмента выбора и id по номерам.
+/** @param {Feature} m */
 export function askView(m) {
   const { stage, questions } = askOf(m);
   return questionsView(rel(m.dir), stage, questions);
