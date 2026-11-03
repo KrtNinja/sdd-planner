@@ -29,13 +29,23 @@ function nameQuestion(c, raw, fileSlug) {
     description: fileSlug ? `\`${DOCS}/${fileSlug}\` (из имени файла задачи)` : 'агент подберёт 2–4 английских слова по задаче',
   };
   const own = { id: NAME_OWN, label: 'Своё', description: 'напишете имя следующим сообщением' };
-  const q = { header: 'Папка', question: 'Как назвать папку фичи?', preview: `Задача: ${requestOf(c.task)}. Папка — в \`${DOCS}/\`: ${RULE}.`, options: [auto, own] };
+  const q = {
+    header: 'Папка',
+    question: 'Как назвать папку фичи?',
+    preview: `Задача: ${requestOf(c.task)}. Папка — в \`${DOCS}/\`: ${RULE}.`,
+    options: [auto, own],
+  };
   return pickText(null, q, nameArgs(raw, '<id>'));
 }
 // why — почему переспрашиваем: имя не подошло или папка занята.
 /** @param {string} raw @param {string | null} [why] */
 const askName = (raw, why = null) =>
-  waitText(why ? blocks(why, 'Какое имя взять?') : `Как назвать папку фичи? ${RULE.charAt(0).toUpperCase()}${RULE.slice(1)} — например, \`user-settings\` или \`PROJECT-4567\`.`, nameArgs(raw, ANSWER));
+  waitText(
+    why
+      ? blocks(why, 'Какое имя взять?')
+      : `Как назвать папку фичи? ${RULE.charAt(0).toUpperCase()}${RULE.slice(1)} — например, \`user-settings\` или \`PROJECT-4567\`.`,
+    nameArgs(raw, ANSWER),
+  );
 
 // Имя новой папки. slug — придумал агент после «Автоматически» или человек написал «/sdd-grill my-feature "…"»;
 // name — ответ на вопрос: id варианта или имя словами. { slug, own, from } — создавать (from — ответ человека,
@@ -55,7 +65,8 @@ export function folderName(c, raw, slug, name) {
     return {
       text: screen(
         null,
-        `придумай имя папки фичи по задаче ${requestOf(c.task)}: 2–4 английских слова строчными через дефис, например user-settings-panel; человека не спрашивай — он выбрал «Автоматически», имя увидит и сможет поменять`,
+        `придумай имя папки фичи по задаче ${requestOf(c.task)}: 2–4 английских слова строчными через дефис, например user-settings-panel; ` +
+          `человека не спрашивай — он выбрал «Автоматически», имя увидит и сможет поменять`,
         G.call(['start', raw, '--slug', '<имя>']),
       ),
     };
@@ -75,10 +86,17 @@ export function nameTrouble(slug, raw, own) {
   const twin = caseTwin(slug);
   if (twin) {
     const why = `Папка \`${path.join(DOCS, twin)}\` уже есть: имена, которые отличаются только регистром, на macOS и Windows — одна папка.`;
-    return own ? askName(raw, why) : screen(null, `папка ${path.join(DOCS, twin)} уже есть и отличается только регистром — придумай другое имя → ${A(['start', raw, '--slug', '<имя>'])}`);
+    return own
+      ? askName(raw, why)
+      : screen(null, `папка ${path.join(DOCS, twin)} уже есть и отличается только регистром — придумай другое имя → ${A(['start', raw, '--slug', '<имя>'])}`);
   }
   if (old == null && !fs.existsSync(path.join(dir, 'spec.md'))) return null;
   const was = old ? ` (запрос ${header(old, 'Запрос') || '—'})` : '';
   if (own) return askName(raw, `Папка \`${dir}\` уже занята${was}. Продолжить ту фичу — ${skillCode('sdd-grill', slug)}; для этой задачи нужно другое имя.`);
-  return screen(null, `папка ${dir} уже занята${was}`, `та же задача — ${G.call(['start', dir])}`, `другая — придумай другое имя → ${A(['start', raw, '--slug', '<имя>'])}`);
+  return screen(
+    null,
+    `папка ${dir} уже занята${was}`,
+    `та же задача — ${G.call(['start', dir])}`,
+    `другая — придумай другое имя → ${A(['start', raw, '--slug', '<имя>'])}`,
+  );
 }

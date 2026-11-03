@@ -54,20 +54,30 @@ export function gateClosed(m, stage, found) {
   let closed = null;
   if (stage === 'spec') {
     if (!m.protocol) closed = ['нет brainstorming.md', `Сначала проведите brainstorming: ${skillCode('sdd-grill', m.name)}`];
-    else if (!/готов/i.test(m.protocol.status || '')) closed = [`статус протокола «${m.protocol.status || '—'}»`, `Сначала закончите brainstorming: ${skillCode('sdd-grill', m.name)}`];
+    else if (!/готов/i.test(m.protocol.status || ''))
+      closed = [`статус протокола «${m.protocol.status || '—'}»`, `Сначала закончите brainstorming: ${skillCode('sdd-grill', m.name)}`];
     else if (errorsIn(found, [m.protocolFile]).length) closed = ['ошибки в протоколе', `В протоколе ошибки lint — поправьте его, список: ${check}`];
   } else if (stage === 'slices') {
     if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skillCode('sdd-spec', m.name)}`];
     else if (!approved(m.spec.status)) closed = [`статус spec «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCode('approve', 'spec', dir)}`];
-    else if (errorsIn(found, [m.protocolFile, m.specFile]).length) closed = ['ошибки в протоколе или spec', `В spec ошибки lint — исправьте и одобрите заново, список: ${check}`];
+    else if (errorsIn(found, [m.protocolFile, m.specFile]).length)
+      closed = ['ошибки в протоколе или spec', `В spec ошибки lint — исправьте и одобрите заново, список: ${check}`];
   } else if (stage === 'adr' || stage === 'decide' || stage === 'review') {
     if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skillCode('sdd-spec', m.name)}`];
   } else if (stage === 'build') {
     const pending = pendingAdrs(m);
     const need = neededAdrs(m);
     if (!m.slices.size || !approved(m.slicesStatus)) closed = ['slices не одобрены', `Сначала одобрите slices: ${lintCode('approve', 'slices', dir)}`];
-    else if (need.length) closed = [`нет ADR: ${need.map((x) => `«${x.topic}» (slice ${x.num})`).join(', ')}`, `Сначала напишите ADR: ${need.map((x) => skillCode('sdd-adr', m.name, `"${x.topic}"`)).join('; ')}`];
-    else if (pending.length) closed = [`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`, `Сначала примите ADR: ${pending.map((a) => lintCode('approve', 'adr', dir, a.num)).join('; ')}`];
+    else if (need.length)
+      closed = [
+        `нет ADR: ${need.map((x) => `«${x.topic}» (slice ${x.num})`).join(', ')}`,
+        `Сначала напишите ADR: ${need.map((x) => skillCode('sdd-adr', m.name, `"${x.topic}"`)).join('; ')}`,
+      ];
+    else if (pending.length)
+      closed = [
+        `ADR не приняты: ${pending.map((a) => a.num).join(', ')}`,
+        `Сначала примите ADR: ${pending.map((a) => lintCode('approve', 'adr', dir, a.num)).join('; ')}`,
+      ];
     else if (hasErrors(found)) closed = ['есть ошибки lint', `Исправьте ошибки lint, список: ${check}`];
   }
   return closed;
@@ -118,6 +128,8 @@ export function cmdGate(ctx) {
   // Путь фичи — каноническим: агент подставляет его в следующие вызовы как есть, без разбора аргумента.
   // Ворота slices открыты — spec есть.
   const brief = stage === 'slices' ? slicesBrief(/** @type {Feature & { spec: import('./model.mjs').Spec }} */ (m)) : null;
-  ctx.io.log(screen(blocks(note, helloLine(m, stage), extra?.card, brief?.card), `ворота ${stage} открыты`, `фича ${rel(m.dir)}`, extra?.parts, brief?.parts, G.skill));
+  ctx.io.log(
+    screen(blocks(note, helloLine(m, stage), extra?.card, brief?.card), `ворота ${stage} открыты`, `фича ${rel(m.dir)}`, extra?.parts, brief?.parts, G.skill),
+  );
   ctx.io.exit(0);
 }

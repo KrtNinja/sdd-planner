@@ -39,7 +39,15 @@ export function adrTopicStep(m, topic) {
       question: 'Какое решение оформляем в ADR? Другая тема — напишите её.',
       options: uniq(needed.map((x) => x.topic))
         .slice(0, 4)
-        .map((t, i) => ({ id: t, label: t, description: `ждёт slice ${needed.filter((x) => x.topic === t).map((x) => x.num).join(', ')} (Р1)`, recommended: i === 0 })),
+        .map((t, i) => ({
+          id: t,
+          label: t,
+          description: `ждёт slice ${needed
+            .filter((x) => x.topic === t)
+            .map((x) => x.num)
+            .join(', ')} (Р1)`,
+          recommended: i === 0,
+        })),
     };
     return { stop: true, text: pickText('Тема ADR не указана.', q, ['gate', 'adr', d, '<id>']) };
   }
@@ -65,7 +73,14 @@ export function findingStep(m, arg) {
   const d = rel(m.dir);
   const [key, id] = arg.includes(':') ? arg.split(':') : [null, arg];
   const all = [...m.reviews].flatMap(([k, rv]) => rv.rows.map((r) => ({ ...r, key: k, file: rv.file })));
-  if (!all.length) return { stop: true, text: screen(`Файлов ревью нет: фича закрыта или ревью не было. Напишите вопрос текстом: ${skillCode('sdd-decide', m.name, '"<вопрос>"', '"<решение>"')}.`, G.stop) };
+  if (!all.length)
+    return {
+      stop: true,
+      text: screen(
+        `Файлов ревью нет: фича закрыта или ревью не было. Напишите вопрос текстом: ${skillCode('sdd-decide', m.name, '"<вопрос>"', '"<решение>"')}.`,
+        G.stop,
+      ),
+    };
   const hit = all.filter((r) => r.id.toUpperCase() === id.toUpperCase() && (!key || r.key === key));
   if (!hit.length) {
     const have = all.map((r) => `${r.id} (${r.key})`).join(', ');
@@ -107,14 +122,20 @@ export function reviewStep(m, arg, num) {
   const targets = reviewTargets(m);
   if (!mode) {
     if (targets.length === 1) [mode, n] = [targets[0].mode, targets[0].num];
-    else if (!targets.length) return { stop: true, text: screen('Ревью ничего не ждёт: всё одобрено. Что смотрим заново — spec, slices или ADR?', G.wait(['gate', 'review', d, '<ответ человека>'])) };
+    else if (!targets.length) return { stop: true, text: screen('Ревью ничего не ждёт: всё одобрено. ' +
+      'Что смотрим заново — spec, slices или ADR?', G.wait(['gate', 'review', d, '<ответ человека>'])) };
     else {
       /** @type {Question} */
-      const q = { header: 'Ревью', question: 'Что смотрим?', options: targets.slice(0, 4).map((t, i) => ({ id: t.num ? `adr:${t.num}` : t.mode, label: t.label, recommended: i === 0 })) };
+      const q = {
+        header: 'Ревью',
+        question: 'Что смотрим?',
+        options: targets.slice(0, 4).map((t, i) => ({ id: t.num ? `adr:${t.num}` : t.mode, label: t.label, recommended: i === 0 })),
+      };
       return { stop: true, text: pickText(null, q, ['gate', 'review', d, '<id>']) };
     }
   }
-  if (!['spec', 'slices', 'adr'].includes(mode)) return { stop: true, text: screen(`Режима ревью «${mode}» нет. Что смотрим — spec, slices или ADR?`, G.wait(['gate', 'review', d, '<ответ человека>'])) };
+  if (!['spec', 'slices', 'adr'].includes(mode))
+    return { stop: true, text: screen(`Режима ревью «${mode}» нет. Что смотрим — spec, slices или ADR?`, G.wait(['gate', 'review', d, '<ответ человека>'])) };
   if (mode === 'adr') {
     const nums = m.featureAdrs.map((a) => a.num);
     const pend = targets.filter((t) => t.mode === 'adr').map((t) => t.num);
@@ -123,7 +144,11 @@ export function reviewStep(m, arg, num) {
     if (!n || !nums.includes(n.padStart(4, '0'))) {
       if (!nums.length) return { stop: true, text: screen('У фичи нет ADR — ревьюить нечего.', G.stop) };
       /** @type {Question} */
-      const q = { header: 'ADR', question: 'Какой ADR смотрим?', options: m.featureAdrs.slice(0, 4).map((a) => ({ id: `adr:${a.num}`, label: `ADR ${a.num}`, description: `«${a.status || '—'}»` })) };
+      const q = {
+        header: 'ADR',
+        question: 'Какой ADR смотрим?',
+        options: m.featureAdrs.slice(0, 4).map((a) => ({ id: `adr:${a.num}`, label: `ADR ${a.num}`, description: `«${a.status || '—'}»` })),
+      };
       return { stop: true, text: pickText(null, q, ['gate', 'review', d, '<id>']) };
     }
     n = n.padStart(4, '0');
@@ -132,11 +157,14 @@ export function reviewStep(m, arg, num) {
   return { card: droppedText(m, reviewKey(mode, adrNum)), parts: [`режим ${mode}${adrNum ? ` ${adrNum}` : ''}`], mode, num: adrNum };
 }
 // Находки, которые человек снял на прошлых ревью этого артефакта («Снято на ревью» в протоколе): ревьюер их не поднимает.
+// Снятая находка: где (если указано), что не так, какое ревью и когда.
+/** @param {import('./model.mjs').DroppedRow} x */
+const droppedLine = (x) => `${x.where && x.where !== '—' ? `${codePaths(x.where)}: ` : ''}${x.what} (${x.review}, ${x.when})`;
 /** @param {Feature} m @param {string} key */
 function droppedText(m, key) {
   const rows = (m.protocol?.dropped || []).filter((x) => x.review.split(/\s+/)[0] === key);
   if (!rows.length) return null;
-  return `Сняты на прошлых ревью — снова не поднимаются:\n${list(rows.map((x) => `${x.where && x.where !== '—' ? `${codePaths(x.where)}: ` : ''}${x.what} (${x.review}, ${x.when})`))}`;
+  return `Сняты на прошлых ревью — снова не поднимаются:\n${list(rows.map(droppedLine))}`;
 }
 
 // Что держится на требовании: строки протокола, slices, где оно в «Основание», и AC, которые его проверяют.
@@ -150,7 +178,9 @@ export function impact(m, ids) {
       const sl = [...m.slices.values()].find((x) => x.acs.some((a) => a.id === id));
       const ac = sl?.acs.find((a) => a.id === id);
       out.push(
-        ac ? `- ${bold(id)} ${code(`${rel(/** @type {Slice} */ (sl).file)}:${ac.n}`)} — проверяет: ${ac.refs.join(', ') || '—'}` : `- ${bold(id)} — нет в slices`,
+        ac
+          ? `- ${bold(id)} ${code(`${rel(/** @type {Slice} */ (sl).file)}:${ac.n}`)} — проверяет: ${ac.refs.join(', ') || '—'}`
+          : `- ${bold(id)} — нет в slices`,
       );
       continue;
     }

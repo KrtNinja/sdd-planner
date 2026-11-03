@@ -30,7 +30,14 @@ export const CMD_INFO = {
 };
 /** @type {Record<string, Record<string, string>>} */
 export const CHOICES = {
-  gate: { spec: 'можно ли писать Dev Spec', slices: 'можно ли резать slices', adr: 'можно ли писать ADR', decide: 'можно ли проводить решение', review: 'что ждёт ревью', build: 'можно ли начинать реализацию' },
+  gate: {
+    spec: 'можно ли писать Dev Spec',
+    slices: 'можно ли резать slices',
+    adr: 'можно ли писать ADR',
+    decide: 'можно ли проводить решение',
+    review: 'что ждёт ревью',
+    build: 'можно ли начинать реализацию',
+  },
   approve: { spec: 'одобрить Dev Spec', slices: 'одобрить slices', adr: 'принять ADR' },
   gen: { readme: 'slices/README.md: таблица, покрытие, порядок', links: 'ссылки на строки протокола и spec', slices: 'файлы slices по согласованному плану' },
   next: { FR: 'номер нового FR', NFR: 'номер нового NFR', AC: 'номер нового AC в slice', slice: 'номер нового slice', adr: 'номер нового ADR' },
@@ -64,7 +71,16 @@ export const SLOTS = {
   completion: ['choice'],
 };
 /** @type {Record<string, string[]>} */
-export const FLAGS = { start: ['--slug', '--name', '--sources', '--accept', '--rename'], check: ['--json', '--snapshot'], fix: ['--json', '--snapshot'], diff: ['--json', '--base'], guard: ['--json', '--base'], close: ['--json', '--yes'], prompt: ['--sub', '--note'], choose: ['--fallback'] };
+export const FLAGS = {
+  start: ['--slug', '--name', '--sources', '--accept', '--rename'],
+  check: ['--json', '--snapshot'],
+  fix: ['--json', '--snapshot'],
+  diff: ['--json', '--base'],
+  guard: ['--json', '--base'],
+  close: ['--json', '--yes'],
+  prompt: ['--sub', '--note'],
+  choose: ['--fallback'],
+};
 export const COMMANDS = Object.keys(CMD_INFO);
 
 // Флаги: булевы — есть или нет; со значением — «--имя значение» или «--имя=значение».

@@ -42,7 +42,8 @@ const short = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 /** @param {Feature} m @param {string} ref @param {string} decision @param {string[]} [next] @returns {Action} */
 export function decideAction(m, ref, decision, next, note = '') {
   const args = ['prompt', 'sdd-decide', m.name, ref, decision];
-  const say = `Провожу решение по ${/:R\d+$/.test(ref) ? ref.split(':')[1] : 'вопросу'} через ${skillCode('sdd-decide')} в сабагенте: протокол → FR → AC. В конце покажу, что изменилось.`;
+  const say = `Провожу решение по ${/:R\d+$/.test(ref) ? ref.split(':')[1] : 'вопросу'} через ${skillCode('sdd-decide')} в сабагенте: протокол → FR → AC. ` +
+    `В конце покажу, что изменилось.`;
   return { subagent: [...args, '--sub', ...(note.trim() ? ['--note', note.trim()] : [])], here: args, next, say };
 }
 
@@ -51,7 +52,13 @@ export function decideAction(m, ref, decision, next, note = '') {
 /** @typedef {Pick<Artifact, 'target' | 'files' | 'name' | 'of' | 'status'>} OwnParts */
 /** @type {Record<Artifact['what'], (m: Feature, dir: string, num?: string) => OwnParts>} */
 const OWN_OF = {
-  spec: (m) => ({ target: rel(m.specFile), files: rel(m.specFile), name: 'Dev Spec', of: 'спеки', status: /** @type {import('./model.mjs').Spec} */ (m.spec).status }),
+  spec: (m) => ({
+    target: rel(m.specFile),
+    files: rel(m.specFile),
+    name: 'Dev Spec',
+    of: 'спеки',
+    status: /** @type {import('./model.mjs').Spec} */ (m.spec).status,
+  }),
   slices: (m, dir) => ({ target: dir, files: `каждому файлу в ${dir}/slices/`, name: 'Slices', of: 'slices', status: m.slicesStatus }),
   adr: (m, _dir, num) => {
     const a = /** @type {import('./model.mjs').Adr} */ (m.featureAdrs.find((x) => x.num === num));
@@ -79,11 +86,27 @@ const reviewOption = (m, x, again) => ({
   action: {
     subagent: ['prompt', 'sdd-review', m.name, ...x.rest],
     say: `Запускаю ревью ${x.of} в сабагенте, в чистом контексте. Находки придут таблицей, затем разберём их по одной.`,
-    fallback: blocks(`Сабагентов нет — запустите ревью в новом окне: ${code(skill('sdd-review', m.name, ...x.rest))}`, showCmd(skill('sdd-review', m.name, ...x.rest)).split('\n\n').slice(1)),
+    fallback: blocks(
+      `Сабагентов нет — запустите ревью в новом окне: ${code(skill('sdd-review', m.name, ...x.rest))}`,
+      showCmd(skill('sdd-review', m.name, ...x.rest))
+        .split('\n\n')
+        .slice(1),
+    ),
   },
 });
 /** @param {Feature} m @param {Artifact} x @returns {Option} */
-const windowOption = (m, x) => ({ id: `review-window:${x.key}`, label: 'Ревью в новом контексте/окне', description: 'вы запускаете команду сами', action: { show: showCmd(skill('sdd-review', m.name, ...x.rest)) } });
+const windowOption = (m, x) => ({
+  id: `review-window:${x.key}`,
+  label: 'Ревью в новом контексте/окне',
+  description: 'вы запускаете команду сами',
+  action: { show: showCmd(skill('sdd-review', m.name, ...x.rest)) },
+});
+// Как убрать AI стиль руками: spec и ADR — humanizer по файлу, slices — по каждому файлу папки.
+/** @param {Artifact} x */
+function humanizeHow(x) {
+  if (x.what !== 'slices') return code(skill('humanizer', x.target));
+  return `${code(skill('humanizer'))} по каждому файлу в ${code(`${x.dir}/slices/`)}`;
+}
 /** @param {Artifact} x @returns {Option} */
 const humanizeOption = (x) => ({
   id: `humanize:${x.key}`,
@@ -93,7 +116,7 @@ const humanizeOption = (x) => ({
     snapshot: x.target,
     subagent: ['prompt', 'humanize', x.target],
     say: `Убираю AI стиль из ${x.of} в сабагенте, затем проверю скриптом, что ID, таблицы и тексты на месте.`,
-    fallback: `Сабагентов нет — сделайте сами: ${x.what === 'slices' ? `${code(skill('humanizer'))} по каждому файлу в ${code(`${x.dir}/slices/`)}` : code(skill('humanizer', x.target))}, затем ${code(lintCmd('guard', x.target))}`,
+    fallback: `Сабагентов нет — сделайте сами: ${humanizeHow(x)}, затем ${code(lintCmd('guard', x.target))}`,
   },
 });
 // Одобрение держат открытые вопросы (SP-06, SL-10): сначала они — по одному, ответ человека проводит decide,
@@ -113,7 +136,8 @@ function approveOption(m, x) {
     action: {
       wait: blocks(block, `${bold('Как решаем?')} Напишите решение одним сообщением.`),
       then: ['choose', x.dir, id, ANSWER],
-      answer: (text) => decideAction(m, q.text, text, ['choose', x.dir, id], `Вопрос — из «Открытые вопросы» ${rel(q.file)}:${q.n}: решение его закрывает, убери его оттуда. `),
+      answer: (text) =>
+        decideAction(m, q.text, text, ['choose', x.dir, id], `Вопрос — из «Открытые вопросы» ${rel(q.file)}:${q.n}: решение его закрывает, убери его оттуда. `),
     },
   };
 }
@@ -123,12 +147,15 @@ function approveOption(m, x) {
 const KIND = { блокер: 'Блокер', замечание: 'Замечание' };
 /** @param {Artifact} x */
 const findingBlock = (x) => (/** @type {ReviewRow} */ r, /** @type {number} */ left) =>
-  itemBlock(`${bold(`${KIND[r.level] || r.level} ${r.id}`)} · ревью ${x.of}${left > 1 ? ` · ${r.blocker ? 'блокеров' : 'замечаний'} к разбору: ${left}` : ''}`, [
-    ['Где', r.where],
-    ['Что не так', r.what],
-    ['Предложение', isEmptyCell(r.proposal) ? undefined : r.proposal],
-    ['Пункт чек-листа', r.point],
-  ]);
+  itemBlock(
+    `${bold(`${KIND[r.level] || r.level} ${r.id}`)} · ревью ${x.of}${left > 1 ? ` · ${r.blocker ? 'блокеров' : 'замечаний'} к разбору: ${left}` : ''}`,
+    [
+      ['Где', r.where],
+      ['Что не так', r.what],
+      ['Предложение', isEmptyCell(r.proposal) ? undefined : r.proposal],
+      ['Пункт чек-листа', r.point],
+    ],
+  );
 /** @param {Feature} m @param {Artifact} x @param {ReviewRow} r @returns {Option[]} */
 function findingOptions(m, x, r) {
   const ref = `${x.key}:${r.id}`;
@@ -146,7 +173,9 @@ function findingOptions(m, x, r) {
         answer: (/** @type {string} */ text) => decideAction(m, ref, text),
       },
     },
-    isEmptyCell(r.proposal) ? null : { id: id('accept'), label: 'Принимаю рекомендации', description: `«${short(r.proposal, 70)}» — через /sdd-decide`, action: decideAction(m, ref, 'да') },
+    isEmptyCell(r.proposal)
+      ? null
+      : { id: id('accept'), label: 'Принимаю рекомендации', description: `«${short(r.proposal, 70)}» — через /sdd-decide`, action: decideAction(m, ref, 'да') },
     target
       ? {
           id: id('open'),
@@ -171,9 +200,18 @@ function remarksQuestion(m, x, rows) {
     walk: true,
     header: 'Замечания',
     question: 'Пройдёмся по замечаниям?',
-    preview: blocks(`${bold(`Замечания ревью ${x.of}`)} · ${rows.length}`, list(rows.map((r) => `${bold(r.id)} · ${codePaths(short(r.where || '—', 40))} · ${short(r.what, 90)}`))),
+    preview: blocks(
+      `${bold(`Замечания ревью ${x.of}`)} · ${rows.length}`,
+      list(rows.map((r) => `${bold(r.id)} · ${codePaths(short(r.where || '—', 40))} · ${short(r.what, 90)}`)),
+    ),
     options: [
-      { id: `remarks:${x.key}:all`, label: 'Давай по очереди', description: 'по одному: блок замечания и «Как решаем?»', recommended: true, action: { lint: ['triage', x.dir, x.key, 'remarks', 'all'] } },
+      {
+        id: `remarks:${x.key}:all`,
+        label: 'Давай по очереди',
+        description: 'по одному: блок замечания и «Как решаем?»',
+        recommended: true,
+        action: { lint: ['triage', x.dir, x.key, 'remarks', 'all'] },
+      },
       {
         id: some,
         label: 'Давай только …',

@@ -65,7 +65,8 @@ export function cmdTriage(ctx) {
   };
   const m = loadFeature(needDir(ctx, pos[0]));
   const [ref, verb, ...rest] = pos.slice(1);
-  if (!ref || !verb) usage(ctx, 'Укажи находку и решение: triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>');
+  if (!ref || !verb) usage(ctx, 'Укажи находку и решение: ' +
+    'triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>');
   const [key, rid] = ref.split(':');
   const rv = m.reviews.get(key);
   if (!rv) fail(`Ревью «${key}» нет. Есть: ${[...m.reviews.keys()].join(', ') || 'файлов ревью нет'}.`);
@@ -83,8 +84,10 @@ export function cmdTriage(ctx) {
     else {
       const ids = pickedIds(arg);
       const unknown = ids.filter((x) => !all.includes(x));
-      if (!ids.length || unknown.length)
-        fail(`${ids.length ? `Не нашёл среди замечаний без решения: ${unknown.join(', ')}.` : 'Не понял номера.'} Замечания: ${all.join(', ')}. Напишите номера ещё раз, например: ${all.slice(0, 2).join(', ')}.`);
+      if (!ids.length || unknown.length) {
+        const why = ids.length ? `Не нашёл среди замечаний без решения: ${unknown.join(', ')}.` : 'Не понял номера.';
+        fail(`${why} Замечания: ${all.join(', ')}. Напишите номера ещё раз, например: ${all.slice(0, 2).join(', ')}.`);
+      }
       take = ids;
     }
     const drop = pending.filter((r) => !take.includes(r.id));
@@ -94,7 +97,10 @@ export function cmdTriage(ctx) {
     /** @type {string[]} */
     const out = [];
     if (take.length) out.push(`К разбору: ${take.join(', ')} — по одному.`);
-    if (drop.length) out.push(`Сняты: ${drop.map((r) => r.id).join(', ')} — «отклонено» в ${file}${logged ? `, ${plural(drop.length, 'строка', 'строки', 'строк')} в «${DROPPED_TITLE}» протокола: повторное ревью их не поднимет` : ''}.`);
+    if (drop.length) {
+      const inProtocol = logged ? `, ${plural(drop.length, 'строка', 'строки', 'строк')} в «${DROPPED_TITLE}» протокола: повторное ревью их не поднимет` : '';
+      out.push(`Сняты: ${drop.map((r) => r.id).join(', ')} — «отклонено» в ${file}${inProtocol}.`);
+    }
     say(out.join('\n\n'));
     ctx.io.exit(0);
   }

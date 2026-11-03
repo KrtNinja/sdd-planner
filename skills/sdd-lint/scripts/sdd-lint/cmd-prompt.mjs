@@ -17,7 +17,10 @@ import { DOCS, isDir, pickFeature, needDir } from './pick.mjs';
 // Точка входа lint — по месту этого модуля, а не по process.argv: тот же файл, что запущен (и через симлинк).
 export const SELF = fileURLToPath(new URL('../sdd-lint.mjs', import.meta.url));
 export const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
-export const promptSkills = () => (isDir(SKILLS_DIR) ? fs.readdirSync(SKILLS_DIR).filter((x) => /^sdd-[a-z]+$/.test(x) && x !== 'sdd-lint' && fs.existsSync(path.join(SKILLS_DIR, x, 'SKILL.md'))) : []);
+export const promptSkills = () =>
+  isDir(SKILLS_DIR)
+    ? fs.readdirSync(SKILLS_DIR).filter((x) => /^sdd-[a-z]+$/.test(x) && x !== 'sdd-lint' && fs.existsSync(path.join(SKILLS_DIR, x, 'SKILL.md')))
+    : [];
 // Аргументы с пробелами — в кавычках: у /sdd-decide вопрос и решение не должны слиться в одну строку.
 /** @param {string[]} args */
 const shownArgs = (args) => args.map((a) => (/\s/.test(a) || a === '' ? `"${a.replace(/"/g, '\\"')}"` : a)).join(' ');
@@ -69,7 +72,8 @@ export function skillPrompt(ctx, name, args) {
       : [`# Скилл ${name}: ${shownArgs(args)}`, '', flags.sub ? SUB : 'Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.', ...note];
   return [
     ...head,
-    `Аргументы скилла: \`${shownArgs(args)}\`. Lint — инструмент MCP \`sdd_lint\`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — \`${SELF}\`.`,
+    `Аргументы скилла: \`${shownArgs(args)}\`. Lint — инструмент MCP \`sdd_lint\`. Нет его в списке — найди поиском инструментов; ` +
+      `вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — \`${SELF}\`.`,
     links.length ? 'Файлы, на которые ссылается скилл, приложены в конце — их не открывай.' : null,
     '',
     '---',

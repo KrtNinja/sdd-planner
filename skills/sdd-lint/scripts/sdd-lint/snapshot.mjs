@@ -33,7 +33,10 @@ export function protectedParts(md) {
 /** @param {string} f */
 export function saveSnapshot(f) {
   fs.mkdirSync(snapDir(), { recursive: true });
-  fs.writeFileSync(snapPath(f), JSON.stringify({ file: fs.realpathSync(f), time: new Date().toISOString(), parts: protectedParts(fs.readFileSync(f, 'utf8')) }));
+  fs.writeFileSync(
+    snapPath(f),
+    JSON.stringify({ file: fs.realpathSync(f), time: new Date().toISOString(), parts: protectedParts(fs.readFileSync(f, 'utf8')) }),
+  );
 }
 /** @param {Parts} before @param {Parts} after */
 export function diffParts(before, after) {

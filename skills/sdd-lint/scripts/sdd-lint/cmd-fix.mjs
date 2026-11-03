@@ -37,7 +37,10 @@ function numberPlaceholders(m) {
   if (m.spec) {
     const ids = [...m.spec.reqs.keys()];
     /** @type {Record<string, number>} */
-    const last = { FR: maxNum(ids.filter((x) => x.startsWith('FR-')).map((x) => Number(x.slice(3)))), NFR: maxNum(ids.filter((x) => x.startsWith('NFR-')).map((x) => Number(x.slice(4)))) };
+    const last = {
+      FR: maxNum(ids.filter((x) => x.startsWith('FR-')).map((x) => Number(x.slice(3)))),
+      NFR: maxNum(ids.filter((x) => x.startsWith('NFR-')).map((x) => Number(x.slice(4)))),
+    };
     const ls = m.spec.md.split('\n');
     for (const b of m.spec.sc.blocks) {
       const l = firstLine(b);

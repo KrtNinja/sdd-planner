@@ -51,7 +51,10 @@ export function cmdMenu(ctx) {
   ];
   out.push('', 'Команды:', '', ...rows.map(([c, d]) => `- ${code(c)} — ${d}`));
   out.push('', `Закрыть фичу перед merge — ${skillCode('sdd-close', ex)}: убирает протокол и ${code('_work/')} (ревью, план нарезки) — после подтверждения.`);
-  out.push('', `Справка по команде: ${lintCode('help', '<команда>')}. Путь к фиче дописывает Tab после @: ${code(`@${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`)}`);
+  out.push(
+    '',
+    `Справка по команде: ${lintCode('help', '<команда>')}. Путь к фиче дописывает Tab после @: ${code(`@${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`)}`,
+  );
   if (tip) out.push('', tip);
   ctx.io.log(out.join('\n'));
   ctx.io.exit(0);
@@ -70,6 +73,8 @@ export function checkTypo(ctx) {
   ctx.io.exit(2);
 }
 
+// Ветки и теги для --base.
+const gitRefs = () => git(['for-each-ref', '--format=%(refname:short)', 'refs/heads', 'refs/remotes', 'refs/tags'], process.cwd()).split('\n').filter(Boolean);
 // Варианты для Tab: «значение\tописание» по строке. words — слова после имени команды, последнее — дописываемое.
 /** @param {string[]} words @returns {string[]} */
 export function complete(words) {
@@ -104,7 +109,7 @@ export function complete(words) {
   if (prev[prev.length - 1] === '--base') {
     let refs = ['HEAD'];
     try {
-      refs = [...refs, ...git(['for-each-ref', '--format=%(refname:short)', 'refs/heads', 'refs/remotes', 'refs/tags'], process.cwd()).split('\n').filter(Boolean)];
+      refs = [...refs, ...gitRefs()];
     } catch {}
     refs.forEach((r) => emit(r));
     return out;
@@ -131,7 +136,8 @@ export function complete(words) {
     loadFeature(feature()).featureAdrs.forEach((a) => emit(a.num, a.status || ''));
   else if (slot === 'slice' && /^ac$/i.test(args[0]) && feature())
     [...loadFeature(feature()).slices].forEach(([num, s]) => emit(num, s.title || ''));
-  else if (slot === 'option' && resolveFeature(args[0])) askOf(loadFeature(/** @type {string} */ (resolveFeature(args[0])))).questions.forEach((q) => q.options.forEach((o) => emit(o.id, o.label)));
+  else if (slot === 'option' && resolveFeature(args[0]))
+    askOf(loadFeature(/** @type {string} */ (resolveFeature(args[0])))).questions.forEach((q) => q.options.forEach((o) => emit(o.id, o.label)));
   else if (slot === 'skill') promptSkills().forEach((k) => emit(k));
   else if (slot === 'side' && /^ac$/i.test(args[0])) {
     emit('B', 'AC сервисной половины');

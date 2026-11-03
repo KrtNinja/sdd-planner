@@ -59,7 +59,8 @@ function handoff(m, what) {
 /** @param {Feature} m @param {Review} rv @param {ReviewRow[]} open */
 export function blockersStep(m, rv, open) {
   const ids = open.map((r) => r.id);
-  return `закрыть блокеры ревью ${ids.join(', ')} (${code(rel(rv.file))}): по одному — вопрос этапа (${code(lintCmd('ask', rel(m.dir)))}); решение — ${code(skill('sdd-decide', m.name, ids[0], '"<решение>"'))}, правка — исправьте файл и впишите «исправлено» в колонку «Решение»`;
+  return `закрыть блокеры ревью ${ids.join(', ')} (${code(rel(rv.file))}): по одному — вопрос этапа (${code(lintCmd('ask', rel(m.dir)))}); ` +
+    `решение — ${code(skill('sdd-decide', m.name, ids[0], '"<решение>"'))}, правка — исправьте файл и впишите «исправлено» в колонку «Решение»`;
 }
 /** @param {Feature} m @returns {Steps} */
 function adrSteps(m) {
@@ -119,7 +120,8 @@ export function stageOf(m) {
   const stubs = m.slices.size ? stubCount(m) : 0;
   if (stubs) return st(`Slices созданы по плану, заготовок «<…>» не заполнено: ${stubs}`, one(skill('sdd-slices', m.name), 'заполнить заготовки'));
   if (m.slices.size) return st('Slices на ревью', handoff(m, 'slices'));
-  if (m.plan && m.spec && approved(m.spec.status)) return st(`План нарезки ждёт согласия (${rel(m.planFile)})`, one(skill('sdd-slices', m.name), 'согласовать нарезку'));
+  if (m.plan && m.spec && approved(m.spec.status))
+    return st(`План нарезки ждёт согласия (${rel(m.planFile)})`, one(skill('sdd-slices', m.name), 'согласовать нарезку'));
   if (m.spec && approved(m.spec.status)) return st('Dev Spec одобрен', one(skill('sdd-slices', m.name)));
   if (m.spec) return st(`Dev Spec «${m.spec.status || '—'}»`, handoff(m, 'spec'));
   if (m.protocol && /готов/i.test(m.protocol.status || '')) return st('Протокол готов', one(skill('sdd-spec', m.name)));

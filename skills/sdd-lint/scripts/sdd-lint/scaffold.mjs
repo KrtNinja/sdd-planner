@@ -30,7 +30,9 @@ function sliceText(m, plan, s) {
   const front = services.filter((x) => /^front/i.test(x));
   // «Вне slice» — соседи из плана: агент поправит, если граница другая.
   const others = plan.slices.filter((o) => o.num !== s.num && (prep ? true : o.type === 'поведение'));
-  const outside = prep ? `поведение (${others.map((o) => o.num).join(', ')})` : others.map((o) => `${o.title[0].toLowerCase()}${o.title.slice(1)} (${o.num})`).join('; ');
+  const outside = prep
+    ? `поведение (${others.map((o) => o.num).join(', ')})`
+    : others.map((o) => `${o.title[0].toLowerCase()}${o.title.slice(1)} (${o.num})`).join('; ');
   const shared = plan.slices.filter((o) => o.num !== s.num && o.type === 'поведение' && [...o.basis].some((id) => s.basis.has(id)));
   const md = [
     `# ${s.num} — ${s.title}`,
@@ -108,7 +110,8 @@ export function genSlices(ctx, m) {
   const stubs = [...made, after.readmeFile].map((file) => `${path.basename(file)} — ${count(file)}`).join(', ');
   ctx.io.log(
     [
-      `Созданы по плану в \`${dir}/slices/\`: ${made.map((x) => path.basename(x)).join(', ')}; README.md ${hadReadme ? 'собран заново' : 'создан'}. План удалён.`,
+      `Созданы по плану в \`${dir}/slices/\`: ${made.map((x) => path.basename(x)).join(', ')}; ` +
+        `README.md ${hadReadme ? 'собран заново' : 'создан'}. План удалён.`,
       `Заготовок «<…>» к заполнению: ${stubs}.`,
     ].join('\n\n'),
   );

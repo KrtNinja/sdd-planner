@@ -53,7 +53,9 @@ export function cmdResearch(ctx) {
   const { task, list } = researchInput(m);
   const stage = stageName(m);
   if (what === 'context') {
-    ctx.io.log(list.length ? researchTask(m, list, task.line, stage) : screen('Источников нет — изучать нечего.', 'последним сообщением напиши «Источников нет»'));
+    ctx.io.log(
+      list.length ? researchTask(m, list, task.line, stage) : screen('Источников нет — изучать нечего.', 'последним сообщением напиши «Источников нет»'),
+    );
     ctx.io.exit(0);
   }
   if (what === 'fact') {
@@ -69,6 +71,7 @@ export function cmdResearch(ctx) {
     ctx.io.exit(1);
   }
   markContext(/** @type {import('./context.mjs').Context} */ (loadContext(m)), 'Проверено');
-  ctx.io.log(`\n${screen(`\`${rel(context.file)}\`: проверено, фактов о проекте — ${context.facts}.`, c.warn ? `предупреждений ${c.warn} — поправь, если это просто` : null)}`);
+  const checked = `\`${rel(context.file)}\`: проверено, фактов о проекте — ${context.facts}.`;
+  ctx.io.log(`\n${screen(checked, c.warn ? `предупреждений ${c.warn} — поправь, если это просто` : null)}`);
   ctx.io.exit(0);
 }

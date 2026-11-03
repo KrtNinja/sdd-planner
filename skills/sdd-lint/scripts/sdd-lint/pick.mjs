@@ -40,7 +40,11 @@ const callPrefix = ({ cmd, pos }, n) => [cmd === 'check' ? null : cmd, ...pos.sl
 export function pickFeature(ctx, why, n) {
   const known = listFeatures();
   if (!known.length) {
-    ctx.io.error(isDir(DOCS) ? `${why}. В ${DOCS}/ пока нет фич. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.` : `${why}. Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
+    ctx.io.error(
+      isDir(DOCS)
+        ? `${why}. В ${DOCS}/ пока нет фич. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.`
+        : `${why}. Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`,
+    );
     ctx.io.exit(2);
   }
   const lines = known.map((f) => `- ${lintCode(...callPrefix(ctx.args, n), f)}`);
