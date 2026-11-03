@@ -89,6 +89,16 @@ function lineKind(l) {
   if (/^\s*\|/.test(l)) return 'table';
   return /^#{1,6}\s/.test(l) ? 'head' : 'text';
 }
+/** @param {string} l @param {string} kind @param {string} prev */
+function lineProblem(l, kind, prev) {
+  if (kind === 'item' && /^\s+/.test(l) && prev !== 'item') return 'вложенный пункт без родителя';
+  if (kind !== 'text') return null;
+  if (/^\s/.test(l)) return 'отступ без маркера списка';
+  if (prev === 'item') return 'текст сразу после списка — приклеится к пункту';
+  if (prev === 'text') return 'две строки абзаца подряд — склеятся';
+  return null;
+}
+
 // Где markdown развалится: строка с отступом без маркера списка, абзац сразу после пункта списка
 // (ленивое продолжение приклеит его к пункту), строки абзаца подряд без пустой строки.
 // Таблицы и блоки кода не проверяются. Возвращает [номер строки, что не так].
@@ -107,10 +117,8 @@ export function mdProblems(text) {
     }
     if (fence) return;
     const kind = lineKind(l);
-    if (kind === 'item' && /^\s+/.test(l) && prev !== 'item') out.push([i + 1, 'вложенный пункт без родителя']);
-    if (kind === 'text' && /^\s/.test(l)) out.push([i + 1, 'отступ без маркера списка']);
-    else if (kind === 'text' && prev === 'item') out.push([i + 1, 'текст сразу после списка — приклеится к пункту']);
-    else if (kind === 'text' && prev === 'text') out.push([i + 1, 'две строки абзаца подряд — склеятся']);
+    const problem = lineProblem(l, kind, prev);
+    if (problem) out.push([i + 1, problem]);
     prev = kind;
   });
   return out;
