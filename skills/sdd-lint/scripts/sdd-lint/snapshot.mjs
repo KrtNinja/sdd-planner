@@ -42,14 +42,24 @@ export function saveSnapshot(f) {
 export function diffParts(before, after) {
   /** @type {string[]} */
   const out = [];
-  const short = (/** @type {string} */ s) => (s.length > 70 ? `${s.slice(0, 67)}…` : s).replace(/\n/g, ' ⏎ ');
+
   for (const kind of Object.keys(before)) {
-    const left = new Map();
-    for (const x of before[kind]) left.set(x, (left.get(x) || 0) + 1);
-    const right = new Map();
-    for (const x of after[kind] || []) right.set(x, (right.get(x) || 0) + 1);
+    const left = counts(before[kind]);
+    const right = counts(after[kind] || []);
     for (const [x, c] of left) if ((right.get(x) || 0) < c) out.push(`${kind} — было: ${short(x)}`);
     for (const [x, c] of right) if ((left.get(x) || 0) < c) out.push(`${kind} — стало: ${short(x)}`);
   }
   return out;
 }
+
+// Кратность сохраняет добавления и удаления повторяющихся защищённых фрагментов.
+/** @param {string[]} values @returns {Map<string, number>} */
+function counts(values) {
+  const result = new Map();
+  for (const value of values) result.set(value, (result.get(value) || 0) + 1);
+  return result;
+}
+
+// Фрагмент для сообщения о разнице.
+/** @param {string} s */
+const short = (/** @type {string} */ s) => (s.length > 70 ? `${s.slice(0, 67)}…` : s).replace(/\n/g, ' ⏎ ');
