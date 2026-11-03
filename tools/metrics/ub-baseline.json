@@ -1,7 +1,7 @@
 {
  "crap": {
-  "functions": 455,
-  "over10": 62,
+  "functions": 470,
+  "over10": 60,
   "offenders": {
    "skills.sdd-lint.scripts.sdd-lint.cmd-menu#complete": {
     "complexity": 48,
@@ -32,11 +32,6 @@
     "complexity": 27,
     "coverage": 85,
     "crap": 29.4604
-   },
-   "skills.sdd-lint.scripts.sdd-lint.cmd-approve#cmdApprove": {
-    "complexity": 27,
-    "coverage": 87.5,
-    "crap": 28.4238
    },
    "skills.sdd-lint.scripts.sdd-lint.gen-links#migrateTrace": {
     "complexity": 18,
@@ -78,15 +73,10 @@
     "coverage": 70,
     "crap": 22.912
    },
-   "skills.sdd-lint.scripts.sdd-lint.cmd-ask#act": {
+   "skills.sdd-lint.scripts.sdd-lint.cmd-approve#cmdApprove": {
     "complexity": 21,
-    "coverage": 84.375,
-    "crap": 22.6823
-   },
-   "skills.sdd-lint.scripts.sdd-lint.cmd-fix#fixFeature": {
-    "complexity": 22,
-    "coverage": 97.0588,
-    "crap": 22.0123
+    "coverage": 88.8889,
+    "crap": 21.6049
    },
    "skills.sdd-lint.scripts.sdd-lint.slices#parseSlice": {
     "complexity": 19,
@@ -108,7 +98,7 @@
     "coverage": 53.3333,
     "crap": 20.163
    },
-   "skills.sdd-lint.scripts.sdd-lint.cmd-check#cmdGate": {
+   "skills.sdd-lint.scripts.sdd-lint.cmd-fix#fixFeature": {
     "complexity": 20,
     "coverage": 100,
     "crap": 20
@@ -133,30 +123,20 @@
     "coverage": 75,
     "crap": 18.5156
    },
+   "skills.sdd-lint.scripts.sdd-lint.cmd-ask#act": {
+    "complexity": 17,
+    "coverage": 85.1852,
+    "crap": 17.9397
+   },
    "skills.sdd-lint.scripts.sdd-lint.data#parseData": {
     "complexity": 15,
     "coverage": 76.4706,
     "crap": 17.931
    },
-   "skills.sdd-lint.scripts.sdd-lint.cmd-gen#cmdTrace": {
-    "complexity": 16,
-    "coverage": 80.7692,
-    "crap": 17.8207
-   },
    "skills.sdd-lint.scripts.sdd-lint.cmd-guard#cmdGuard": {
     "complexity": 17,
     "coverage": 100,
     "crap": 17
-   },
-   "skills.sdd-lint.scripts.sdd-lint.screen#mdProblems": {
-    "complexity": 16,
-    "coverage": 88,
-    "crap": 16.4424
-   },
-   "skills.sdd-lint.scripts.sdd-lint.cmd-prompt#cmdPrompt": {
-    "complexity": 16,
-    "coverage": 88.4615,
-    "crap": 16.3933
    },
    "skills.sdd-lint.scripts.sdd-lint.scaffold#sliceText": {
     "complexity": 16,
@@ -167,11 +147,6 @@
     "complexity": 12,
     "coverage": 69.2308,
     "crap": 16.1948
-   },
-   "skills.sdd-lint.scripts.sdd-lint.start#addSources": {
-    "complexity": 15,
-    "coverage": 83.3333,
-    "crap": 16.0417
    },
    "skills.sdd-lint.scripts.sdd-lint.gate-extra#impact": {
     "complexity": 14,
@@ -188,6 +163,11 @@
     "coverage": 92.8571,
     "crap": 15.082
    },
+   "skills.sdd-lint.scripts.sdd-lint.cmd-check#cmdGate": {
+    "complexity": 15,
+    "coverage": 100,
+    "crap": 15
+   },
    "skills.sdd-lint.scripts.sdd-lint.plan#parsePlan": {
     "complexity": 12,
     "coverage": 73.3333,
@@ -197,6 +177,21 @@
     "complexity": 12,
     "coverage": 73.6842,
     "crap": 14.6243
+   },
+   "skills.sdd-lint.scripts.sdd-lint.cmd-gen#cmdTrace": {
+    "complexity": 14,
+    "coverage": 86.9565,
+    "crap": 14.4349
+   },
+   "skills.sdd-lint.scripts.sdd-lint.start#addSources": {
+    "complexity": 14,
+    "coverage": 86.9565,
+    "crap": 14.4349
+   },
+   "skills.sdd-lint.scripts.sdd-lint.cmd-prompt#cmdPrompt": {
+    "complexity": 14,
+    "coverage": 91.3043,
+    "crap": 14.1289
    },
    "skills.sdd-lint.scripts.sdd-lint.cmd-gen#cmdNext": {
     "complexity": 14,
@@ -223,15 +218,15 @@
     "coverage": 89.4737,
     "crap": 13.1971
    },
-   "skills.sdd-lint.scripts.sdd-lint.review-walk#artifact": {
-    "complexity": 13,
-    "coverage": 100,
-    "crap": 13
-   },
    "skills.sdd-lint.scripts.sdd-lint.start#resume": {
     "complexity": 12,
     "coverage": 83.3333,
     "crap": 12.6667
+   },
+   "skills.sdd-lint.scripts.sdd-lint.screen#mdProblems": {
+    "complexity": 12,
+    "coverage": 94.7368,
+    "crap": 12.021
    },
    "skills.sdd-lint.scripts.sdd-lint.cmd-fix#numberPlaceholders": {
     "complexity": 12,
@@ -282,11 +277,6 @@
     "complexity": 11,
     "coverage": 100,
     "crap": 11
-   },
-   "skills.sdd-lint.scripts.sdd-lint.plan#compactIds": {
-    "complexity": 10,
-    "coverage": 84.6154,
-    "crap": 10.3641
    },
    "skills.sdd-lint.scripts.sdd-lint.name#nameTrouble": {
     "complexity": 10,
