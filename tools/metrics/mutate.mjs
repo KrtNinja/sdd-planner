@@ -1,7 +1,7 @@
 // mutator в CI: изменённые файлы с нуля; снимок хранится в логе прогона.
 // files --shard 3/12 [--base origin/main] — файлы части (без базы — весь код).
-// collect <dir> <files.txt> — снимки файлов части в артефакт.
-// gate [--base origin/main] [--from <dir>] — сводка и гейт изменённых функций.
+// collect <dir> <files.txt> — сверить с *.inventory.json и собрать снимки части в артефакт.
+// gate [--base origin/main] [--from <dir>] — полнота результатов и гейт; без базы/при изменении измерителя — весь код.
 // survivors --run <run-id> [модуль ...] — выжившие из лога, строки по исходникам прогона.
 import fs from 'node:fs';
 import path from 'node:path';

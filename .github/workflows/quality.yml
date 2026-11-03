@@ -100,7 +100,7 @@ jobs:
             dryer.txt
             mutator-scan.txt
 
-  # PR: добавленные и изменённые файлы с нуля; workflow_dispatch: весь код с нуля.
+  # PR: изменённый код с нуля; изменения mutator/EDN/workflow и workflow_dispatch — весь код.
   # Снимки передаются между частями только артефактами текущего прогона.
   mutate:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mutate)
