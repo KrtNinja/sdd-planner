@@ -1,7 +1,7 @@
 // План нарезки _work/plan.md: разбор и превью для человека в вопросе этапа. Проверки PL-* — в plan-rules.mjs.
 // @ts-check
 import { adrNums, adrTopic, reason } from './cut.mjs';
-import { rel, uniq, approved, scan, reqIds } from './md.mjs';
+import { rel, uniq, approved, scan, reqIds, depNums } from './md.mjs';
 import { layers } from './readme.mjs';
 import { parseHalves } from './services.mjs';
 
@@ -62,8 +62,6 @@ export function slugify(s) {
 /** @param {string} raw @param {string} title */
 const slugOf = (raw, title) => (raw && /^[a-z0-9][a-z0-9-]*$/i.test(raw) ? raw.toLowerCase() : slugify(raw) || slugify(title) || 'slice');
 
-/** @param {string | null} raw */
-const depsOf = (raw) => (/^(нет|—|-)?$/i.test((raw || '').trim()) ? [] : uniq([...(raw || '').matchAll(/\b\d{3}\b/g)].map((x) => x[0])));
 // Тип можно не писать: без FR и NFR в «Основание» это подготовка (контракты), иначе поведение.
 /** @param {string | undefined} t @param {Set<string>} basis @returns {PlanSlice['type']} */
 function typeOf(t, basis) {
@@ -75,14 +73,12 @@ function typeOf(t, basis) {
 function planSlice(h) {
   const basisRaw = h.head['Основание'] ?? null;
   const basis = new Set(reqIds(basisRaw));
-  const depsRaw = h.head['Зависимости'] ?? null;
   return {
     ...h,
     slug: slugOf(h.slugRaw, h.title),
     basisRaw,
     basis,
-    depsRaw,
-    deps: depsOf(depsRaw),
+    deps: depNums(h.head['Зависимости']),
     halves: h.head['Половины'] ?? null,
     result: h.head['Результат'] ?? null,
     why: h.head['Почему отдельно'] ?? null,

@@ -169,7 +169,6 @@
  * @property {string | null} type «Тип:»
  * @property {string} basisRaw «Основание:» как написано
  * @property {Set<string>} basis FR/NFR из «Основание:»
- * @property {string} depsRaw
  * @property {string[]} deps номера slices из «Зависимости:»
  * @property {string | null} halves «Половины:»
  * @property {string | null} why «Почему отдельно:»
@@ -212,7 +211,6 @@
  * @property {string} slug
  * @property {string | null} basisRaw
  * @property {Set<string>} basis
- * @property {string | null} depsRaw
  * @property {string[]} deps
  * @property {string | null} halves
  * @property {string | null} result

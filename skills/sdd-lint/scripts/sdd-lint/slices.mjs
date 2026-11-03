@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { latinAc } from './ids.mjs';
 import { CHECKS_RE } from './links.mjs';
-import { scan, header, headerLine, reqIds, placeholders, uniq, matched } from './md.mjs';
+import { scan, header, headerLine, reqIds, placeholders, uniq, matched, depNums } from './md.mjs';
 import { underBlocks } from './sources.mjs';
 
 /** @typedef {import('./model.mjs').Slice} Slice */
@@ -13,13 +13,14 @@ import { underBlocks } from './sources.mjs';
 // AC-ID и с кириллическими «А», «С», «В»: такой AC не пропадает из проверок, а SL-31 просит поправить букву.
 const AC_LINE = /^\s*([AА][CС]-(\d{3})-([BВF]?)(\d+))\b(.*)$/u;
 // «AC-002-?» — AC без номера: его пронумерует fix.
+// Старая форма ссылок на FR — в [ … ] после ID: «AC-002-1 [FR-3, FR-4]».
+const OLD_REFS = /\[[^\]]*\]/;
 const AC_PENDING = /^\s*[AА][CС]-(?:\d{3}-)?[BВF]?\?(?=\s|$)/u;
 /** @param {string} file @param {string} md @returns {Slice} */
 export function parseSlice(file, md) {
   const sc = scan(md);
   const num = path.basename(file).slice(0, 3);
-  const basisRaw = header(md, 'Основание') ?? '';
-  const depsRaw = header(md, 'Зависимости') ?? '';
+  const basisRaw = header(md, 'Основание', '');
   /** @type {Ac[]} */
   const acs = [];
   /** @type {Slice['outside']} */
@@ -46,8 +47,8 @@ export function parseSlice(file, md) {
         n: l.n,
         h2: b.h2,
         deleted: /\(удал[её]н/i.test(rest),
-        oldRefs: reqIds((rest.match(/\[([^\]]*)\]/) || [])[1]),
-        refs: uniq([...reqIds((rest.match(/\[([^\]]*)\]/) || [])[1]), ...reqIds(checks.get(b.idx)?.text)]),
+        oldRefs: reqIds(rest.match(OLD_REFS)?.[0]),
+        refs: uniq([...reqIds(rest.match(OLD_REFS)?.[0]), ...reqIds(checks.get(b.idx)?.text)]),
         checks: checks.get(b.idx) || null,
         block: b.idx,
         body: b.lines.slice(b.lines.indexOf(l) + 1),
@@ -70,8 +71,7 @@ export function parseSlice(file, md) {
     type: header(md, 'Тип'),
     basisRaw,
     basis: new Set(reqIds(basisRaw)),
-    depsRaw,
-    deps: /^(нет|—|-)?$/i.test(depsRaw.trim()) ? [] : uniq([...depsRaw.matchAll(/\b\d{3}\b/g)].map((m) => m[0])),
+    deps: depNums(header(md, 'Зависимости', '')),
     halves: header(md, 'Половины'),
     why: header(md, 'Почему отдельно'),
     acs,

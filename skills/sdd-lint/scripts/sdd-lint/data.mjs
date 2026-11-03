@@ -1,6 +1,6 @@
 // Персонажи и объекты из «Данные для примеров».
 // @ts-check
-import { esc, uniq, inSection, tables, quotes, stem } from './md.mjs';
+import { esc, uniq, inSection, tables, quotes, stem, cell } from './md.mjs';
 
 /** @typedef {import('./model.mjs').ExampleData} ExampleData */
 
@@ -26,14 +26,14 @@ export function parseData(sc) {
   for (const t of tables(ls)) {
     const persons = /персонаж|участник|пользовател|кто/i.test(t.header[0] || '');
     for (const r of t.rows) {
-      if (persons) addPerson(r.cells[0] || '');
+      if (persons) addPerson(cell(r, 0));
       for (const c of r.cells) addObjects(c);
     }
   }
   for (const l of ls) {
     if (l.inCode || l.text.trim().startsWith('|')) continue;
-    const m = l.text.match(/^\s*[-*]\s+([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+)?)/u);
-    if (m) addPerson(m[1]);
+    // Пункт списка с имени: «- Анна Петрова — покупатель». Имя и фамилию берёт addPerson.
+    if (/^\s*[-*]\s+[А-ЯЁ][а-яё]/u.test(l.text)) addPerson(l.text);
     addObjects(l.text);
   }
   return { people, objects, objNames };
@@ -60,5 +60,5 @@ export function unknownNames(text, data) {
         ((a.startsWith(stem(p.first)) && b.startsWith(stem(p.last))) ||
           (a.startsWith(stem(p.last)) && b.startsWith(stem(p.first)))),
     );
-  return uniq([...bare.matchAll(NAME_PAIR)].filter((m) => !known(m[1], m[2])).map((m) => `${m[1]} ${m[2]}`));
+  return uniq([...bare.matchAll(NAME_PAIR)].filter(([, a, b]) => !known(a, b)).map(([, a, b]) => `${a} ${b}`));
 }
