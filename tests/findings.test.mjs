@@ -65,3 +65,13 @@ test('noStatus: отсутствующий статус по умолчанию 
   }
   assert.deepEqual(noStatus('SP-01', 'spec.md', 'черновик'), []);
 });
+
+test('report: две находки без номера строки сохраняют исходный порядок', () => {
+  const found = rows('SP-03 err a.md - первый\nSP-03 err a.md - второй');
+  const expected = structuredClone(found);
+  const ctx = { args: parseArgs(['--json']), io: createIo() };
+  const counts = { err: 2, warn: 0, info: 0 };
+  assert.deepEqual(report(ctx, found), counts);
+  assert.deepEqual(found, expected);
+  assert.deepEqual(ctx.io.chunks, [[1, JSON.stringify({ findings: expected, hints: { 'SP-03': HINTS['SP-03'] }, counts }, null, 2) + '\n']]);
+});
