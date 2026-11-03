@@ -13,6 +13,7 @@ import { REPO, CODE, TESTS, listMjs, source, parse, rel } from './lib.mjs';
 import { deps } from './deps.mjs';
 import { clones } from './clones.mjs';
 import { crap, coverageMasks } from './crap.mjs';
+import { runTsc } from './tsc.mjs';
 
 const TOOLS = path.join(REPO, 'tools');
 const OUT = path.join(TOOLS, 'metrics/.out');
@@ -61,12 +62,12 @@ function tsc() {
   const args = ['--allowJs', '--checkJs', '--noEmit', '--target', TS_TARGET, '--lib', TS_LIB.join(','), '--module', 'nodenext', '--moduleResolution', 'nodenext',
     '--noUnusedLocals', '--skipLibCheck', '--typeRoots', path.join(TOOLS, 'node_modules/@types'), '--types', 'node',
     path.join(CODE, 'sdd-lint.mjs'), path.join(CODE, 'mcp.mjs')];
-  const r = spawnSync(bin, args, { cwd: REPO, encoding: 'utf8', maxBuffer: 1 << 26 });
+  const stdout = runTsc(bin, args, REPO);
   const byCode = {};
-  for (const m of r.stdout.matchAll(/error (TS\d+)/g)) byCode[m[1]] = (byCode[m[1]] ?? 0) + 1;
+  for (const m of stdout.matchAll(/error (TS\d+)/g)) byCode[m[1]] = (byCode[m[1]] ?? 0) + 1;
   const modules = tsChecked();
   const checked = new Set(modules);
-  const errors = r.stdout.split('\n').filter((l) => checked.has(l.match(/^(.+?)\(\d+,\d+\): error TS/)?.[1]));
+  const errors = stdout.split('\n').filter((l) => checked.has(l.match(/^(.+?)\(\d+,\d+\): error TS/)?.[1]));
   return { total: Object.values(byCode).reduce((a, b) => a + b, 0), byCode, checked: { modules, errors } };
 }
 
