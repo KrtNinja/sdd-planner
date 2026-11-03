@@ -28,10 +28,7 @@ const SHARED = {
 };
 
 // Правила, которые не упомянуты ни в одном тесте и ни в одном эталоне golden.
-const UNTESTED = [
-  'SL-04',
-  'SL-21', 
-];
+const UNTESTED = [];
 
 test('каталог: у каждого ID есть проверка в коде, у каждого ID в коде — строка каталога', () => {
   const inCode = new Set(code.flatMap((x) => [...x.ids]));
