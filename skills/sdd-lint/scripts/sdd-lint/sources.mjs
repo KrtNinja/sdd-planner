@@ -59,6 +59,13 @@ export function underBlocks(sc, re) {
   return out;
 }
 
+/** @param {string | null} h2 @param {string[] | undefined} ids @returns {SourceLine['target']} */
+function sourceTarget(h2, ids) {
+  if (ids) return { kind: 'req', ids };
+  const sec = SRC_SECTIONS.find(([re]) => h2 && re.test(h2));
+  return sec ? { kind: sec[1] } : null;
+}
+
 /** @param {Scan} sc @param {Map<string, Req>} reqs @returns {SourceLine[]} */
 export function parseSources(sc, reqs) {
   /** @type {Map<number, string[]>} */
@@ -75,12 +82,8 @@ export function parseSources(sc, reqs) {
     }
     if (!l.text.trim()) continue;
     if (SRC_RE.test(l.text)) {
-      const sec = SRC_SECTIONS.find(([re]) => l.h2 && re.test(l.h2));
-      /** @type {SourceLine['target']} */
-      let target = null;
       const ids = after !== null ? byBlock.get(after) : undefined;
-      if (ids) target = { kind: 'req', ids };
-      else if (sec) target = { kind: sec[1] };
+      const target = sourceTarget(l.h2, ids);
       out.push({ n: l.n, text: l.text, refs: srcRefs(l.text), target });
     }
     after = null;

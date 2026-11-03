@@ -189,3 +189,14 @@ test('cut: stubLines — соседние заготовки раздела од
   ]);
   assert.deepEqual(stubLines('<!-- <не заготовка> -->\n<да>'), [{ n: 2, items: ['<да>'] }]);
 });
+
+test('sources: первая проза снимает привязку к блоку; раздел даёт запасную цель', () => {
+  const md = 'Из протокола: 9\n## Открытые вопросы\n```\nFR-1 A\nNFR-2 B\n```\n\nИз протокола: 1\nИз протокола: 2\n## Не про поведение\n```\nне требование\n```\nИз протокола: 3';
+  const s = parseSpec('spec.md', md);
+  assert.deepEqual(s.sources, [
+    { n: 1, text: 'Из протокола: 9', refs: [{ id: '9', href: null }], target: null },
+    { n: 8, text: 'Из протокола: 1', refs: [{ id: '1', href: null }], target: { kind: 'req', ids: ['FR-1', 'NFR-2'] } },
+    { n: 9, text: 'Из протокола: 2', refs: [{ id: '2', href: null }], target: { kind: 'открытый вопрос' } },
+    { n: 14, text: 'Из протокола: 3', refs: [{ id: '3', href: null }], target: { kind: 'не про поведение' } },
+  ]);
+});
