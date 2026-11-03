@@ -97,7 +97,7 @@ function behaviourCovered(sl, c) {
 function boundsRefs(sl, c) {
   const bounds = sectionText(sl.sc, /^Границы/);
   const refs = [
-    ...[...bounds.matchAll(/\((\d{3}(?:\s*(?:,|и)\s*\d{3})*)\)/g)].flatMap((x) => matched(x[1], /\d{3}/g)),
+    ...[...bounds.matchAll(/\(\d{3}(?:\s*(?:,|и)\s*\d{3})*\)/g)].flatMap(([x]) => matched(x, /\d{3}/g)),
     ...[...bounds.matchAll(/slice\s+(\d{3})/gi)].map((x) => x[1]),
   ];
   return uniq(refs).filter((r) => !c.slices.has(r)).map((r) => finding('SL-25', sl.file, null, `«Границы»: slice ${r} нет`));

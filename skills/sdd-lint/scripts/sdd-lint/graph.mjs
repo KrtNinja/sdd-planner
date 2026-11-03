@@ -16,7 +16,8 @@ export function dependencyCycles(items) {
       return;
     }
     state.set(num, 'visiting');
-    for (const d of items.get(num)?.deps ?? []) if (items.has(d) && d !== num) visit(d, [...stack, num]);
+    // visit зовётся только для узлов из items: по ключам и по зависимостям, которые в items есть
+    for (const d of /** @type {{ deps: string[] }} */ (items.get(num)).deps) if (items.has(d) && d !== num) visit(d, [...stack, num]);
     state.set(num, 'done');
   };
   for (const num of items.keys()) visit(num, []);

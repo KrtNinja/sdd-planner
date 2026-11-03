@@ -34,15 +34,16 @@ const sideOfHeading = (/** @type {string | null | undefined} */ h) => {
 function depBasisOf(slices, sl) {
   const out = new Set();
   const seen = new Set();
-  const walk = (/** @type {string} */ num) => {
-    for (const d of slices.get(num)?.deps || []) {
-      if (seen.has(d) || !slices.has(d)) continue;
+  const walk = (/** @type {Slice} */ from) => {
+    for (const d of from.deps) {
+      const dep = slices.get(d);
+      if (!dep || seen.has(d)) continue;
       seen.add(d);
-      for (const id of /** @type {Slice} */ (slices.get(d)).basis) out.add(id);
-      walk(d);
+      for (const id of dep.basis) out.add(id);
+      walk(dep);
     }
   };
-  walk(sl.num);
+  walk(sl);
   return out;
 }
 // --- каждый AC, и удалённый, и заготовка ---
@@ -56,8 +57,7 @@ export const AC_ANY = [
 ];
 // --- AC с текстом: не удалён и не заготовка (заготовку ловит SL-37) ---
 /** @type {Record<string, string>} */
-const SECTION_OF_SIDE = { '': '«Общая приёмка»', F: '«Frontend-половина»' };
-const sectionWhere = (/** @type {string} */ side) => SECTION_OF_SIDE[side] ?? '«<Сервис>-половина»';
+const SECTION_OF_SIDE = { '': '«Общая приёмка»', F: '«Frontend-половина»', B: '«<Сервис>-половина»' };
 const serviceOfH2 = (/** @type {string} */ h2) => h2.replace(/[-–—\s]*половина.*$/i, '').trim().toLowerCase();
 
 // SL-14: первая строка после имени — WHEN, где-то есть THEN.
@@ -115,7 +115,7 @@ export const AC_LIVE = [
     ids: ['SL-20'],
     check: (ac, sl) => {
       if (sideOfHeading(ac.h2) === ac.side) return [];
-      return [finding('SL-20', sl.file, ac.n, `${ac.id} стоит в разделе «${ac.h2 || '—'}», его место — ${sectionWhere(ac.side)}`)];
+      return [finding('SL-20', sl.file, ac.n, `${ac.id} стоит в разделе «${ac.h2 || '—'}», его место — ${SECTION_OF_SIDE[ac.side]}`)];
     },
   },
   {

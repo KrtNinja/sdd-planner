@@ -62,8 +62,8 @@ export function withDecisions(rv, decisions) {
   const ls = rv.md.split('\n');
   for (const r of rv.rows) {
     if (!decisions.has(r.id)) continue;
+    // ячейка за концом короткой строки: join даёт пустые ячейки на месте пропущенных
     const cells = [...r.cells];
-    while (cells.length <= rv.decisionCol) cells.push('');
     cells[rv.decisionCol] = /** @type {string} */ (decisions.get(r.id)).replace(/\|/g, '/');
     ls[r.n - 1] = `| ${cells.join(' | ')} |`;
   }

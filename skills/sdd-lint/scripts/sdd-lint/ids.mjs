@@ -6,8 +6,8 @@ import { scan } from './md.mjs';
 // В ID буквы латинские (AC, B, F, ADR), а в «Р1–Р3» — кириллическая «Р».
 /** @type {Record<string, string>} */
 const TO_LAT = { А: 'A', С: 'C', В: 'B' };
-const AC_ANY = /(?<![\p{L}\d_-])([AА][CС]-(?:\d{3}-)?[BВF]?(?:\d+|\?))(?![\p{L}\d_])/gu;
-const ADR_ANY = /(?<![\p{L}\d_-])([AА]DR-\d+)/gu;
+const AC_ANY = /(?<![\p{L}\d_-])[AА][CС]-(?:\d{3}-)?[BВF]?(?:\d+|\?)(?![\p{L}\d_])/gu;
+const ADR_ANY = /(?<![\p{L}\d_-])[AА]DR-\d+/gu;
 const WHY_P = /^(Почему отдельно:\s*\**\s*)P(?=[123](?!\d))/gmu;
 const CYR = /[АСВ]/u;
 
@@ -25,7 +25,7 @@ export function idTypos(md) {
   const out = [];
   for (const l of scan(md).lines) {
     for (const re of [AC_ANY, ADR_ANY])
-      for (const m of l.text.matchAll(re)) if (CYR.test(m[1])) out.push({ n: l.n, from: m[1], to: lat(m[1]), why: 'кириллица в ID' });
+      for (const [id] of l.text.matchAll(re)) if (CYR.test(id)) out.push({ n: l.n, from: id, to: lat(id), why: 'кириллица в ID' });
     const p = l.text.match(/^Почему отдельно:\s*\**\s*(P[123])(?!\d)/u);
     if (p) out.push({ n: l.n, from: p[1], to: `Р${p[1].slice(1)}`, why: 'латинская P вместо кириллической Р' });
   }
@@ -38,8 +38,8 @@ export function fixIdTypos(md) {
   const typos = idTypos(md);
   if (!typos.length) return { md, typos };
   const out = md
-    .replace(AC_ANY, (all, id) => (CYR.test(id) ? all.replace(id, lat(id)) : all))
-    .replace(ADR_ANY, (all, id) => (CYR.test(id) ? all.replace(id, lat(id)) : all))
+    .replace(AC_ANY, lat)
+    .replace(ADR_ANY, lat)
     .replace(WHY_P, '$1Р');
   return { md: out, typos };
 }
