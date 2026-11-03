@@ -6,6 +6,38 @@ import { esc, uniq, inSection, tables, quotes, stem, cell } from './md.mjs';
 
 const NAME_PAIR = /(?<![\p{L}])([А-ЯЁ][а-яё]{2,})\s+([А-ЯЁ][а-яё]{2,})(?![\p{L}])/gu;
 
+/** @param {ExampleData} data @param {string} s */
+function addPerson(data, s) {
+  const m = s.match(/([А-ЯЁ][а-яё]+)(?:\s+([А-ЯЁ][а-яё]+))?/u);
+  if (m) data.people.push({ first: m[1], last: m[2] || null });
+}
+/** @param {ExampleData} data @param {string} s */
+function addObjects(data, s) {
+  for (const m of s.matchAll(/\b[A-Z][A-Z0-9]*-\d+\b/g)) data.objects.add(m[0]);
+  for (const q of quotes(s)) data.objNames.add(q);
+}
+
+/** @param {import('./model.mjs').Scan['lines']} ls @param {ExampleData} data */
+function tableData(ls, data) {
+  for (const t of tables(ls)) {
+    const persons = /персонаж|участник|пользовател|кто/i.test(t.header[0] || '');
+    for (const r of t.rows) {
+      if (persons) addPerson(data, cell(r, 0));
+      for (const c of r.cells) addObjects(data, c);
+    }
+  }
+}
+
+/** @param {import('./model.mjs').Scan['lines']} ls @param {ExampleData} data */
+function proseData(ls, data) {
+  for (const l of ls) {
+    if (l.inCode || l.text.trim().startsWith('|')) continue;
+    // Пункт списка с имени: «- Анна Петрова — покупатель». Имя и фамилию берёт addPerson.
+    if (/^\s*[-*]\s+[А-ЯЁ][а-яё]/u.test(l.text)) addPerson(data, l.text);
+    addObjects(data, l.text);
+  }
+}
+
 /** @param {import('./model.mjs').Scan} sc @returns {ExampleData} */
 export function parseData(sc) {
   const ls = inSection(sc, /^Данные для примеров/);
@@ -15,27 +47,9 @@ export function parseData(sc) {
   const objects = new Set();
   /** @type {Set<string>} */
   const objNames = new Set();
-  const addPerson = (/** @type {string} */ s) => {
-    const m = s.match(/([А-ЯЁ][а-яё]+)(?:\s+([А-ЯЁ][а-яё]+))?/u);
-    if (m) people.push({ first: m[1], last: m[2] || null });
-  };
-  const addObjects = (/** @type {string} */ s) => {
-    for (const m of s.matchAll(/\b[A-Z][A-Z0-9]*-\d+\b/g)) objects.add(m[0]);
-    for (const q of quotes(s)) objNames.add(q);
-  };
-  for (const t of tables(ls)) {
-    const persons = /персонаж|участник|пользовател|кто/i.test(t.header[0] || '');
-    for (const r of t.rows) {
-      if (persons) addPerson(cell(r, 0));
-      for (const c of r.cells) addObjects(c);
-    }
-  }
-  for (const l of ls) {
-    if (l.inCode || l.text.trim().startsWith('|')) continue;
-    // Пункт списка с имени: «- Анна Петрова — покупатель». Имя и фамилию берёт addPerson.
-    if (/^\s*[-*]\s+[А-ЯЁ][а-яё]/u.test(l.text)) addPerson(l.text);
-    addObjects(l.text);
-  }
+  const data = { people, objects, objNames };
+  tableData(ls, data);
+  proseData(ls, data);
   return { people, objects, objNames };
 }
 

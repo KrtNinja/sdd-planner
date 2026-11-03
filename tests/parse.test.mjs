@@ -185,3 +185,36 @@ test('slices: parseSlice — ссылки из [ … ] и «Проверяет:�
   assert.equal(bare.basisRaw, '');
   assert.deepEqual(bare.deps, ['002', '001']);
 });
+
+test('data: пустой раздел, таблица объектов и строка без имени сохраняют полную модель', () => {
+  for (const md of ['', '## Данные для примеров\n| Объект | Описание |\n|---|---|\n| ITEM-2 | «Чай» |\n- без имени']) {
+    const hasObjects = md !== '';
+    assert.deepEqual(parseData(scan(md)), {
+      people: [], objects: new Set(hasObjects ? ['ITEM-2'] : []), objNames: new Set(hasObjects ? ['Чай'] : []),
+    });
+  }
+});
+
+test('spec: пустой и отсутствующий документ, удалённое требование и строка трассировки', () => {
+  assert.equal(parseSpec('spec.md', undefined), null);
+  const md = '# X — Dev Spec\n## Трассировка\n```\nNFR-7 (удалён)\n```';
+  const sc = scan(md);
+  assert.deepEqual(parseSpec('spec.md', md), {
+    file: 'spec.md', md, sc, status: null,
+    reqs: new Map([['NFR-7', { id: 'NFR-7', n: 4, text: 'NFR-7 (удалён)', first: 'NFR-7 (удалён)', deleted: true, h2: 'Трассировка', block: 0 }]]),
+    dups: [], outside: [], multi: [], data: { people: [], objects: new Set(), objNames: new Set() },
+    sources: [], oldTraceT: null, oldTraceLine: 2, title: 'X',
+  });
+});
+
+test('slices: несколько AC, кириллица, удаление и незаполненный номер сохраняют строки', () => {
+  const md = '```\nАС-003-В2 (удалён) [FR-1]\nAC-003-3 пример\nAC-003-?\n```\nПроверяет: FR-2\n\nПроза\nПроверяет: FR-9';
+  const s = parseSlice('003-x.md', md);
+  assert.deepEqual(s.multi, [{ n: 1, count: 2 }]);
+  assert.equal(s.pending, 1);
+  assert.deepEqual(s.strayChecks, [9]);
+  assert.deepEqual(s.acs, [
+    { id: 'AC-003-B2', acNum: '003', side: 'B', k: 2, n: 2, deleted: true, oldRefs: ['FR-1'], refs: ['FR-1', 'FR-2'], body: s.sc.blocks[0].lines.slice(1) },
+    { id: 'AC-003-3', acNum: '003', side: '', k: 3, n: 3, deleted: false, oldRefs: [], refs: ['FR-2'], body: s.sc.blocks[0].lines.slice(2) },
+  ].map((a) => ({ ...a, stub: false, h2: null, checks: { n: 6, text: 'Проверяет: FR-2' }, block: 0, text: s.sc.blocks[0].lines.map((l) => l.text).join('\n') })));
+});

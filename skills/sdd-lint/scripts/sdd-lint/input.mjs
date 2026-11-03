@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { DOCS, isDir, listFeatures, resolveFeature } from './pick.mjs';
+import { inventory } from './inventory.mjs';
+
+import { DOCS, isDir, resolveFeature } from './pick.mjs';
 
 /** Задача — одно из: фраза, файл или ссылка. @typedef {{ text?: string, file?: string, url?: string }} Task */
 /**
@@ -54,6 +56,16 @@ function trimFiller(s) {
   return t;
 }
 
+/** @param {string} token @param {string} cleaned */
+function looksLikePath(token, cleaned) {
+  return cleaned && (/[\\/]/.test(cleaned) || DOC_EXT.test(cleaned) || /^[@~.]/.test(token));
+}
+/** @param {string} token @param {string} cleaned */
+function definitelyPath(token, cleaned) {
+  return /^@|^\.{1,2}[\\/]|^~[\\/]|^\//.test(token) ||
+    (/^[\w.~-]+([\\/][\w.~-]*)+$/.test(cleaned) && (DOC_EXT.test(cleaned) || /[\\/]$/.test(token)));
+}
+
 // Свободный текст → ссылки, найденные пути, похожие на путь, но не найденные, остальные слова.
 /** @param {string | null | undefined} raw */
 function splitInput(raw) {
@@ -66,11 +78,11 @@ function splitInput(raw) {
   const rest = [];
   for (const t of (raw || '').replace(URL_RE, ' ').split(/\s+/).filter(Boolean)) {
     const c = clean(t);
-    const pathy = c && (/[\\/]/.test(c) || DOC_EXT.test(c) || /^[@~.]/.test(t));
+    const pathy = looksLikePath(t, c);
     if (pathy && exists(c)) paths.push(c.replace(/[\\/]+$/, '') || c);
     // Не найден — только если это точно путь: с @, ./, ../, ~/ или латиницей через «/» с расширением
     // или «/» в конце. «A/B-тест» и «фронт/бэк» — слова.
-    else if (pathy && (/^@|^\.{1,2}[\\/]|^~[\\/]|^\//.test(t) || (/^[\w.~-]+([\\/][\w.~-]*)+$/.test(c) && (DOC_EXT.test(c) || /[\\/]$/.test(t)))))
+    else if (pathy && definitelyPath(t, c))
       missing.push(c);
     else rest.push(t);
   }
@@ -88,18 +100,8 @@ function asFeature(token) {
   return isFile(token) ? null : f;
 }
 
-// Что пришло после /sdd-grill. kind: empty — ничего; feature — существующая фича; task — задача
-// (фраза, файл или ссылка) и, возможно, имя папки; need-task — только имя папки или источники.
-/** @param {string | null | undefined} raw @returns {Input} */
-export function classify(raw) {
-  const text = (raw || '').trim();
-  if (!text) return { kind: 'empty', sources: [], missing: [] };
-  if (!/\s/.test(text)) {
-    const f = asFeature(text.replace(/^@/, ''));
-    if (f) return { kind: 'feature', dir: f, sources: [], missing: [] };
-    // Старая форма «/sdd-grill <feature>»: одно имя без задачи.
-    if (nameLike(text) && !exists(text)) return { kind: 'need-task', slug: text, sources: [], missing: [] };
-  }
+/** @param {string} text */
+function namedTask(text) {
   /** @type {string | null} */
   let slug = null;
   let rest = text;
@@ -110,17 +112,21 @@ export function classify(raw) {
     slug = m[1];
     rest = m[2];
   }
-  const s = splitInput(rest);
-  if (slug) {
-    const f = asFeature(slug);
-    if (f && hasArtifacts(f)) return { kind: 'feature', dir: f, sources: [...s.paths, ...s.urls], missing: s.missing };
-  }
+  return { slug, rest };
+}
+
+/** @param {ReturnType<typeof splitInput>} s @param {string[]} files */
+function phraseIsTask(s, files) {
+  return words(s.phrase) >= 3 || (s.phrase && !files.length && !(s.urls.length && words(s.phrase) < 2));
+}
+/** @param {ReturnType<typeof splitInput>} s */
+function taskAndSources(s) {
   const files = s.paths.filter(isFile);
   /** @type {Task | null} */
   let task = null;
   let sources = [...s.paths, ...s.urls];
   // Задача — фраза; файл задачи — если он один, а слов рядом почти нет («вот задача @docs/x.md»).
-  if (words(s.phrase) >= 3 || (s.phrase && !files.length && !(s.urls.length && words(s.phrase) < 2))) task = { text: s.phrase };
+  if (phraseIsTask(s, files)) task = { text: s.phrase };
   else if (files.length === 1) {
     task = { file: files[0] };
     sources = sources.filter((x) => x !== files[0]);
@@ -128,6 +134,34 @@ export function classify(raw) {
     task = { url: s.urls[0] };
     sources = [];
   }
+  return { task, sources };
+}
+
+/** @param {string} text @returns {Input | null} */
+function singleInput(text) {
+  if (/\s/.test(text)) return null;
+  const f = asFeature(text.replace(/^@/, ''));
+  if (f) return { kind: 'feature', dir: f, sources: [], missing: [] };
+  // Старая форма «/sdd-grill <feature>»: одно имя без задачи.
+  if (nameLike(text) && !exists(text)) return { kind: 'need-task', slug: text, sources: [], missing: [] };
+  return null;
+}
+
+// Что пришло после /sdd-grill. kind: empty — ничего; feature — существующая фича; task — задача
+// (фраза, файл или ссылка) и, возможно, имя папки; need-task — только имя папки или источники.
+/** @param {string | null | undefined} raw @returns {Input} */
+export function classify(raw) {
+  const text = (raw || '').trim();
+  if (!text) return { kind: 'empty', sources: [], missing: [] };
+  const single = singleInput(text);
+  if (single) return single;
+  const { slug, rest } = namedTask(text);
+  const s = splitInput(rest);
+  if (slug) {
+    const f = asFeature(slug);
+    if (f && hasArtifacts(f)) return { kind: 'feature', dir: f, sources: [...s.paths, ...s.urls], missing: s.missing };
+  }
+  const { task, sources } = taskAndSources(s);
   return /** @type {Input} */ ({ kind: task ? 'task' : 'need-task', slug, task, sources, missing: s.missing });
 }
 
@@ -173,12 +207,18 @@ export function caseTwin(slug, except = null) {
   return fs.readdirSync(DOCS).find((x) => x !== slug && x !== except && x.toLowerCase() === slug.toLowerCase() && isDir(path.join(DOCS, x))) || null;
 }
 
-// Заголовок протокола: первое предложение фразы или заголовок файла задачи.
-/** @param {Task | null | undefined} task @param {string} slug */
-export function titleOf(task, slug) {
+/** @param {Task | null | undefined} task */
+function taskTitle(task) {
   let t = '';
   if (task?.text) t = task.text.split(/(?<=[.!?])\s/)[0].replace(/[.!?]+$/, '');
   else if (task?.file) t = ((fs.readFileSync(expand(task.file), 'utf8').match(/^#\s+(.+)$/m) || [])[1] || '').trim();
+  return t;
+}
+
+// Заголовок протокола: первое предложение фразы или заголовок файла задачи.
+/** @param {Task | null | undefined} task @param {string} slug */
+export function titleOf(task, slug) {
+  let t = taskTitle(task);
   t = t || slug;
   if (t.length > 70) t = `${t.slice(0, 70).replace(/\s+\S*$/, '')}…`;
   return t.charAt(0).toUpperCase() + t.slice(1);
@@ -189,9 +229,18 @@ export function requestOf(task) {
   return task.file ? `файл ${task.file}` : `ссылка ${task.url}`;
 }
 
+/** @param {string} a */
+function sourceReply(a) {
+  if (/нов(ый|ая|ое)\s+(проект|сервис|продукт)|с нуля/i.test(a)) return { entries: [NEW_PROJECT], missing: [] };
+  if (/^(нет|не(?!\p{L})|ничего|нечего|хватит|достаточно)/iu.test(a)) return { entries: [], none: true, missing: [] };
+  if (/готов|добавил|дал доступ|открыл|повтор/i.test(a)) return { entries: [], retry: true, missing: [] };
+  return { entries: [], missing: [], unclear: true };
+}
+
 // Ответ человека на вопрос об источниках → записи «Источники:» или что переспросить.
 // none — источников больше нет; retry — человек дал доступ и просит изучить снова.
-/** @param {string | null | undefined} answer */
+/** @param {string | null | undefined} answer
+ * @returns {{ entries: string[], missing: string[], none?: boolean, retry?: boolean, unclear?: boolean }} */
 export function parseSourcesAnswer(answer) {
   const a = (answer || '').trim();
   if (a === REPO || a === NEW_PROJECT) return { entries: [a], missing: [] };
@@ -199,71 +248,8 @@ export function parseSourcesAnswer(answer) {
   const entries = [...s.paths, ...s.urls];
   if (/(?<!\p{L})репозитори|в этой папке|что есть/iu.test(s.phrase) && !/^нет(?!\p{L}).*нов/iu.test(s.phrase)) entries.unshift(REPO);
   if (entries.length || s.missing.length) return { entries, missing: s.missing };
-  if (/нов(ый|ая|ое)\s+(проект|сервис|продукт)|с нуля/i.test(a)) return { entries: [NEW_PROJECT], missing: [] };
-  if (/^(нет|не(?!\p{L})|ничего|нечего|хватит|достаточно)/iu.test(a)) return { entries: [], none: true, missing: [] };
-  if (/готов|добавил|дал доступ|открыл|повтор/i.test(a)) return { entries: [], retry: true, missing: [] };
-  return { entries: [], missing: [], unclear: true };
+  return sourceReply(a);
 }
 
-// Опись репозитория: что агент уже может прочитать сам. Показывается человеку перед вопросом об источниках.
-const SKIP = new Set(['node_modules', 'dist', 'build', 'target', 'vendor', 'coverage', 'out', 'tmp']);
-const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|vue|svelte|py|java|kt|kts|go|cs|rb|php|swift|scala|rs|c|cc|cpp|h|hpp|sql|dart)$/i;
-const CONTRACT = /(openapi|swagger|asyncapi)[^/]*\.(ya?ml|json)$|\.(proto|graphql|avsc)$/i;
-/** @param {string} dir */
-function countFiles(dir) {
-  const c = { readme: 0, md: 0, code: 0, contract: 0 };
-  let budget = 3000;
-  const walk = (/** @type {string} */ d, /** @type {number} */ depth) => {
-    /** @type {fs.Dirent[]} */
-    let list = [];
-    try {
-      list = fs.readdirSync(d, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of list) {
-      if (--budget < 0 || e.name.startsWith('.') || SKIP.has(e.name)) continue;
-      const f = path.join(d, e.name);
-      if (e.isDirectory()) {
-        if (depth < 4) walk(f, depth + 1);
-      } else if (/^readme(\.md)?$/i.test(e.name)) c.readme++;
-      else if (CONTRACT.test(e.name)) c.contract++;
-      else if (CODE_EXT.test(e.name)) c.code++;
-      else if (/\.md$/i.test(e.name)) c.md++;
-    }
-  };
-  walk(dir, 1);
-  return c;
-}
-/** @param {string | null} [exclude] */
-export function inventory(exclude = null) {
-  /** @type {string[]} */
-  const items = [];
-  let code = 0;
-  let docs = 0;
-  const root = process.cwd();
-  if (fs.existsSync(path.join(root, 'README.md'))) {
-    items.push('README.md');
-    docs++;
-  }
-  const others = listFeatures().filter((f) => f !== exclude);
-  if (others.length) items.push(`${DOCS}/ — фичи: ${others.slice(0, 5).join(', ')}${others.length > 5 ? ` и ещё ${others.length - 5}` : ''}`);
-  const adr = isDir(path.join(DOCS, 'adr')) ? fs.readdirSync(path.join(DOCS, 'adr')).filter((x) => /^\d{4}-.+\.md$/.test(x)).length : 0;
-  if (adr) items.push(`${DOCS}/adr/ — ADR: ${adr}`);
-  docs += others.length + adr;
-  for (const e of fs.readdirSync(root, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-    if (!e.isDirectory() || e.name.startsWith('.') || e.name === DOCS || SKIP.has(e.name)) continue;
-    const c = countFiles(path.join(root, e.name));
-    const parts = [
-      c.readme && `README: ${c.readme}`,
-      c.md && `документов: ${c.md}`,
-      c.contract && `контрактов: ${c.contract}`,
-      c.code && `файлов кода: ${c.code}`,
-    ].filter(Boolean);
-    if (!parts.length) continue;
-    items.push(`${e.name}/ — ${parts.join(', ')}`);
-    code += c.code + c.contract;
-    docs += c.readme + c.md;
-  }
-  return { items: items.slice(0, 8), code, docs, empty: !items.length };
-}
+// Опись репозитория вынесена отдельно от разбора свободного ввода.
+export { inventory };

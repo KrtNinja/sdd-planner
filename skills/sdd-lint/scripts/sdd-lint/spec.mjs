@@ -7,16 +7,12 @@ import { parseSources } from './sources.mjs';
 /** @typedef {import('./model.mjs').Spec} Spec */
 /** @typedef {import('./model.mjs').Req} Req */
 
-/** @param {string} file @param {string | null | undefined} md @returns {Spec | null} */
-export function parseSpec(file, md) {
-  if (md == null) return null;
-  const sc = scan(md);
+/** @param {import('./model.mjs').Scan} sc */
+function requirements(sc) {
   /** @type {Map<string, Req>} */
   const reqs = new Map();
   /** @type {Spec['dups']} */
   const dups = [];
-  /** @type {Spec['outside']} */
-  const outside = [];
   /** @type {Spec['multi']} */
   const multi = [];
   for (const b of sc.blocks) {
@@ -32,9 +28,24 @@ export function parseSpec(file, md) {
       reqs.set(id, { id, n: l.n, text, first: l.text, deleted: /\(удал[её]н/i.test(l.text), h2: b.h2, block: b.idx });
     }
   }
+  return { reqs, dups, multi };
+}
+
+/** @param {import('./model.mjs').Scan} sc */
+function outsideRequirements(sc) {
+  /** @type {Spec['outside']} */
+  const outside = [];
   for (const l of sc.lines) {
     if (!l.inCode && /^\s*N?FR-\d+\b/.test(l.text)) outside.push({ id: matched(l.text.trim(), /^N?FR-\d+/)[0], n: l.n });
   }
+  return outside;
+}
+
+/** @param {string} file @param {string | null | undefined} md @returns {Spec | null} */
+export function parseSpec(file, md) {
+  if (md == null) return null;
+  const sc = scan(md);
+  const { reqs, dups, multi } = requirements(sc);
   const traceH = sc.lines.find((l) => isH2(l) && /^Трассировка/.test(l.h2));
   return {
     file,
@@ -43,7 +54,7 @@ export function parseSpec(file, md) {
     status: header(md, 'Статус'),
     reqs,
     dups,
-    outside,
+    outside: outsideRequirements(sc),
     multi,
     data: parseData(sc),
     sources: parseSources(sc, reqs),

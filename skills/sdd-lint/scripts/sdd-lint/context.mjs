@@ -47,9 +47,8 @@ const contextFile = (m) => path.join(m.workDir, 'context.md');
 /** @param {string} t */
 const blank = (t) => /^\s*[-*]\s*[-—–]?\s*$/.test(t);
 
-/** @param {string} file @param {string | null | undefined} md @returns {Context | null} */
-function parseContext(file, md) {
-  if (md == null) return null;
+/** @param {string} md */
+function contextSections(md) {
   /** @type {Map<string, Fact[]>} */
   const sections = new Map();
   for (const l of scan(md).lines) {
@@ -57,6 +56,13 @@ function parseContext(file, md) {
       if (!sections.has(l.h2)) sections.set(l.h2, []);
     } else if (l.h2 && !l.inCode && /^\s*[-*]\s/.test(l.text) && !blank(l.text)) sections.get(l.h2)?.push({ text: l.text.trim(), n: l.n });
   }
+  return sections;
+}
+
+/** @param {string} file @param {string | null | undefined} md @returns {Context | null} */
+function parseContext(file, md) {
+  if (md == null) return null;
+  const sections = contextSections(md);
   const list = (/** @type {string} */ k) => sections.get(k) || [];
   return {
     file,

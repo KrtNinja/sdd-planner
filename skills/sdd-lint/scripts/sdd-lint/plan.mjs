@@ -86,6 +86,21 @@ function planSlice(h) {
   };
 }
 
+/** @param {import('./model.mjs').Line} l @returns {PlanHead | null} */
+function parseHead(l) {
+  const mm = l.text.trim().match(HEAD);
+  return mm && mm[3] ? { num: mm[1], slugRaw: mm[2] || '', title: mm[3].trim(), n: l.n, head: {}, headN: {} } : null;
+}
+
+/** @param {PlanHead} cur @param {import('./model.mjs').Line} l */
+function readField(cur, l) {
+  const kv = l.text.match(KV);
+  if (kv && !(kv[1].trim() in cur.head)) {
+    cur.head[kv[1].trim()] = kv[2].trim();
+    cur.headN[kv[1].trim()] = l.n;
+  }
+}
+
 /** @param {string} file @param {string | null | undefined} md @returns {Plan | null} */
 export function parsePlan(file, md) {
   if (md == null) return null;
@@ -99,18 +114,13 @@ export function parsePlan(file, md) {
   for (const l of sc.lines) {
     if (l.inCode) continue;
     if (/^##\s/.test(l.text)) {
-      const mm = l.text.trim().match(HEAD);
-      cur = mm && mm[3] ? { num: mm[1], slugRaw: mm[2] || '', title: mm[3].trim(), n: l.n, head: {}, headN: {} } : null;
+      cur = parseHead(l);
       if (cur) heads.push(cur);
       else bad.push({ n: l.n, text: l.text.trim() });
       continue;
     }
     if (!cur) continue;
-    const kv = l.text.match(KV);
-    if (kv && !(kv[1].trim() in cur.head)) {
-      cur.head[kv[1].trim()] = kv[2].trim();
-      cur.headN[kv[1].trim()] = l.n;
-    }
+    readField(cur, l);
   }
   return { file, md, sc, slices: heads.map(planSlice), bad };
 }
