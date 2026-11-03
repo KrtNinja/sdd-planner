@@ -5,10 +5,10 @@
   "fail": 0,
   "seconds": 12
  },
- "functions": 457,
- "crapAtLeast10": 58,
+ "functions": 472,
+ "crapAtLeast10": 55,
  "crapOver30": 4,
- "complexityAtLeast10": 54,
+ "complexityAtLeast10": 52,
  "offenders": {
   "skills/sdd-lint/scripts/sdd-lint/cmd-menu.mjs#complete": {
    "complexity": 48,
@@ -25,10 +25,6 @@
   "skills/sdd-lint/scripts/sdd-lint/gate-extra.mjs#reviewStep": {
    "complexity": 19,
    "crap": 30.5
-  },
-  "skills/sdd-lint/scripts/sdd-lint/cmd-approve.mjs#cmdApprove": {
-   "complexity": 27,
-   "crap": 27.8
   },
   "skills/sdd-lint/scripts/sdd-lint/stage.mjs#stageOf": {
    "complexity": 27,
@@ -54,13 +50,9 @@
    "complexity": 22,
    "crap": 22.9
   },
-  "skills/sdd-lint/scripts/sdd-lint/cmd-fix.mjs#fixFeature": {
-   "complexity": 22,
-   "crap": 22
-  },
-  "skills/sdd-lint/scripts/sdd-lint/cmd-ask.mjs#act": {
+  "skills/sdd-lint/scripts/sdd-lint/cmd-approve.mjs#cmdApprove": {
    "complexity": 21,
-   "crap": 21.6
+   "crap": 21.1
   },
   "skills/sdd-lint/scripts/sdd-lint/gen-links.mjs#migrateTrace": {
    "complexity": 18,
@@ -70,7 +62,7 @@
    "complexity": 17,
    "crap": 20.7
   },
-  "skills/sdd-lint/scripts/sdd-lint/cmd-check.mjs#cmdGate": {
+  "skills/sdd-lint/scripts/sdd-lint/cmd-fix.mjs#fixFeature": {
    "complexity": 20,
    "crap": 20
   },
@@ -86,9 +78,9 @@
    "complexity": 19,
    "crap": 19
   },
-  "skills/sdd-lint/scripts/sdd-lint/cmd-gen.mjs#cmdTrace": {
-   "complexity": 16,
-   "crap": 17.6
+  "skills/sdd-lint/scripts/sdd-lint/cmd-ask.mjs#act": {
+   "complexity": 17,
+   "crap": 17.3
   },
   "skills/sdd-lint/scripts/sdd-lint/open-questions.mjs#openTarget": {
    "complexity": 13,
@@ -102,14 +94,6 @@
    "complexity": 16,
    "crap": 16.5
   },
-  "skills/sdd-lint/scripts/sdd-lint/screen.mjs#mdProblems": {
-   "complexity": 16,
-   "crap": 16.1
-  },
-  "skills/sdd-lint/scripts/sdd-lint/cmd-prompt.mjs#cmdPrompt": {
-   "complexity": 16,
-   "crap": 16
-  },
   "skills/sdd-lint/scripts/sdd-lint/scaffold.mjs#sliceText": {
    "complexity": 16,
    "crap": 16
@@ -118,9 +102,9 @@
    "complexity": 15,
    "crap": 15.1
   },
-  "skills/sdd-lint/scripts/sdd-lint/start.mjs#addSources": {
+  "skills/sdd-lint/scripts/sdd-lint/cmd-check.mjs#cmdGate": {
    "complexity": 15,
-   "crap": 15.1
+   "crap": 15
   },
   "skills/sdd-lint/scripts/sdd-lint/data.mjs#parseData": {
    "complexity": 15,
@@ -130,11 +114,23 @@
    "complexity": 15,
    "crap": 15
   },
+  "skills/sdd-lint/scripts/sdd-lint/cmd-gen.mjs#cmdTrace": {
+   "complexity": 14,
+   "crap": 14.7
+  },
   "skills/sdd-lint/scripts/sdd-lint/spec.mjs#parseSpec": {
    "complexity": 14,
    "crap": 14.1
   },
+  "skills/sdd-lint/scripts/sdd-lint/start.mjs#addSources": {
+   "complexity": 14,
+   "crap": 14.1
+  },
   "skills/sdd-lint/scripts/sdd-lint/cmd-gen.mjs#cmdNext": {
+   "complexity": 14,
+   "crap": 14
+  },
+  "skills/sdd-lint/scripts/sdd-lint/cmd-prompt.mjs#cmdPrompt": {
    "complexity": 14,
    "crap": 14
   },
@@ -158,10 +154,6 @@
    "complexity": 13,
    "crap": 13
   },
-  "skills/sdd-lint/scripts/sdd-lint/review-walk.mjs#artifact": {
-   "complexity": 13,
-   "crap": 13
-  },
   "skills/sdd-lint/scripts/sdd-lint/services.mjs#halvesProblem": {
    "complexity": 12,
    "crap": 12.9
@@ -179,6 +171,10 @@
    "crap": 12.1
   },
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#parsePlan": {
+   "complexity": 12,
+   "crap": 12.1
+  },
+  "skills/sdd-lint/scripts/sdd-lint/screen.mjs#mdProblems": {
    "complexity": 12,
    "crap": 12.1
   },
@@ -218,10 +214,6 @@
    "complexity": 9,
    "crap": 10.4
   },
-  "skills/sdd-lint/scripts/sdd-lint/gen-links.mjs#linkSlice": {
-   "complexity": 8,
-   "crap": 10.3
-  },
   "skills/sdd-lint/scripts/sdd-lint/cmd-ask.mjs#cmdChoose": {
    "complexity": 10,
    "crap": 10
@@ -237,18 +229,13 @@
   "skills/sdd-lint/scripts/sdd-lint/name.mjs#nameTrouble": {
    "complexity": 10,
    "crap": 10
-  },
-  "skills/sdd-lint/scripts/sdd-lint/plan.mjs#compactIds": {
-   "complexity": 10,
-   "crap": 10
   }
  },
  "dataLogic": [],
  "eslint": {
-  "no-nested-ternary": 34,
-  "max-len": 124,
+  "max-len": 121,
   "max-params": 4,
-  "complexity": 45,
+  "complexity": 44,
   "max-statements": 23,
   "max-lines-per-function": 11,
   "no-param-reassign": 1,
