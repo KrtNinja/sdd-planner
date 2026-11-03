@@ -35,22 +35,7 @@ function numberPlaceholders(m) {
   /** @type {string[]} */
   const done = [];
   if (m.spec) {
-    const ids = [...m.spec.reqs.keys()];
-    /** @type {Record<string, number>} */
-    const last = {
-      FR: maxNum(ids.filter((x) => x.startsWith('FR-')).map((x) => Number(x.slice(3)))),
-      NFR: maxNum(ids.filter((x) => x.startsWith('NFR-')).map((x) => Number(x.slice(4)))),
-    };
-    const ls = m.spec.md.split('\n');
-    for (const b of m.spec.sc.blocks) {
-      const l = firstLine(b);
-      const mm = l && l.text.match(PH_REQ);
-      if (!mm) continue;
-      const id = `${mm[2]}-${(last[mm[2]] += 1)}`;
-      ls[l.n - 1] = l.text.replace(PH_REQ, `$1${id}`);
-      done.push(`${rel(m.spec.file)}:${l.n}  ${mm[2]}-? → ${id}`);
-    }
-    if (done.length) fs.writeFileSync(m.spec.file, ls.join('\n'));
+    numberRequirements(m.spec, done);
   }
   /** @type {{ acNum: string, side: string, k: number }[]} */
   const all = [...m.slices.values()].flatMap((s) => s.acs);
@@ -94,27 +79,11 @@ export function fixFeature(ctx, dir, { snapshot = false } = {}) {
   // Что поправлено в файле — для строки «Скрипт поправил»; зовут, когда detail.has(f).
   const detailOf = (/** @type {string} */ f) => /** @type {string[]} */ (detail.get(f)).join(', ');
   const note = (/** @type {string} */ file, /** @type {string} */ text) => detail.set(path.resolve(file), [...(detail.get(path.resolve(file)) || []), text]);
-  // Кириллица в ID — до нумерации: «AC-002-В?» станет заготовкой, которую fix пронумерует.
-  for (const file of [...[...m.slices.values()].map((s) => s.file), m.readmeFile, m.planFile]) {
-    const md = read(file);
-    if (md == null) continue;
-    const r = fixIdTypos(md);
-    if (!r.typos.length) continue;
-    fs.writeFileSync(file, r.md);
-    for (const t of r.typos) note(file, `${t.from} → ${t.to}`);
-  }
+  fixTypos(m, note);
   m = loadFeature(dir);
   for (const x of numberPlaceholders(m)) note(x.split(':')[0], x.split(/:\d+\s+/)[1]);
   m = loadFeature(dir);
-  // Порядок — сверху вниз: spec ссылается на строки протокола, slices — на строки spec.
-  // Ссылки на протокол: без протокола их убирает только close (/sdd-close) — fix их не трогает.
-  if (m.spec && m.protocol) linkSpec(/** @type {import('./gen-links.mjs').SpecFeature} */ (m));
-  else if (m.spec && hasProtocolTraces(m.spec.md))
-    notes.push(`${rel(m.protocolFile)} нет, а spec ссылается на протокол: ссылки не тронуты. Если фича закрывается — ${skillCode('sdd-close', m.name)}`);
-  m = loadFeature(dir);
-  if (m.spec) for (const sl of m.slices.values()) linkSlice(sl, m.spec);
-  m = loadFeature(dir);
-  if (m.slices.size) genReadme(ctx, m, true);
+  fixLinks(ctx, m, notes);
   // Одобрение давалось прошлой версии — статус «на ревью», одобрять заново человеку.
   m = loadFeature(dir);
   for (const x of ownApprovals(m).filter((a) => a.state === 'changed')) {
@@ -154,4 +123,52 @@ export function cmdFix(ctx) {
     if (findings.length) ctx.io.log('');
   }
   reportFeature(ctx, m, findings, { fixed: changed, notes });
+}
+
+/** @param {import('./model.mjs').Spec} spec @param {string[]} done */
+function numberRequirements(spec, done) {
+  const ids = [...spec.reqs.keys()];
+  /** @type {Record<string, number>} */
+  const last = {
+    FR: maxNum(ids.filter((x) => x.startsWith('FR-')).map((x) => Number(x.slice(3)))),
+    NFR: maxNum(ids.filter((x) => x.startsWith('NFR-')).map((x) => Number(x.slice(4)))),
+  };
+  const ls = spec.md.split('\n');
+  for (const b of spec.sc.blocks) {
+    const l = firstLine(b);
+    const mm = l && l.text.match(PH_REQ);
+    if (!mm) continue;
+    const id = `${mm[2]}-${(last[mm[2]] += 1)}`;
+    ls[l.n - 1] = l.text.replace(PH_REQ, `$1${id}`);
+    done.push(`${rel(spec.file)}:${l.n}  ${mm[2]}-? → ${id}`);
+  }
+  if (done.length) fs.writeFileSync(spec.file, ls.join('\n'));
+}
+
+/** @param {Feature} m @param {(file: string, text: string) => void} note */
+function fixTypos(m, note) {
+  // Кириллица в ID — до нумерации: «AC-002-В?» станет заготовкой, которую fix пронумерует.
+  for (const file of [...[...m.slices.values()].map((s) => s.file), m.readmeFile, m.planFile]) {
+    const md = read(file);
+    if (md == null) continue;
+    const r = fixIdTypos(md);
+    if (!r.typos.length) continue;
+    fs.writeFileSync(file, r.md);
+    for (const t of r.typos) note(file, `${t.from} → ${t.to}`);
+  }
+}
+
+/** @param {Ctx} ctx @param {Feature} initial @param {string[]} notes */
+function fixLinks(ctx, initial, notes) {
+  let m = initial;
+  const dir = m.dir;
+  // Порядок — сверху вниз: spec ссылается на строки протокола, slices — на строки spec.
+  // Ссылки на протокол: без протокола их убирает только close (/sdd-close) — fix их не трогает.
+  if (m.spec && m.protocol) linkSpec(/** @type {import('./gen-links.mjs').SpecFeature} */ (m));
+  else if (m.spec && hasProtocolTraces(m.spec.md))
+    notes.push(`${rel(m.protocolFile)} нет, а spec ссылается на протокол: ссылки не тронуты. Если фича закрывается — ${skillCode('sdd-close', m.name)}`);
+  m = loadFeature(dir);
+  if (m.spec) for (const sl of m.slices.values()) linkSlice(sl, m.spec);
+  m = loadFeature(dir);
+  if (m.slices.size) genReadme(ctx, m, true);
 }
