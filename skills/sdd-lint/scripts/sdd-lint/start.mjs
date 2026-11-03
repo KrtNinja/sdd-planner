@@ -76,7 +76,7 @@ function readyText(m, st, created, warn) {
 
 // Фича с папкой: следующий шаг старта.
 /** @param {string} dir @param {{ created?: boolean }} [opts] */
-export function resume(dir, { created = false } = {}) {
+function resume(dir, { created = false } = {}) {
   const m = loadFeature(dir);
   const d = rel(m.dir);
   if (!m.protocol) {
@@ -126,7 +126,7 @@ function startedFeatures() {
   });
 }
 /** @param {{ sources?: string[] }} [input] @param {string | null} [slug] */
-export function askTask({ sources = [] } = {}, slug = null) {
+function askTask({ sources = [] } = {}, slug = null) {
   const started = startedFeatures();
   const args = ['start', `${ANSWER}${sources.length ? ` ${sources.join(' ')}` : ''}`, ...(slug ? ['--slug', slug] : [])];
   return waitText(
