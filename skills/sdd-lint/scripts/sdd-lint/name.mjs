@@ -10,8 +10,8 @@ import { DOCS } from './pick.mjs';
 import { ANSWER, pickText, waitText } from './question.mjs';
 import { A, G, blocks, screen } from './screen.mjs';
 
-export const NAME_AUTO = 'name:auto';
-export const NAME_OWN = 'name:own';
+const NAME_AUTO = 'name:auto';
+const NAME_OWN = 'name:own';
 const RULE = `латиница, цифры и дефис, до ${SLUG_MAX} знаков`;
 /** @typedef {import('./input.mjs').Input & { kind: 'task' }} TaskInput */
 /** @param {string} raw @param {string} v */
