@@ -32,23 +32,34 @@ export function diffChecks(dir, g, ref) {
     (f) => gitShow(g, ref, f),
     (d) => gitList(g, ref, d),
   );
-  const norm = (/** @type {string} */ s) => s.replace(/\s+/g, ' ').trim();
-
-  // протокол только дописывается
-  if (base.protocol && cur.protocol) {
-    const now = new Set([...cur.protocol.rows, ...cur.protocol.post].map((r) => norm(r.raw)));
-    for (const r of [...base.protocol.rows, ...base.protocol.post])
-      if (!now.has(norm(r.raw))) add('DF-01', cur.protocolFile, null, `строка #${r.id} изменена или удалена: «${r.raw.slice(0, 60)}»`);
-    const scope = new Set(cur.protocol.outScope.map((x) => norm(x.text)));
-    for (const x of base.protocol.outScope)
-      if (!scope.has(norm(x.text))) add('DF-01', cur.protocolFile, null, `«Вне scope»: пункт изменён или удалён: «${x.text.slice(0, 60)}»`);
-  } else if (base.protocol && !cur.protocol && !(cur.spec && approved(cur.spec.status) && !hasProtocolTraces(cur.spec.md)))
-    add('DF-01', cur.protocolFile, null, `протокол удалён до закрытия фичи: удаляет его ${skillCode('sdd-close', cur.name)}`);
-
+  protocolChanges(cur, base, add);
   // ID не пропадают
   if (base.spec) for (const id of base.spec.reqs.keys()) if (!cur.spec?.reqs.has(id)) add('DF-02', cur.specFile, null, `${id} пропал`);
   const curAcs = new Set([...cur.slices.values()].flatMap((s) => s.acs.map((a) => a.id)));
   for (const s of base.slices.values()) for (const a of s.acs) if (!curAcs.has(a.id)) add('DF-02', s.file, null, `${a.id} пропал`);
   // одобренное не меняется молча — AP-02: отпечаток approve, без git
   return found;
+}
+
+/** @param {import('./model.mjs').Feature} cur @param {import('./model.mjs').Feature} base @param {ReturnType<typeof collect>['add']} add */
+function protocolChanges(cur, base, add) {
+  // протокол только дописывается
+  if (base.protocol && cur.protocol) {
+    changedProtocolRows({ protocol: cur.protocol, file: cur.protocolFile }, base.protocol, add);
+  } else if (base.protocol && !cur.protocol && !(cur.spec && approved(cur.spec.status) && !hasProtocolTraces(cur.spec.md)))
+    add('DF-01', cur.protocolFile, null, `протокол удалён до закрытия фичи: удаляет его ${skillCode('sdd-close', cur.name)}`);
+
+}
+
+/** @param {{protocol: import('./model.mjs').Protocol, file: string}} cur
+ * @param {import('./model.mjs').Protocol} base @param {ReturnType<typeof collect>['add']} add */
+function changedProtocolRows(cur, base, add) {
+  const norm = (/** @type {string} */ s) => s.replace(/\s+/g, ' ').trim();
+
+  const now = new Set([...cur.protocol.rows, ...cur.protocol.post].map((r) => norm(r.raw)));
+  for (const r of [...base.rows, ...base.post])
+    if (!now.has(norm(r.raw))) add('DF-01', cur.file, null, `строка #${r.id} изменена или удалена: «${r.raw.slice(0, 60)}»`);
+  const scope = new Set(cur.protocol.outScope.map((x) => norm(x.text)));
+  for (const x of base.outScope)
+    if (!scope.has(norm(x.text))) add('DF-01', cur.file, null, `«Вне scope»: пункт изменён или удалён: «${x.text.slice(0, 60)}»`);
 }

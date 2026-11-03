@@ -51,27 +51,10 @@ function act(ctx, m, a, { id, asked = null }) {
   const d = rel(m.dir);
   const next = a.next || ['ask', d];
   if (a.lint) {
-    const { out, code } = runLint(ctx, a.lint);
-    const { card, gear } = splitGear(out);
-    if (code === 2 && a.retry && asked) {
-      ctx.io.log(waitText(blocks(card, asked.wait), /** @type {string[]} */ (asked.then)));
-      ctx.io.exit(0);
-    }
-    // Вывод команды уже карточка; её строка ⚙ главнее (close --json задаёт свой вопрос, start ведёт дальше).
-    // after — что дальше, когда команда прошла (gen slices: продолжить скилл, а не новый вопрос).
-    const g = gearAfter(code, gear, a, next);
-    ctx.io.log(blocks(card || 'Готово.', g));
-    ctx.io.exit(code);
+    lintAction(ctx, a, { next, asked });
   }
   if (a.subagent) {
-    if (ctx.args.flags.fallback) {
-      ctx.io.log(screen(a.fallback || 'Сабагентов нет — этот шаг здесь не выполнить.', G.stop));
-      ctx.io.exit(0);
-    }
-    if (a.snapshot) for (const f of targetFiles(ctx, a.snapshot)) saveSnapshot(f);
-    // Без сабагентов: here — тот же скилл здесь, fallback — что сказать человеку (choose --fallback).
-    const none = a.here ? `без сабагентов — ${G.call(a.here)}` : `без сабагентов — ${G.call(['choose', d, id, '--fallback'])}`;
-    ctx.io.log(screen(a.say, G.sub(a.subagent), a.quiet ? G.quiet : G.report, G.then(next), none));
+    subagentAction(ctx, a, { d, id, next });
   } else if (a.here) ctx.io.log(screen(skillPrompt(ctx, a.here[1], a.here.slice(2)), G.skill));
   else if (a.show) ctx.io.log(screen(a.show, G.stop));
   else if (a.wait) ctx.io.log(waitText(a.wait, /** @type {string[]} */ (a.then)));
@@ -87,7 +70,7 @@ export function cmdChoose(ctx) {
   const [id, answer] = [pos[1], pos[2]];
   // Подтверждение close задаёт сам close, поэтому его варианта в askOf нет: добавляем, пока есть что удалять.
   // Вопросы старта /sdd-grill (источники) задаёт сам start — их варианты тоже здесь, пока вопрос актуален.
-  const all = [...askOf(m).questions.flatMap((q) => q.options), ...(tempArtifacts(m).length ? closeOptions(m) : []), ...(startQuestion(m)?.options || [])];
+  const all = currentOptions(m);
   const opt = all.find((o) => o.id === id);
   if (!opt) {
     ctx.io.error(screen(id ? `Варианта «${id}» сейчас нет — этап изменился. Задам вопрос заново.` : 'Вариант не указан.', G.call(['ask', d])));
@@ -104,4 +87,36 @@ export function cmdChoose(ctx) {
     act(ctx, m, a.answer(answer), { id, asked: a });
   }
   act(ctx, m, a, { id });
+}
+
+/** @param {Ctx} ctx @param {Action} a @param {{next: string[], asked: Action | null}} state */
+function lintAction(ctx, a, { next, asked }) {
+  const { out, code } = runLint(ctx, /** @type {string[]} */ (a.lint));
+  const { card, gear } = splitGear(out);
+  if (code === 2 && a.retry && asked) {
+    ctx.io.log(waitText(blocks(card, asked.wait), /** @type {string[]} */ (asked.then)));
+    ctx.io.exit(0);
+  }
+  // Вывод команды уже карточка; её строка ⚙ главнее (close --json задаёт свой вопрос, start ведёт дальше).
+  // after — что дальше, когда команда прошла (gen slices: продолжить скилл, а не новый вопрос).
+  const g = gearAfter(code, gear, a, next);
+  ctx.io.log(blocks(card || 'Готово.', g));
+  ctx.io.exit(code);
+}
+
+/** @param {Ctx} ctx @param {Action} a @param {{d: string, id: string, next: string[]}} state */
+function subagentAction(ctx, a, { d, id, next }) {
+  if (ctx.args.flags.fallback) {
+    ctx.io.log(screen(a.fallback || 'Сабагентов нет — этот шаг здесь не выполнить.', G.stop));
+    ctx.io.exit(0);
+  }
+  if (a.snapshot) for (const f of targetFiles(ctx, a.snapshot)) saveSnapshot(f);
+  // Без сабагентов: here — тот же скилл здесь, fallback — что сказать человеку (choose --fallback).
+  const none = a.here ? `без сабагентов — ${G.call(a.here)}` : `без сабагентов — ${G.call(['choose', d, id, '--fallback'])}`;
+  ctx.io.log(screen(a.say, G.sub(/** @type {string[]} */ (a.subagent)), a.quiet ? G.quiet : G.report, G.then(next), none));
+}
+
+/** @param {Feature} m */
+function currentOptions(m) {
+  return [...askOf(m).questions.flatMap((q) => q.options), ...(tempArtifacts(m).length ? closeOptions(m) : []), ...(startQuestion(m)?.options || [])];
 }

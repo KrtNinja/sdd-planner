@@ -104,23 +104,27 @@ export function cmdPrompt(ctx) {
   if (args.length) {
     const m = loadFeature(needDir(ctx, args[0], 1));
     args[0] = m.name;
-    if (name === 'sdd-review') {
-      if (!['spec', 'slices', 'adr'].includes(args[1])) {
-        ctx.io.error(`Режим ревью: ${['spec', 'slices', 'adr'].map((x) => lintCmd('prompt', name, m.name, x)).join(', ')}`);
-        ctx.io.exit(2);
-      }
-      if (args[1] === 'adr') {
-        const nums = m.featureAdrs.map((a) => a.num);
-        const num = adrNum(args[2], nums);
-        if (!num || !nums.includes(num)) {
-          const list = nums.length ? nums.map((n) => `  ${lintCmd('prompt', name, m.name, 'adr', n)}`).join('\n') : '  у фичи нет ADR';
-          ctx.io.error(`${args[2] ? `ADR ${args[2]} у фичи нет` : 'Укажи номер ADR'}:\n${list}`);
-          ctx.io.exit(2);
-        }
-        args[2] = num;
-      }
-    }
+    if (name === 'sdd-review') reviewArgs(ctx, m, args);
   } else if (name !== 'sdd-grill') pickFeature(ctx, 'Укажи фичу', 1);
   ctx.io.log(skillPrompt(ctx, name, args));
   ctx.io.exit(0);
+}
+
+// Проверка режима и нормализация номера ADR до формирования задания.
+/** @param {Ctx} ctx @param {import('./model.mjs').Feature} m @param {string[]} args */
+function reviewArgs(ctx, m, args) {
+  if (!['spec', 'slices', 'adr'].includes(args[1])) {
+    ctx.io.error(`Режим ревью: ${['spec', 'slices', 'adr'].map((x) => lintCmd('prompt', 'sdd-review', m.name, x)).join(', ')}`);
+    ctx.io.exit(2);
+  }
+  if (args[1] === 'adr') {
+    const nums = m.featureAdrs.map((a) => a.num);
+    const num = adrNum(args[2], nums);
+    if (!num || !nums.includes(num)) {
+      const list = nums.length ? nums.map((n) => `  ${lintCmd('prompt', 'sdd-review', m.name, 'adr', n)}`).join('\n') : '  у фичи нет ADR';
+      ctx.io.error(`${args[2] ? `ADR ${args[2]} у фичи нет` : 'Укажи номер ADR'}:\n${list}`);
+      ctx.io.exit(2);
+    }
+    args[2] = num;
+  }
 }

@@ -26,14 +26,7 @@ const acStub = (num, side) => ['```', `AC-${num}-${side}? <имя>`, '  WHEN <у
 function sliceText(m, plan, s) {
   const prep = s.type === 'подготовка';
   const services = parseHalves(s.halves).services;
-  const back = services.filter((x) => !/^front/i.test(x));
-  const front = services.filter((x) => /^front/i.test(x));
-  // «Вне slice» — соседи из плана: агент поправит, если граница другая.
-  const others = plan.slices.filter((o) => o.num !== s.num && (prep ? true : o.type === 'поведение'));
-  const outside = prep
-    ? `поведение (${others.map((o) => o.num).join(', ')})`
-    : others.map((o) => `${o.title[0].toLowerCase()}${o.title.slice(1)} (${o.num})`).join('; ');
-  const shared = plan.slices.filter((o) => o.num !== s.num && o.type === 'поведение' && [...o.basis].some((id) => s.basis.has(id)));
+  const { outside, shared } = sliceNeighbours(plan, s);
   const md = [
     `# ${s.num} — ${s.title}`,
     '',
@@ -53,11 +46,7 @@ function sliceText(m, plan, s) {
     '- <сервис-владелец>: <контракт по смыслу> — <не меняется или МЕНЯЕТ КОНТРАКТ: что именно>',
     '',
   ];
-  if (!prep) {
-    if (services.length > 1) md.push('## Общая приёмка (собранное приложение)', ...acStub(s.num, ''));
-    for (const svc of back) md.push(`## ${halfHeading(svc)}`, ...acStub(s.num, 'B'));
-    if (front.length) md.push('## Frontend-половина', ...acStub(s.num, 'F'));
-  }
+  if (!prep) md.push(...acceptanceStubs(s.num, services));
   md.push(
     '## Границы',
     `- Вне slice: ${outside || 'нет'}.`,
@@ -116,4 +105,27 @@ export function genSlices(ctx, m) {
     ].join('\n\n'),
   );
   ctx.io.exit(0);
+}
+
+/** @param {Plan} plan @param {PlanSlice} s */
+function sliceNeighbours(plan, s) {
+  const prep = s.type === 'подготовка';
+  // «Вне slice» — соседи из плана: агент поправит, если граница другая.
+  const others = plan.slices.filter((o) => o.num !== s.num && (prep ? true : o.type === 'поведение'));
+  const outside = prep
+    ? `поведение (${others.map((o) => o.num).join(', ')})`
+    : others.map((o) => `${o.title[0].toLowerCase()}${o.title.slice(1)} (${o.num})`).join('; ');
+  const shared = plan.slices.filter((o) => o.num !== s.num && o.type === 'поведение' && [...o.basis].some((id) => s.basis.has(id)));
+  return { outside, shared };
+}
+
+/** @param {string} num @param {string[]} services */
+function acceptanceStubs(num, services) {
+  const back = services.filter((x) => !/^front/i.test(x));
+  const front = services.filter((x) => /^front/i.test(x));
+  const md = [];
+  if (services.length > 1) md.push('## Общая приёмка (собранное приложение)', ...acStub(num, ''));
+  for (const svc of back) md.push(`## ${halfHeading(svc)}`, ...acStub(num, 'B'));
+  if (front.length) md.push('## Frontend-половина', ...acStub(num, 'F'));
+  return md;
 }

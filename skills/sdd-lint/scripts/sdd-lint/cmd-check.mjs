@@ -48,39 +48,51 @@ const errorsIn = (found, files) => found.filter((x) => x.level === 'err' && file
 // Ими же пользуется export: зона реализации видит тот же статус build, что и gate.
 /** @param {Feature} m @param {string} stage @param {Finding[]} found @returns {[string, string] | null} */
 export function gateClosed(m, stage, found) {
+  if (stage === 'spec') return specGate(m, found);
+  if (stage === 'slices') return slicesGate(m, found);
+  if (stage === 'build') return buildGate(m, found);
+  if (['adr', 'decide', 'review'].includes(stage) && !m.spec)
+    return ['нет spec.md', `Сначала соберите Dev Spec: ${skillCode('sdd-spec', m.name)}`];
+  return null;
+}
+
+/** @param {Feature} m @param {Finding[]} found @returns {[string, string] | null} */
+function specGate(m, found) {
+  if (!m.protocol) return ['нет brainstorming.md', `Сначала проведите brainstorming: ${skillCode('sdd-grill', m.name)}`];
+  else if (!/готов/i.test(m.protocol.status || ''))
+    return [`статус протокола «${m.protocol.status || '—'}»`, `Сначала закончите brainstorming: ${skillCode('sdd-grill', m.name)}`];
+  else if (errorsIn(found, [m.protocolFile]).length) return ['ошибки в протоколе', `В протоколе ошибки lint — поправьте его, список: ${lintCode(rel(m.dir))}`];
+  return null;
+}
+
+/** @param {Feature} m @param {Finding[]} found @returns {[string, string] | null} */
+function slicesGate(m, found) {
   const dir = rel(m.dir);
-  const check = lintCode(dir);
-  /** @type {[string, string] | null} */
-  let closed = null;
-  if (stage === 'spec') {
-    if (!m.protocol) closed = ['нет brainstorming.md', `Сначала проведите brainstorming: ${skillCode('sdd-grill', m.name)}`];
-    else if (!/готов/i.test(m.protocol.status || ''))
-      closed = [`статус протокола «${m.protocol.status || '—'}»`, `Сначала закончите brainstorming: ${skillCode('sdd-grill', m.name)}`];
-    else if (errorsIn(found, [m.protocolFile]).length) closed = ['ошибки в протоколе', `В протоколе ошибки lint — поправьте его, список: ${check}`];
-  } else if (stage === 'slices') {
-    if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skillCode('sdd-spec', m.name)}`];
-    else if (!approved(m.spec.status)) closed = [`статус spec «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCode('approve', 'spec', dir)}`];
-    else if (errorsIn(found, [m.protocolFile, m.specFile]).length)
-      closed = ['ошибки в протоколе или spec', `В spec ошибки lint — исправьте и одобрите заново, список: ${check}`];
-  } else if (stage === 'adr' || stage === 'decide' || stage === 'review') {
-    if (!m.spec) closed = ['нет spec.md', `Сначала соберите Dev Spec: ${skillCode('sdd-spec', m.name)}`];
-  } else if (stage === 'build') {
-    const pending = pendingAdrs(m);
-    const need = neededAdrs(m);
-    if (!m.slices.size || !approved(m.slicesStatus)) closed = ['slices не одобрены', `Сначала одобрите slices: ${lintCode('approve', 'slices', dir)}`];
-    else if (need.length)
-      closed = [
-        `нет ADR: ${need.map((x) => `«${x.topic}» (slice ${x.num})`).join(', ')}`,
-        `Сначала напишите ADR: ${need.map((x) => skillCode('sdd-adr', m.name, `"${x.topic}"`)).join('; ')}`,
-      ];
-    else if (pending.length)
-      closed = [
-        `ADR не приняты: ${pending.map((a) => a.num).join(', ')}`,
-        `Сначала примите ADR: ${pending.map((a) => lintCode('approve', 'adr', dir, a.num)).join('; ')}`,
-      ];
-    else if (hasErrors(found)) closed = ['есть ошибки lint', `Исправьте ошибки lint, список: ${check}`];
-  }
-  return closed;
+  if (!m.spec) return ['нет spec.md', `Сначала соберите Dev Spec: ${skillCode('sdd-spec', m.name)}`];
+  else if (!approved(m.spec.status)) return [`статус spec «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCode('approve', 'spec', dir)}`];
+  else if (errorsIn(found, [m.protocolFile, m.specFile]).length)
+    return ['ошибки в протоколе или spec', `В spec ошибки lint — исправьте и одобрите заново, список: ${lintCode(dir)}`];
+  return null;
+}
+
+/** @param {Feature} m @param {Finding[]} found @returns {[string, string] | null} */
+function buildGate(m, found) {
+  const dir = rel(m.dir);
+  const pending = pendingAdrs(m);
+  const need = neededAdrs(m);
+  if (!m.slices.size || !approved(m.slicesStatus)) return ['slices не одобрены', `Сначала одобрите slices: ${lintCode('approve', 'slices', dir)}`];
+  else if (need.length)
+    return [
+      `нет ADR: ${need.map((x) => `«${x.topic}» (slice ${x.num})`).join(', ')}`,
+      `Сначала напишите ADR: ${need.map((x) => skillCode('sdd-adr', m.name, `"${x.topic}"`)).join('; ')}`,
+    ];
+  else if (pending.length)
+    return [
+      `ADR не приняты: ${pending.map((a) => a.num).join(', ')}`,
+      `Сначала примите ADR: ${pending.map((a) => lintCode('approve', 'adr', dir, a.num)).join('; ')}`,
+    ];
+  else if (hasErrors(found)) return ['есть ошибки lint', `Исправьте ошибки lint, список: ${lintCode(dir)}`];
+  return null;
 }
 
 // Аргументы после фичи: тема ADR, находка ревью для decide, режим ревью; у остальных ворот их нет.
@@ -96,27 +108,12 @@ function afterFeature(m, stage, pos) {
 export function cmdGate(ctx) {
   const { pos } = ctx.args;
   const stage = choiceOf(ctx, 'gate');
-  let target = pos[1];
-  let note = null;
-  // Фичу не назвали — выбирает скрипт: одна подходит — она, несколько — вопрос человеку.
-  if (!target && stage !== 'build') {
-    const c = chooseFeature(stage, (f) => ['gate', stage, f, ...pos.slice(2)]);
-    if (!c.dir) {
-      ctx.io.log(c.text);
-      ctx.io.exit(2);
-    }
-    [target, note] = [c.dir, c.note];
-  }
+  const { target, note } = gateTarget(ctx, stage);
   const m = loadFeature(needDir(ctx, target, 1));
   const found = runChecks(m);
   const closed = gateClosed(m, stage, found);
   if (closed) {
-    const relevant = stage === 'build' ? found : errorsIn(found, [m.protocolFile, m.specFile]);
-    const errs = relevant.filter((y) => y.level === 'err');
-    if (errs.length) ctx.io.log(`${errs.map(item).join('\n')}\n`);
-    // build читает зона реализации (export) — ей вопрос этапа не нужен.
-    ctx.io.log(stage === 'build' ? closedScreen(stage, closed) : closedText(m, stage, closed));
-    ctx.io.exit(3);
+    blockedGate(ctx, { m, stage, found, closed });
   }
   // Что после фичи, разбирает скрипт: тема ADR, находка ревью, режим ревью.
   const extra = afterFeature(m, stage, pos);
@@ -132,4 +129,31 @@ export function cmdGate(ctx) {
     screen(blocks(note, helloLine(m, stage), extra?.card, brief?.card), `ворота ${stage} открыты`, `фича ${rel(m.dir)}`, extra?.parts, brief?.parts, G.skill),
   );
   ctx.io.exit(0);
+}
+
+/** @param {Ctx} ctx @param {string} stage */
+function gateTarget(ctx, stage) {
+  const { pos } = ctx.args;
+  let target = pos[1];
+  let note = null;
+  // Фичу не назвали — выбирает скрипт: одна подходит — она, несколько — вопрос человеку.
+  if (!target && stage !== 'build') {
+    const c = chooseFeature(stage, (f) => ['gate', stage, f, ...pos.slice(2)]);
+    if (!c.dir) {
+      ctx.io.log(c.text);
+      ctx.io.exit(2);
+    }
+    [target, note] = [c.dir, c.note];
+  }
+  return { target, note };
+}
+
+/** @param {Ctx} ctx @param {{m: Feature, stage: string, found: Finding[], closed: [string, string]}} state */
+function blockedGate(ctx, { m, stage, found, closed }) {
+  const relevant = stage === 'build' ? found : errorsIn(found, [m.protocolFile, m.specFile]);
+  const errs = relevant.filter((y) => y.level === 'err');
+  if (errs.length) ctx.io.log(`${errs.map(item).join('\n')}\n`);
+  // build читает зона реализации (export) — ей вопрос этапа не нужен.
+  ctx.io.log(stage === 'build' ? closedScreen(stage, closed) : closedText(m, stage, closed));
+  ctx.io.exit(3);
 }

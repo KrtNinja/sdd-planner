@@ -27,26 +27,7 @@ function closingFence(ls, from) {
 // Старый раздел «Трассировка» → «Из протокола:» под требованиями и в разделах. Возвращает новый md.
 /** @param {Spec} s */
 function migrateTrace(s) {
-  const t = s.oldTraceT;
-  /** @type {Map<string, string[]>} */
-  const perReq = new Map();
-  /** @type {Map<string, string[]>} */
-  const perSection = new Map();
-  /** @type {string[]} */
-  const tech = [];
-  if (t) {
-    const ct = Math.max(1, col(t, /куда|цель|требован/i));
-    for (const r of t.rows) {
-      const refs = [...(r.cells[0] || '').matchAll(/П?\d+/gu)].map((x) => x[0]);
-      const cell = r.cells[ct] || '';
-      const ids = reqIds(cell);
-      const push = (/** @type {Map<string, string[]>} */ map, /** @type {string} */ key) => map.set(key, uniq([...(map.get(key) || []), ...refs]));
-      if (ids.length) for (const id of ids) push(perReq, id);
-      else if (/вне scope/i.test(cell)) push(perSection, 'Вне scope');
-      else if (/открыт/i.test(cell)) push(perSection, 'Открытые вопросы');
-      else tech.push(`- ${cell.replace(/^не про поведение:\s*/i, '').trim() || 'не про поведение'} (из протокола: ${refs.join(', ')})`);
-    }
-  }
+  const { perReq, perSection, tech } = traceDestinations(s.oldTraceT);
   // строки под блоками кода — снизу вверх, чтобы номера строк выше не сдвигались
   const ls = s.md.split('\n');
   /** @type {[number, string][]} */
@@ -74,11 +55,7 @@ function migrateTrace(s) {
 export function linkSpec(m) {
   const p = m.protocol;
   let md = m.spec.md;
-  if (!p) {
-    if (!hasProtocolTraces(md)) return null;
-    fs.writeFileSync(m.spec.file, stripProtocol(md));
-    return `${rel(m.spec.file)}: протокола нет — «Из протокола:», «Протокол:» и «Не про поведение» убраны.`;
-  }
+  if (!p) return removeProtocolLinks(m.spec);
   const migrated = !!m.spec.oldTraceLine;
   if (migrated) md = migrateTrace(m.spec);
   const s = /** @type {Spec} */ (parseSpec(m.spec.file, md));
@@ -94,13 +71,14 @@ export function linkSpec(m) {
       l.slice(i).replace(/^(из протокола:)(.*)$/iu, (/** @type {string} */ _, /** @type {string} */ kw, /** @type {string} */ rest) =>
         kw +
         rest.replace(SRC_REF_RE, (/** @type {string} */ all, /** @type {string | undefined} */ a, /** @type {unknown} */ _h, /** @type {string} */ b) => {
-          const row = byId.get(a || b);
+          const id = a || b;
+          const row = byId.get(id);
           if (!row) {
-            unknown.push(a || b);
+            unknown.push(id);
             return all;
           }
           links += 1;
-          return `[${a || b}](${protoHref(s.file, p.file, row)})`;
+          return `[${id}](${protoHref(s.file, p.file, row)})`;
         }),
       );
   }
@@ -160,4 +138,42 @@ export function genLinks(ctx, m) {
     }
   }
   ctx.io.log(out.join('\n\n'));
+}
+
+/** @param {import('./model.mjs').Table | null} t */
+function traceDestinations(t) {
+  /** @type {Map<string, string[]>} */
+  const perReq = new Map();
+  /** @type {Map<string, string[]>} */
+  const perSection = new Map();
+  /** @type {string[]} */
+  const tech = [];
+  if (t) {
+    const ct = Math.max(1, col(t, /куда|цель|требован/i));
+    for (const r of t.rows) {
+      traceDestination(r, ct, { perReq, perSection, tech });
+    }
+  }
+  return { perReq, perSection, tech };
+}
+
+/** @param {import('./model.mjs').TableRow} r @param {number} ct
+ * @param {{perReq: Map<string, string[]>, perSection: Map<string, string[]>, tech: string[]}} destinations */
+function traceDestination(r, ct, { perReq, perSection, tech }) {
+  const refs = [...(r.cells[0] || '').matchAll(/П?\d+/gu)].map((x) => x[0]);
+  const cell = r.cells[ct] || '';
+  const ids = reqIds(cell);
+  const push = (/** @type {Map<string, string[]>} */ map, /** @type {string} */ key) => map.set(key, uniq([...(map.get(key) || []), ...refs]));
+  if (ids.length) for (const id of ids) push(perReq, id);
+  else if (/вне scope/i.test(cell)) push(perSection, 'Вне scope');
+  else if (/открыт/i.test(cell)) push(perSection, 'Открытые вопросы');
+  else tech.push(`- ${cell.replace(/^не про поведение:\s*/i, '').trim() || 'не про поведение'} (из протокола: ${refs.join(', ')})`);
+}
+
+/** @param {Spec} spec */
+function removeProtocolLinks(spec) {
+  const md = spec.md;
+  if (!hasProtocolTraces(md)) return null;
+  fs.writeFileSync(spec.file, stripProtocol(md));
+  return `${rel(spec.file)}: протокола нет — «Из протокола:», «Протокол:» и «Не про поведение» убраны.`;
 }

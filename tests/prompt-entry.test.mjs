@@ -54,3 +54,17 @@ test('cmdPrompt: humanize без цели не запускает задание
   assert.deepEqual(ctx.io.chunks, [[2,
     'Нет скилла «humanize». Скиллы: sdd-adr, sdd-close, sdd-decide, sdd-grill, sdd-review, sdd-slices, sdd-spec\n']]);
 });
+
+test('cmdPrompt: ошибки режима и отсутствующего ADR возвращают полный выбор', () => {
+  inDir(repo({ 'docs/search/spec.md': '# Search\n' }), JSON_ENV, () => {
+    for (const [args, text] of [
+      [['sdd-review', 'search', 'bad'], 'Режим ревью: node scripts/sdd-lint.mjs prompt sdd-review search spec, node scripts/sdd-lint.mjs prompt sdd-review search slices, node scripts/sdd-lint.mjs prompt sdd-review search adr'],
+      [['sdd-review', 'search', 'adr'], 'Укажи номер ADR:\n  у фичи нет ADR'],
+      [['sdd-review', 'search', 'adr', '9'], 'ADR 9 у фичи нет:\n  у фичи нет ADR'],
+    ]) {
+      const ctx = context(...args);
+      assert.throws(() => cmdPrompt(ctx), (e) => e instanceof Exit && e.code === 2);
+      assert.deepEqual(ctx.io.chunks, [[2, `${text}\n`]]);
+    }
+  });
+});

@@ -40,9 +40,7 @@ function researchInput(m) {
     const fallback = inventory(m.name).empty ? [] : [REPO];
     return { task, list: researchList(task, sourcesOf(m.protocol) || fromCtx || fallback) };
   }
-  const title = m.spec ? (m.spec.md.match(/^#\s+(.+?)(?:\s+—\s+Dev Spec)?\s*$/m) || [])[1] : null;
-  const line = header(context?.md, 'Задача') || (title ? `«${title}»` : m.name);
-  return { task: { line }, list: fromCtx || (inventory(m.name).empty ? [] : [REPO]) };
+  return { task: { line: researchTitle(m, context) }, list: fromCtx || (inventory(m.name).empty ? [] : [REPO]) };
 }
 
 /** @param {Ctx} ctx */
@@ -74,4 +72,12 @@ export function cmdResearch(ctx) {
   const checked = `\`${rel(context.file)}\`: проверено, фактов о проекте — ${context.facts}.`;
   ctx.io.log(`\n${screen(checked, c.warn ? `предупреждений ${c.warn} — поправь, если это просто` : null)}`);
   ctx.io.exit(0);
+}
+
+// После закрытия протокола задача берётся из контекста, заголовка spec или имени.
+/** @param {import('./model.mjs').Feature} m @param {import('./context.mjs').Context | null} context */
+function researchTitle(m, context) {
+  const title = m.spec ? (m.spec.md.match(/^#\s+(.+?)(?:\s+—\s+Dev Spec)?\s*$/m) || [])[1] : null;
+  const line = header(context?.md, 'Задача') || (title ? `«${title}»` : m.name);
+  return line;
 }
