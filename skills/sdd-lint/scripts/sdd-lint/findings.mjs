@@ -35,11 +35,14 @@ const LEVEL = { err: 'ОШИБКА', warn: 'ВНИМАНИЕ', info: 'ИНФО' 
 export const line = (x) => `**${LEVEL[x.level]}** \`${x.rule}\` \`${x.file}${x.line ? `:${x.line}` : ''}\` — ${x.msg}`;
 /** @param {Finding} x */
 export const item = (x) => `- ${line(x)}`;
+const ORDER = { err: 0, warn: 1, info: 2 };
+/** @param {Finding} a @param {Finding} b */
+const compareFindings = (a, b) => ORDER[a.level] - ORDER[b.level] || a.file.localeCompare(b.file) || (a.line || 0) - (b.line || 0);
+
 // Печатает находки (сортирует список на месте) и возвращает счётчики по уровням.
 /** @param {Ctx} ctx @param {Finding[]} findings */
 export function report(ctx, findings, extra = {}) {
-  const order = { err: 0, warn: 1, info: 2 };
-  findings.sort((a, b) => order[a.level] - order[b.level] || a.file.localeCompare(b.file) || (a.line || 0) - (b.line || 0));
+  findings.sort(compareFindings);
   const counts = { err: 0, warn: 0, info: 0 };
   for (const x of findings) counts[x.level] += 1;
   if (ctx.args.flags.json) {
