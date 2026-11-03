@@ -3,7 +3,7 @@
   "total": 273,
   "pass": 273,
   "fail": 0,
-  "seconds": 27
+  "seconds": 12
  },
  "functions": 453,
  "crapAtLeast10": 59,
@@ -12,11 +12,11 @@
  "offenders": {
   "skills/sdd-lint/scripts/sdd-lint/cmd-menu.mjs#complete": {
    "complexity": 48,
-   "crap": 73.1
+   "crap": 69.9
   },
   "skills/sdd-lint/scripts/sdd-lint/cmd-check.mjs#gateClosed": {
    "complexity": 22,
-   "crap": 47.8
+   "crap": 46.4
   },
   "skills/sdd-lint/scripts/sdd-lint/plan.mjs#slugify": {
    "complexity": 6,
@@ -28,7 +28,7 @@
   },
   "skills/sdd-lint/scripts/sdd-lint/cmd-approve.mjs#cmdApprove": {
    "complexity": 28,
-   "crap": 29.1
+   "crap": 28.8
   },
   "skills/sdd-lint/scripts/sdd-lint/stage.mjs#stageOf": {
    "complexity": 27,
@@ -40,15 +40,11 @@
   },
   "skills/sdd-lint/scripts/sdd-lint/cmd-triage.mjs#cmdTriage": {
    "complexity": 25,
-   "crap": 25.8
+   "crap": 25.6
   },
   "skills/sdd-lint/scripts/sdd-lint/input.mjs#classify": {
    "complexity": 24,
    "crap": 25.6
-  },
-  "skills/sdd-lint/scripts/sdd-lint/gen-links.mjs#migrateTrace": {
-   "complexity": 20,
-   "crap": 23.9
   },
   "skills/sdd-lint/scripts/sdd-lint/close.mjs#closeSummary": {
    "complexity": 23,
@@ -58,13 +54,17 @@
    "complexity": 22,
    "crap": 22.9
   },
+  "skills/sdd-lint/scripts/sdd-lint/gen-links.mjs#migrateTrace": {
+   "complexity": 20,
+   "crap": 22.9
+  },
   "skills/sdd-lint/scripts/sdd-lint/cmd-fix.mjs#fixFeature": {
    "complexity": 22,
    "crap": 22
   },
   "skills/sdd-lint/scripts/sdd-lint/cmd-ask.mjs#act": {
    "complexity": 21,
-   "crap": 21.7
+   "crap": 21.6
   },
   "skills/sdd-lint/scripts/sdd-lint/cmd-check.mjs#cmdGate": {
    "complexity": 21,
@@ -88,15 +88,11 @@
   },
   "skills/sdd-lint/scripts/sdd-lint/cmd-gen.mjs#cmdTrace": {
    "complexity": 16,
-   "crap": 18
+   "crap": 17.6
   },
   "skills/sdd-lint/scripts/sdd-lint/open-questions.mjs#openTarget": {
    "complexity": 13,
    "crap": 17.3
-  },
-  "skills/sdd-lint/scripts/sdd-lint/gen-links.mjs#linkSlice": {
-   "complexity": 10,
-   "crap": 17.1
   },
   "skills/sdd-lint/scripts/sdd-lint/cmd-guard.mjs#cmdGuard": {
    "complexity": 17,
@@ -105,6 +101,10 @@
   "skills/sdd-lint/scripts/sdd-lint/input.mjs#inventory": {
    "complexity": 16,
    "crap": 16.5
+  },
+  "skills/sdd-lint/scripts/sdd-lint/gen-links.mjs#linkSlice": {
+   "complexity": 10,
+   "crap": 16.2
   },
   "skills/sdd-lint/scripts/sdd-lint/screen.mjs#mdProblems": {
    "complexity": 16,
@@ -254,14 +254,14 @@
   "complexity": 47,
   "max-statements": 25,
   "max-lines-per-function": 11,
-  "no-unused-vars": 4,
   "no-param-reassign": 1,
-  "no-shadow": 3
+  "no-shadow": 3,
+  "no-unused-vars": 3
  },
- "tscErrors": 201,
- "tsCheckModules": 48,
+ "tscErrors": 0,
+ "tsCheckModules": 73,
  "tsCheckErrors": 0,
- "clonesCodePercent": 3.06,
+ "clonesCodePercent": 2.99,
  "clonesTestsPercent": 6.13,
  "cycles": 0,
  "sideEffects": 0,

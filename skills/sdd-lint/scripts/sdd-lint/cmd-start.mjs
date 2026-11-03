@@ -1,4 +1,5 @@
 // Команды start (скилл /sdd-grill: задача, папка, источники по шагам) и research (задания сабагенту на любом этапе, проверка контекста).
+// @ts-check
 import { usage } from './cli.mjs';
 import { contextFindings, factTask, loadContext, markContext, researchTask, syncContext } from './context.mjs';
 import { loadFeature } from './feature.mjs';
@@ -28,6 +29,7 @@ export function cmdStart(ctx) {
 
 // Источники и задача фичи для заданий сабагенту: из протокола, после /sdd-close — из контекста;
 // ничего нет — то, что в папке. Исследование нужно на любом этапе, не только в brainstorming.
+/** @param {import('./model.mjs').Feature} m */
 function researchInput(m) {
   const context = loadContext(m);
   const fromCtx = context?.sources ? context.sources.split(/\s*;\s*/).filter(Boolean) : null;
@@ -65,7 +67,7 @@ export function cmdResearch(ctx) {
     ctx.io.log(`\n${screen(`Ошибок в \`${rel(context.file)}\`: ${c.err}.`, `исправь ${rel(context.file)}`, G.then(['research', 'check', rel(m.dir)]))}`);
     ctx.io.exit(1);
   }
-  markContext(loadContext(m), 'Проверено');
+  markContext(/** @type {import('./context.mjs').Context} */ (loadContext(m)), 'Проверено');
   ctx.io.log(`\n${screen(`\`${rel(context.file)}\`: проверено, фактов о проекте — ${context.facts}.`, c.warn ? `предупреждений ${c.warn} — поправь, если это просто` : null)}`);
   ctx.io.exit(0);
 }

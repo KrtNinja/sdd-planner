@@ -24,7 +24,7 @@ import { A, G, blocks, bold, cmdCode, codePaths, field, gearLine, screen } from 
  * @property {string[]} [here]
  * @property {string} [show]
  * @property {string} [wait]
- * @property {string[]} [then] куда передать ответ на wait
+ * @property {string[]} [then] куда передать ответ на wait — у wait он всегда есть
  * @property {(text: string) => Action} [answer] ответ на wait → действие
  * @property {true} [none]
  */

@@ -1,4 +1,5 @@
 // Справка и ошибки вызова.
+// @ts-check
 import { code, lintCmd } from './config.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
@@ -105,13 +106,15 @@ export const HELP = `sdd-lint — проверки артефактов план
 Форма команд в подсказках: SDD_SKILL_PREFIX (по умолчанию «/») и SDD_LINT_CMD
 (по умолчанию «/sdd-lint»).`;
 
-/** @param {Ctx} ctx */
-export const usage = (ctx, msg) => {
+// Неверный вызов: сообщение и справка, код 2. Функцией, а не стрелкой: tsc видит never и сужает типы после вызова.
+/** @param {Ctx} ctx @param {string} [msg] @returns {never} */
+export function usage(ctx, msg) {
   const { cmd } = ctx.args;
   ctx.io.error(msg ? `${msg}\nСправка: ${code(lintCmd('help', cmd === 'check' ? '' : cmd).trim())}` : HELP);
-  ctx.io.exit(2);
-};
+  return ctx.io.exit(2);
+}
 // Справка по одной команде — её блок из HELP.
+/** @param {string} name */
 export function helpFor(name) {
   const blocks = HELP.split('\n\n')[1].split(/\n(?=  sdd-lint)/);
   const own = blocks.filter((b) => b.match(/^\s*sdd-lint\s+\[?(\S+?)\]?(\s|$)/)?.[1] === name);

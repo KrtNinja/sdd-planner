@@ -46,9 +46,14 @@ async function eslint() {
   return byRule;
 }
 
+// Язык — под минимальный Node из README (22.5, V8 12.4): синтаксис ES2024 и из ES2025 только то, что в нём есть, —
+// методы Set и помощники итераторов. Promise.try, RegExp.escape, Float16Array в 22.5 нет: tsc их не пропустит.
+const TS_TARGET = 'es2024';
+const TS_LIB = ['es2024', 'es2025.collection', 'es2025.iterator'];
+
 function tsc() {
   const bin = path.join(TOOLS, 'node_modules/.bin/tsc');
-  const args = ['--allowJs', '--checkJs', '--noEmit', '--target', 'es2023', '--module', 'nodenext', '--moduleResolution', 'nodenext',
+  const args = ['--allowJs', '--checkJs', '--noEmit', '--target', TS_TARGET, '--lib', TS_LIB.join(','), '--module', 'nodenext', '--moduleResolution', 'nodenext',
     '--noUnusedLocals', '--skipLibCheck', '--typeRoots', path.join(TOOLS, 'node_modules/@types'), '--types', 'node',
     path.join(CODE, 'sdd-lint.mjs'), path.join(CODE, 'mcp.mjs')];
   const r = spawnSync(bin, args, { cwd: REPO, encoding: 'utf8', maxBuffer: 1 << 26 });

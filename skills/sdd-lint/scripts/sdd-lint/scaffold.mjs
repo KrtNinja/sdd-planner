@@ -1,4 +1,5 @@
 // gen slices: файлы slices по согласованному плану — шапка из плана, заготовки AC по сервисам, README; план удаляется.
+// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -13,10 +14,15 @@ import { G, screen } from './screen.mjs';
 import { parseHalves, halvesLine, halfHeading } from './services.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Plan} Plan */
+/** @typedef {import('./model.mjs').PlanSlice} PlanSlice */
 
 // Заготовки в «<…>»: агент заменяет их текстом, SL-37 не даёт забыть ни одну.
+/** @param {string} num @param {string} side */
 const acStub = (num, side) => ['```', `AC-${num}-${side}? <имя>`, '  WHEN <условие>', '  THEN <наблюдаемый исход>', '```', 'Проверяет: <FR-n>', ''];
 
+/** @param {Feature} m @param {Plan} plan @param {PlanSlice} s */
 function sliceText(m, plan, s) {
   const prep = s.type === 'подготовка';
   const services = parseHalves(s.halves).services;
@@ -67,14 +73,16 @@ function sliceText(m, plan, s) {
   return md.join('\n');
 }
 
-/** @param {Ctx} ctx */
+/** @param {Ctx} ctx @param {Feature} m */
 export function genSlices(ctx, m) {
   const dir = rel(m.dir);
+  /** @type {(msg: string) => never} */
   const stop = (msg) => {
     ctx.io.log(msg);
-    ctx.io.exit(1);
+    return ctx.io.exit(1);
   };
-  if (!m.plan) stop(`Нет ${rel(m.planFile)} — сначала план нарезки (скилл sdd-slices).`);
+  const plan = m.plan;
+  if (!plan) stop(`Нет ${rel(m.planFile)} — сначала план нарезки (скилл sdd-slices).`);
   if (m.slices.size) stop(`В ${dir}/slices/ уже есть файлы slices — по плану создаются только новые. Меняйте файлы; решения — через sdd-decide.`);
   const findings = runChecks(m);
   const closed = gateClosed(m, 'slices', findings);
@@ -82,7 +90,7 @@ export function genSlices(ctx, m) {
   const errs = findings.filter((x) => x.level === 'err' && x.rule.startsWith('PL'));
   if (errs.length) stop(screen(`${errs.map(item).join('\n')}\n\nФайлы не созданы: в плане ошибки.`, `исправь ${rel(m.planFile)}`, G.then(['plan', dir])));
 
-  const plan = m.plan;
+  /** @type {string[]} */
   const made = [];
   // План лежит в _work/, папки slices/ до этой минуты может не быть.
   fs.mkdirSync(m.slicesDir, { recursive: true });
@@ -96,7 +104,7 @@ export function genSlices(ctx, m) {
   const hadReadme = f.readme != null;
   genReadme(ctx, f, true);
   const after = loadFeature(m.dir);
-  const count = (file) => stubLines(fs.readFileSync(file, 'utf8')).reduce((k, x) => k + x.items.length, 0);
+  const count = (/** @type {string} */ file) => stubLines(fs.readFileSync(file, 'utf8')).reduce((k, x) => k + x.items.length, 0);
   const stubs = [...made, after.readmeFile].map((file) => `${path.basename(file)} — ${count(file)}`).join(', ');
   ctx.io.log(
     [

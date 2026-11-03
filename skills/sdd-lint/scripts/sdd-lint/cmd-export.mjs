@@ -1,4 +1,5 @@
 // Команда export: требования фичи в JSON для зоны реализации — единственный интерфейс между зонами.
+// @ts-check
 import { gateClosed } from './cmd-check.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { rel } from './md.mjs';
@@ -13,6 +14,7 @@ import { stageOf } from './stage.mjs';
 // Тест ссылается на AC строкой <feature>/<AC-ID> — так AC-002-1 разных фич не смешиваются.
 const AC_ID = 'AC-\\d{3}-[BF]?\\d+';
 
+/** @param {string} feature @param {import('./model.mjs').Ac & { service?: string | null }} ac */
 function acOf(feature, ac) {
   const first = ac.text.split('\n').find((l) => l.includes(ac.id)) || '';
   const half = ac.side === 'F' ? 'frontend' : ac.side === 'B' ? 'backend' : 'common';

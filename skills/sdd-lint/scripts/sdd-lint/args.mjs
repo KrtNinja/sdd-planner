@@ -1,6 +1,9 @@
 // Разбор аргументов (parseArgs — чистая функция) и описание команд: варианты, слоты аргументов, флаги.
+// @ts-check
 
 // Команды и их аргументы — одно описание для меню, подсказок и Tab-дополнения.
+// Словари по имени команды: команду берут из ввода человека — строкой, поэтому тип — Record.
+/** @type {Record<string, string>} */
 export const CMD_INFO = {
   start: 'старт /sdd-grill по шагам: задача, папка фичи, источники, исследование сабагентом',
   research: 'задания сабагенту: изучить источники, найти факт; проверка _work/context.md',
@@ -25,6 +28,7 @@ export const CMD_INFO = {
   help: 'справка по команде',
   completion: 'Tab-дополнение для bash / zsh',
 };
+/** @type {Record<string, Record<string, string>>} */
 export const CHOICES = {
   gate: { spec: 'можно ли писать Dev Spec', slices: 'можно ли резать slices', adr: 'можно ли писать ADR', decide: 'можно ли проводить решение', review: 'что ждёт ревью', build: 'можно ли начинать реализацию' },
   approve: { spec: 'одобрить Dev Spec', slices: 'одобрить slices', adr: 'принять ADR' },
@@ -34,6 +38,7 @@ export const CHOICES = {
   completion: { bash: 'source <(sdd-lint completion bash)', zsh: 'source <(sdd-lint completion zsh)' },
 };
 // Что идёт после команды: варианты из CHOICES, фича, файл или папка, номер.
+/** @type {Record<string, string[]>} */
 export const SLOTS = {
   start: ['feature'],
   research: ['choice', 'feature'],
@@ -58,6 +63,7 @@ export const SLOTS = {
   help: ['command'],
   completion: ['choice'],
 };
+/** @type {Record<string, string[]>} */
 export const FLAGS = { start: ['--slug', '--name', '--sources', '--accept', '--rename'], check: ['--json', '--snapshot'], fix: ['--json', '--snapshot'], diff: ['--json', '--base'], guard: ['--json', '--base'], close: ['--json', '--yes'], prompt: ['--sub', '--note'], choose: ['--fallback'] };
 export const COMMANDS = Object.keys(CMD_INFO);
 

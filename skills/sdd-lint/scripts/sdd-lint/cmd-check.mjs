@@ -1,4 +1,5 @@
 // Команды check и gate.
+// @ts-check
 import { pendingAdrs } from './adr.mjs';
 import { slicesBrief } from './brief.mjs';
 import { neededAdrs } from './cut.mjs';
@@ -15,6 +16,7 @@ import { printTip, stageOf, stageText, tipLine } from './stage.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
 /** @typedef {import('./model.mjs').Finding} Finding */
+/** @typedef {import('./model.mjs').Feature} Feature */
 
 /** @param {Ctx} ctx */
 export function cmdCheck(ctx) {
@@ -26,7 +28,7 @@ export function cmdCheck(ctx) {
 }
 
 // Отчёт check и fix: находки, этап, итог одной строкой и Tip (если ошибок нет); код выхода 1 при ошибках.
-/** @param {Ctx} ctx @param {Finding[]} found */
+/** @param {Ctx} ctx @param {Feature} m @param {Finding[]} found @param {Record<string, unknown>} [extra] */
 export function reportFeature(ctx, m, found, extra = {}) {
   const st = stageOf(m);
   const c = report(ctx, found, { stage: st.now, next: st.next, tip: hasErrors(found) ? null : tipLine(st.tip), ...extra });
@@ -44,10 +46,11 @@ const errorsIn = (found, files) => found.filter((x) => x.level === 'err' && file
 
 // Ворота этапа по находкам runChecks: null — открыты, иначе [почему закрыты, что сказать человеку].
 // Ими же пользуется export: зона реализации видит тот же статус build, что и gate.
-/** @param {Finding[]} found */
+/** @param {Feature} m @param {string} stage @param {Finding[]} found @returns {[string, string] | null} */
 export function gateClosed(m, stage, found) {
   const dir = rel(m.dir);
   const check = lintCode(dir);
+  /** @type {[string, string] | null} */
   let closed = null;
   if (stage === 'spec') {
     if (!m.protocol) closed = ['нет brainstorming.md', `Сначала проведите brainstorming: ${skillCode('sdd-grill', m.name)}`];
@@ -114,7 +117,8 @@ export function cmdGate(ctx) {
     ctx.io.exit(0);
   }
   // Путь фичи — каноническим: агент подставляет его в следующие вызовы как есть, без разбора аргумента.
-  const brief = stage === 'slices' ? slicesBrief(m) : null;
+  // Ворота slices открыты — spec есть.
+  const brief = stage === 'slices' ? slicesBrief(/** @type {Feature & { spec: import('./model.mjs').Spec }} */ (m)) : null;
   ctx.io.log(screen(blocks(note, helloLine(m, stage), extra?.card, brief?.card), `ворота ${stage} открыты`, `фича ${rel(m.dir)}`, extra?.parts, brief?.parts, G.skill));
   ctx.io.exit(0);
 }

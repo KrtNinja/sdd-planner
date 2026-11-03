@@ -1,4 +1,5 @@
 // Команды plan и done: проверка плана нарезки и конец этапа одной командой — с лимитом прогонов.
+// @ts-check
 import fs from 'node:fs';
 
 import { askOf } from './ask.mjs';
@@ -49,9 +50,11 @@ export function cmdPlan(ctx) {
 }
 
 // Черновик стал «на ревью»: статус меняет скрипт, а не агент.
+/** @param {import('./model.mjs').Feature} m */
 function promote(m) {
+  /** @type {string[]} */
   const out = [];
-  const set = (file) => {
+  const set = (/** @type {string} */ file) => {
     fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^Статус:.*$/m, 'Статус: на ревью'));
     out.push(rel(file));
   };

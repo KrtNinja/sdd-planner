@@ -27,10 +27,13 @@ env:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    # 22.5.1 — минимальная версия из README (она у пользователей), 22 — последняя этой линии.
+    strategy:
+      matrix: { node: ['22.5.1', '22'] }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
+        with: { node-version: '${{ matrix.node }}' }
       - run: node --test tests/*.test.mjs
 
   metrics:

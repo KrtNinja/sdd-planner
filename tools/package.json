@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Замеры и гейт качества кода sdd-lint для того, кто правит sdd-planner. Пользователям расширения не нужны: MCP-сервер запускается голым node.",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.5.1"
   },
   "scripts": {
     "test": "cd .. && node --test tests/*.test.mjs",

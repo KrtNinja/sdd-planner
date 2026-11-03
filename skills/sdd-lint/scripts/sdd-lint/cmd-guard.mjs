@@ -1,4 +1,5 @@
 // Команды snapshot и guard: проверки HG-*.
+// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -13,7 +14,7 @@ import { snapPath, protectedParts, saveSnapshot, diffParts } from './snapshot.mj
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
 
-/** @param {Ctx} ctx */
+/** @param {Ctx} ctx @param {string | undefined} t @returns {string[]} */
 export const targetFiles = (ctx, t) => {
   if (!t) pickFeature(ctx, 'Укажи файл или фичу', 0);
   if (!fs.existsSync(t)) {

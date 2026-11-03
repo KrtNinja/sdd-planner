@@ -1,4 +1,5 @@
 // Меню без аргументов, опечатки в команде, Tab-дополнение (completion, __complete).
+// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -55,6 +56,7 @@ export function cmdMenu(ctx) {
   ctx.io.exit(0);
 }
 
+/** @param {string} a @param {string} b */
 function distance(a, b) {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
   for (let j = 1; j <= b.length; j++) d[0][j] = j;
@@ -77,14 +79,16 @@ export function checkTypo(ctx) {
 }
 
 // Варианты для Tab: «значение\tописание» по строке. words — слова после имени команды, последнее — дописываемое.
+/** @param {string[]} words @returns {string[]} */
 export function complete(words) {
   const cur = words.length ? words[words.length - 1] : '';
   const prev = words.slice(0, -1);
+  /** @type {string[]} */
   const out = [];
-  const emit = (v, d = '') => {
+  const emit = (/** @type {string} */ v, d = '') => {
     if (v.startsWith(cur) && !out.some((x) => x.split('\t')[0] === v)) out.push(d ? `${v}\t${d}` : v);
   };
-  const paths = (dirsOnly) => {
+  const paths = (/** @type {boolean} */ dirsOnly) => {
     const dirPart = cur.includes('/') ? cur.slice(0, cur.lastIndexOf('/') + 1) : '';
     const base = cur.slice(dirPart.length);
     if (!isDir(dirPart || '.')) return;
@@ -94,7 +98,7 @@ export function complete(words) {
       else if (!dirsOnly && e.endsWith('.md')) emit(`${dirPart}${e}`);
     }
   };
-  const features = (dirsOnly) => {
+  const features = (/** @type {boolean} */ dirsOnly) => {
     if (cur.includes('/') || cur.startsWith('.')) return paths(dirsOnly);
     for (const f of listFeatures()) {
       let st = '';
@@ -114,7 +118,7 @@ export function complete(words) {
     return out;
   }
   const args = prev.filter((a, i) => !a.startsWith('-') && prev[i - 1] !== '--base').map((a) => a.replace(/^@/, ''));
-  const c = COMMANDS.includes(args[0]) ? args.shift() : 'check';
+  const c = COMMANDS.includes(args[0]) ? /** @type {string} */ (args.shift()) : 'check';
   if (cur.startsWith('-')) {
     (FLAGS[c] || []).forEach((f) => emit(f));
     return out;
@@ -125,7 +129,8 @@ export function complete(words) {
     return out;
   }
   const slot = (SLOTS[c] || [])[args.length];
-  const feature = () => resolveFeature(args[1]);
+  // Фича — второе слово: «approve adr <фича>», «next AC <фича>»; найдена — строка.
+  const feature = () => /** @type {string} */ (resolveFeature(args[1]));
   if (slot === 'choice') Object.entries(CHOICES[c]).forEach(([k, d]) => emit(k, d));
   else if (slot === 'command') COMMANDS.forEach((k) => emit(k, CMD_INFO[k]));
   else if (slot === 'feature') features(true);
@@ -134,7 +139,7 @@ export function complete(words) {
     loadFeature(feature()).featureAdrs.forEach((a) => emit(a.num, a.status || ''));
   else if (slot === 'slice' && /^ac$/i.test(args[0]) && feature())
     [...loadFeature(feature()).slices].forEach(([num, s]) => emit(num, s.title || ''));
-  else if (slot === 'option' && resolveFeature(args[0])) askOf(loadFeature(resolveFeature(args[0]))).questions.forEach((q) => q.options.forEach((o) => emit(o.id, o.label)));
+  else if (slot === 'option' && resolveFeature(args[0])) askOf(loadFeature(/** @type {string} */ (resolveFeature(args[0])))).questions.forEach((q) => q.options.forEach((o) => emit(o.id, o.label)));
   else if (slot === 'skill') promptSkills().forEach((k) => emit(k));
   else if (slot === 'side' && /^ac$/i.test(args[0])) {
     emit('B', 'AC сервисной половины');
