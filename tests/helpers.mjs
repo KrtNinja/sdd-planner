@@ -8,6 +8,7 @@ import path from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { loadFeature } from '../skills/sdd-lint/scripts/sdd-lint/feature.mjs';
 import { run as runLint } from '../skills/sdd-lint/scripts/sdd-lint/run.mjs';
 
 // Дочерние процессы (CLI, MCP, hook) покрытие не пишут: Node склеивает файлы покрытия процессов в порядке PID,
@@ -48,6 +49,21 @@ export function repo(files = {}) {
   }
   return dir;
 }
+
+// Фича из текстов в docs/<name> временной папки: { 'spec.md': …, 'slices/001-a.md': …, '../adr/0001-x.md': … } → модель.
+// Правила зовутся на ней напрямую; находки — строками brief().
+export function feature(files, name = 'search') {
+  const dir = path.join(tmpDir(), 'docs', name);
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [f, t] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true });
+    fs.writeFileSync(path.join(dir, f), t);
+  }
+  return loadFeature(dir);
+}
+// Находка строкой «ID файл:строка текст», файл — от папки фичи; only — какие ID оставить.
+export const brief = (m, found, only = null) =>
+  found.filter((f) => !only || only.includes(f.rule)).map((f) => `${f.rule} ${path.relative(m.dir, f.file)}:${f.line ?? '-'} ${f.msg}`);
 
 // git в папке: g('status') → вывод. Автор задан, подпись коммитов выключена.
 export const git = (cwd) => (...a) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...a], { cwd, encoding: 'utf8', stdio: 'pipe' });
