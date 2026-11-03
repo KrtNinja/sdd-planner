@@ -70,7 +70,8 @@ export function splitInput(raw) {
     if (pathy && exists(c)) paths.push(c.replace(/[\\/]+$/, '') || c);
     // Не найден — только если это точно путь: с @, ./, ../, ~/ или латиницей через «/» с расширением
     // или «/» в конце. «A/B-тест» и «фронт/бэк» — слова.
-    else if (pathy && (/^@|^\.{1,2}[\\/]|^~[\\/]|^\//.test(t) || (/^[\w.~-]+([\\/][\w.~-]*)+$/.test(c) && (DOC_EXT.test(c) || /[\\/]$/.test(t))))) missing.push(c);
+    else if (pathy && (/^@|^\.{1,2}[\\/]|^~[\\/]|^\//.test(t) || (/^[\w.~-]+([\\/][\w.~-]*)+$/.test(c) && (DOC_EXT.test(c) || /[\\/]$/.test(t)))))
+      missing.push(c);
     else rest.push(t);
   }
   return { urls, paths, missing, phrase: unquote(trimFiller(rest.join(' '))) };
@@ -253,7 +254,12 @@ export function inventory(exclude = null) {
   for (const e of fs.readdirSync(root, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     if (!e.isDirectory() || e.name.startsWith('.') || e.name === DOCS || SKIP.has(e.name)) continue;
     const c = countFiles(path.join(root, e.name));
-    const parts = [c.readme && `README: ${c.readme}`, c.md && `документов: ${c.md}`, c.contract && `контрактов: ${c.contract}`, c.code && `файлов кода: ${c.code}`].filter(Boolean);
+    const parts = [
+      c.readme && `README: ${c.readme}`,
+      c.md && `документов: ${c.md}`,
+      c.contract && `контрактов: ${c.contract}`,
+      c.code && `файлов кода: ${c.code}`,
+    ].filter(Boolean);
     if (!parts.length) continue;
     items.push(`${e.name}/ — ${parts.join(', ')}`);
     code += c.code + c.contract;

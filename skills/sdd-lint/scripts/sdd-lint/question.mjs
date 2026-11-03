@@ -80,7 +80,16 @@ export function questionView({ questions, then, stage = null, free = false, lead
     ),
     extra,
   );
-  return { ...(lead ? { lead } : {}), ...(stage ? { stage } : {}), ...(preview ? { preview } : {}), ...(free ? {} : { choose: then }), then, questions: qs, card, gear };
+  return {
+    ...(lead ? { lead } : {}),
+    ...(stage ? { stage } : {}),
+    ...(preview ? { preview } : {}),
+    ...(free ? {} : { choose: then }),
+    then,
+    questions: qs,
+    card,
+    gear,
+  };
 }
 // Вопрос в вывод: карточка и строка ⚙; для тестов — JSON (lead — строкой перед ним, как текст выше вопроса).
 /** @param {QuestionView} v */

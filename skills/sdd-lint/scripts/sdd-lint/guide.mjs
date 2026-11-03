@@ -41,7 +41,14 @@ function eligible(m, stage) {
   return false;
 }
 /** @type {Record<string, string>} */
-const WHAT = { spec: 'писать Dev Spec', slices: 'резать slices', adr: 'писать ADR', decide: 'проводить решение', review: 'делать ревью', close: 'закрывать перед merge' };
+const WHAT = {
+  spec: 'писать Dev Spec',
+  slices: 'резать slices',
+  adr: 'писать ADR',
+  decide: 'проводить решение',
+  review: 'делать ревью',
+  close: 'закрывать перед merge',
+};
 
 // Короткое имя текущего этапа — для заданий сабагенту.
 /** @param {Feature} m */

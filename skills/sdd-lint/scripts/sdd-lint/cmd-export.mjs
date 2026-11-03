@@ -66,7 +66,12 @@ export function cmdExport(ctx) {
     spec: m.spec ? { file: rel(m.spec.file), status: m.spec.status } : null,
     slicesStatus: m.slicesStatus,
     slices,
-    adrs: m.featureAdrs.map((a) => ({ num: a.num, file: rel(a.file), status: a.status, title: ((a.md.match(/^#\s+ADR-\d+:\s*(.*)$/m) || [])[1] || '').trim() })),
+    adrs: m.featureAdrs.map((a) => ({
+      num: a.num,
+      file: rel(a.file),
+      status: a.status,
+      title: ((a.md.match(/^#\s+ADR-\d+:\s*(.*)$/m) || [])[1] || '').trim(),
+    })),
   };
   ctx.io.log(JSON.stringify(out, null, 2));
   // Код как у gate build: 3 — реализацию начинать нельзя; JSON печатается всё равно.

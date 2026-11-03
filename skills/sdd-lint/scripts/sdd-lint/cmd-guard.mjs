@@ -73,7 +73,8 @@ export function cmdGuard(ctx) {
     if (bad) out.push(`Защищённые части изменены в ${bad} файл(ах) — верните их как были.`);
     if (noBase.length)
       out.push(
-        `Не с чем сверить ${noBase.length} файл(ов): нет снимка и версии в git — ${noBase.map((f) => code(rel(f))).join(', ')}. Снимок снимают до humanizer: ${lintCode('snapshot', '<файл>')}. Если humanizer уже прошёл, сверьте защищённые части глазами.`,
+        `Не с чем сверить ${noBase.length} файл(ов): нет снимка и версии в git — ${noBase.map((f) => code(rel(f))).join(', ')}. Снимок снимают до humanizer: ` +
+          `${lintCode('snapshot', '<файл>')}. Если humanizer уже прошёл, сверьте защищённые части глазами.`,
       );
     if (ok) out.push(`Защищённые части не тронуты в ${ok} файл(ах).`);
     ctx.io.log(`\n${out.join('\n\n')}`);

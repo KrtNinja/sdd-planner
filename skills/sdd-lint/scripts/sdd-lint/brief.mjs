@@ -15,6 +15,10 @@ function gist(r) {
   return first.length > 110 ? `${first.slice(0, 107)}…` : first;
 }
 
+// ADR в брифе: файл, статус и название из заголовка «# ADR-N: …».
+/** @param {import('./model.mjs').Adr} a */
+const adrLine = (a) => `\`${rel(a.file)}\` «${a.status || '—'}» — ${(a.md.match(/^#\s+ADR-\d+:\s*(.*)$/m) || [])[1] || 'без названия'}`;
+
 // Человеку и агенту — одна карточка (требования, сервисы, ADR); с какого шага продолжать — в строку ⚙.
 /** @param {Feature & { spec: import('./model.mjs').Spec }} m */
 export function slicesBrief(m) {
@@ -25,7 +29,7 @@ export function slicesBrief(m) {
     `Требования spec.md (${reqs.length}) — каждое попадёт в «Основание» хотя бы одного slice:\n${list(reqs.map((r) => `${bold(r.id)} ${gist(r)}`))}`,
     reg ? `Сервисы: ${reg.list.join(', ')} — так они и называются в «Половины».` : 'Сервисы: в протоколе нет строки «Сервисы:» — назову их по spec и ADR.',
     m.featureAdrs.length
-      ? `ADR фичи:\n${list(m.featureAdrs.map((a) => `\`${rel(a.file)}\` «${a.status || '—'}» — ${(a.md.match(/^#\s+ADR-\d+:\s*(.*)$/m) || [])[1] || 'без названия'}`))}`
+      ? `ADR фичи:\n${list(m.featureAdrs.map(adrLine))}`
       : 'ADR фичи: нет. Часть, которая ждёт ещё не принятого решения, пойдёт в план как «Р1 — ADR: <тема>».',
   );
   const parts = [m.featureAdrs.length ? 'прочитай ADR фичи' : null];

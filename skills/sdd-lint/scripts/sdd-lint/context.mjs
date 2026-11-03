@@ -179,7 +179,8 @@ export function markContext(ctx, name) {
 
 /** @param {string} x */
 const sourceLine = (x) =>
-  `- ${x === REPO ? 'репозиторий — текущая папка целиком' : x}${outside(x) ? ' — вне папки проекта: не откроется — запиши в «Не удалось прочитать» с причиной «вне папки проекта»' : ''}`;
+  `- ${x === REPO ? 'репозиторий — текущая папка целиком' : x}${outside(x) ? ' — вне папки проекта: ' +
+    'не откроется — запиши в «Не удалось прочитать» с причиной «вне папки проекта»' : ''}`;
 
 // Задание сабагенту: изучить источники и заполнить контекст. Файл уже есть — что исправить или дописать.
 /** @param {Feature} m @param {string[]} list @param {string} taskLine @param {string} stage */
@@ -188,17 +189,35 @@ export function researchTask(m, list, taskLine, stage) {
   const { ctx, changed, created } = syncContext(m, list.join('; '), taskLine);
   const out = rel(ctx.file);
   let tail = '';
-  if (!created && changed && ctx.filled) tail = '\n## Файл уже заполнен\n\nИсточники поменялись: допиши факты из новых, старые оставь, «Не удалось прочитать» обнови.\n';
+  if (!created && changed && ctx.filled) tail = '\n## Файл уже заполнен\n\nИсточники поменялись: ' +
+    'допиши факты из новых, старые оставь, «Не удалось прочитать» обнови.\n';
   else if (ctx.filled) {
     const own = contextFindings(ctx).filter((x) => x.level === 'err');
     if (own.length) tail = `\n## Исправь в файле\n\n${own.map((x) => `- ${line(x).replace(/^\S+\s+/, '')}`).join('\n')}\n\nОстальное в файле не трогай.\n`;
   }
-  return fill(tpl('research.md'), { feature: d, out, stage, task: taskLine, sources: list.map(sourceLine).join('\n'), check: `sdd_lint ${lintArgs(['research', 'check', d])}` }) + tail;
+  return (
+    fill(tpl('research.md'), {
+      feature: d,
+      out,
+      stage,
+      task: taskLine,
+      sources: list.map(sourceLine).join('\n'),
+      check: `sdd_lint ${lintArgs(['research', 'check', d])}`,
+    }) + tail
+  );
 }
 /** @param {Feature} m @param {string[]} list @param {string} taskLine @param {string} question @param {string} stage */
 export function factTask(m, list, taskLine, question, stage) {
   const d = rel(m.dir);
   const { ctx } = syncContext(m, list.join('; '), taskLine);
   const where = list.length ? list.map((x) => (x === REPO ? 'репозиторий' : x)).join(', ') : 'репозиторий';
-  return fill(tpl('research-fact.md'), { feature: d, adr: rel(m.adrDir), out: rel(ctx.file), stage, question, sources: where, check: `sdd_lint ${lintArgs(['research', 'check', d])}` });
+  return fill(tpl('research-fact.md'), {
+    feature: d,
+    adr: rel(m.adrDir),
+    out: rel(ctx.file),
+    stage,
+    question,
+    sources: where,
+    check: `sdd_lint ${lintArgs(['research', 'check', d])}`,
+  });
 }

@@ -55,11 +55,17 @@ export function genReadme(ctx, m, quiet = false) {
   const spec = m.spec;
   const link = (/** @type {string} */ text) => (spec ? linkReqs(text, m.readmeFile, spec) : text);
   const row = (/** @type {Slice} */ sl) =>
-    `| [${sl.num} ${sl.title || sl.name}](${sl.name}) | ${sl.type || '—'} | ${sl.halves || '—'} | ${basisPlain(sl.basisRaw) || '—'} | ${sl.deps.join(', ') || '—'} | ${sl.why || '—'} |`;
-  const table = ['| Slice | Тип | Стороны | Основание | Зависит от | Почему отдельно |', '|---|---|---|---|---|---|', ...[...m.slices.values()].map(row)].join('\n');
+    `| [${sl.num} ${sl.title || sl.name}](${sl.name}) | ${sl.type || '—'} | ${sl.halves || '—'} | ${basisPlain(sl.basisRaw) || '—'} | ` +
+      `${sl.deps.join(', ') || '—'} | ${sl.why || '—'} |`;
+  const table = ['| Slice | Тип | Стороны | Основание | Зависит ' +
+    'от | Почему отдельно |', '|---|---|---|---|---|---|', ...[...m.slices.values()].map(row)].join('\n');
   const covered = coverage(m);
   const ids = m.spec ? [...m.spec.reqs.values()].filter((r) => !r.deleted).map((r) => r.id) : [...covered.keys()];
-  const covTable = ['| Требование | Slice |', '|---|---|', ...ids.map((id) => `| ${link(id)} | ${[...(covered.get(id) || [])].sort().join(', ') || '—'} |`)].join('\n');
+  const covTable = [
+    '| Требование | Slice |',
+    '|---|---|',
+    ...ids.map((id) => `| ${link(id)} | ${[...(covered.get(id) || [])].sort().join(', ') || '—'} |`),
+  ].join('\n');
   const order = layers(m).map((l) => l.join(', ')).join(' → ');
   const orderText = `${order}\n\nЧерез запятую — slices, которые можно делать параллельно.`;
 

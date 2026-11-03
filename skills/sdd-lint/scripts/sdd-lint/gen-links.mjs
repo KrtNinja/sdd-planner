@@ -150,7 +150,9 @@ export function genLinks(ctx, m) {
     let moved = 0;
     // spec был у m — после записи ссылок он есть и у f.
     for (const sl of f.slices.values()) moved += linkSlice(sl, /** @type {Spec} */ (f.spec));
-    out.push(`slices: «Основание» — ссылка на spec.md, FR в «Проверяет:» — ссылки на их строки.${moved ? ` Перенесено из строк AC в «Проверяет:»: ${moved}.` : ''}`);
+    out.push(
+      `slices: «Основание» — ссылка на spec.md, FR в «Проверяет:» — ссылки на их строки.${moved ? ` Перенесено из строк AC в «Проверяет:»: ${moved}.` : ''}`,
+    );
     f = loadFeature(m.dir);
     if (f.readme != null) {
       genReadme(ctx, f, true);

@@ -40,7 +40,8 @@ export function diffChecks(dir, g, ref) {
     for (const r of [...base.protocol.rows, ...base.protocol.post])
       if (!now.has(norm(r.raw))) add('DF-01', cur.protocolFile, null, `строка #${r.id} изменена или удалена: «${r.raw.slice(0, 60)}»`);
     const scope = new Set(cur.protocol.outScope.map((x) => norm(x.text)));
-    for (const x of base.protocol.outScope) if (!scope.has(norm(x.text))) add('DF-01', cur.protocolFile, null, `«Вне scope»: пункт изменён или удалён: «${x.text.slice(0, 60)}»`);
+    for (const x of base.protocol.outScope)
+      if (!scope.has(norm(x.text))) add('DF-01', cur.protocolFile, null, `«Вне scope»: пункт изменён или удалён: «${x.text.slice(0, 60)}»`);
   } else if (base.protocol && !cur.protocol && !(cur.spec && approved(cur.spec.status) && !hasProtocolTraces(cur.spec.md)))
     add('DF-01', cur.protocolFile, null, `протокол удалён до закрытия фичи: удаляет его ${skillCode('sdd-close', cur.name)}`);
 

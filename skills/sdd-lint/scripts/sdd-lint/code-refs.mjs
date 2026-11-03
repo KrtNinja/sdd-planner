@@ -8,7 +8,9 @@ import { finding } from './findings.mjs';
 // brainstorming.md и _work/ — временные артефакты этапа, их не проверяем: в протоколе аналитик пишет что угодно.
 
 const CODE_EXT = 'ts|tsx|js|jsx|mjs|cjs|py|java|kt|kts|go|cs|rs|rb|php|vue|svelte|swift|scala|sql|proto|graphql|gql|ya?ml|json|toml|xml|properties|gradle|sh';
-const SRC_DIRS = 'src|lib|libs|apps?|packages|internal|cmd|pkg|tests?|__tests__|specs?|domain|application|infrastructure|infra|adapters|ports|components|modules|contracts|migrations|config';
+const SRC_DIRS =
+  'src|lib|libs|apps?|packages|internal|cmd|pkg|tests?|__tests__|specs?|' +
+  'domain|application|infrastructure|infra|adapters|ports|components|modules|contracts|migrations|config';
 const CODE_FILE = new RegExp(`\\.(?:${CODE_EXT})$`, 'i');
 const SRC_PATH = new RegExp(`(?:^|/)(?:${SRC_DIRS})/`);
 // «domain/errors/TaskErrors.ts», «task-transferred.message.json», «contracts/events/»
@@ -30,8 +32,10 @@ const PLAIN_LANGS = new Set(['', 'text', 'txt', 'plain', 'mermaid']);
 // в том числе в AC: ответ по контракту наблюдаем на границе. Внутренние имена — классы, порты,
 // адаптеры — меняются при рефакторинге; узнаём их по суффиксу. ADR тоже без них: он фиксирует выбор
 // и его причины, а соглашения о коде живут в репозитории сервиса.
-const INTERNAL_RE =
-  /(?<![\w-])[A-Z][a-z0-9]+[A-Za-z0-9]*?(?:Service|Controller|Repository|Repo|Handler|Port|Adapter|Gateway|Factory|Manager|UseCase|Store|Component|Provider|Module|Helper|Utils?|Impl|Mapper|Resolver|Middleware)(?![\w-])/g;
+const INTERNAL_SUFFIX =
+  'Service|Controller|Repository|Repo|Handler|Port|Adapter|Gateway|Factory|Manager|UseCase|Store|Component|Provider|Module|' +
+  'Helper|Utils?|Impl|Mapper|Resolver|Middleware';
+const INTERNAL_RE = new RegExp(`(?<![\\w-])[A-Z][a-z0-9]+[A-Za-z0-9]*?(?:${INTERNAL_SUFFIX})(?![\\w-])`, 'g');
 
 /** @param {string} target */
 function isCodeLink(target) {

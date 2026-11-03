@@ -17,7 +17,41 @@ const HEAD = /^##\s+(\d{3})(?:-(\S+))?(?:\s+(?:[—–-]\s+)?(.+?))?\s*$/u;
 const KV = /^\s*(?:[-*]\s+)?\**([А-ЯЁA-Z][^:*]{1,30}?)\**\s*:\s*\**\s*(.*)$/u;
 
 /** @type {Record<string, string>} */
-const RU = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
+const RU = {
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'g',
+  д: 'd',
+  е: 'e',
+  ё: 'e',
+  ж: 'zh',
+  з: 'z',
+  и: 'i',
+  й: 'y',
+  к: 'k',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'kh',
+  ц: 'ts',
+  ч: 'ch',
+  ш: 'sh',
+  щ: 'shch',
+  ъ: '',
+  ы: 'y',
+  ь: '',
+  э: 'e',
+  ю: 'yu',
+  я: 'ya',
+};
 /** @param {string | null | undefined} s */
 export function slugify(s) {
   const words = (s || '').toLowerCase().replace(/[а-яё]/g, (c) => RU[c]).replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean);
@@ -127,6 +161,22 @@ export function compactIds(ids) {
   return out.join(', ');
 }
 
+// Slice в превью плана: строка с типом и зависимостями, под ней — основание, половины, результат, причина.
+/** @param {Feature} m @param {PlanSlice} s */
+function previewSlice(m, s) {
+  const out = [`- ${s.num} ${s.title} — ${s.type}${s.deps.length ? `, после ${s.deps.join(', ')}` : ''}`];
+  if (s.basis.size) out.push(`  - Основание: ${compactIds([...s.basis])}`);
+  const svc = parseHalves(s.halves).services;
+  out.push(`  - Половины: ${svc.length ? svc.join(' + ') : s.halves || '—'}`);
+  if (s.result) out.push(`  - Результат: ${s.result}`);
+  if (reason(s.why)) {
+    const adrs = adrNums(s.why).map((num) => m.adrs.find((a) => a.num === num)).filter((a) => a !== undefined);
+    const note = adrs.map((a) => `ADR-${a.num} «${a.status || '—'}»`).join(', ');
+    out.push(`  - Почему отдельно: ${/** @type {string} */ (s.why).replace(/^(\**\s*)P/u, '$1Р')}${note ? ` (${note})` : ''}`);
+  }
+  return out;
+}
+
 // План для человека: вложенный список, а не широкая таблица — терминал её переносит,
 // а список читается одинаково и как текст, и как отрисованный markdown.
 /** @param {Feature & { plan: Plan }} m */
@@ -136,21 +186,16 @@ export function planPreview(m) {
     .map((l) => l.join(', '))
     .join(' → ');
   const out = [`План нарезки (${rel(p.file)}): ${p.slices.length} slices, порядок ${order}`, ''];
-  for (const s of p.slices) {
-    out.push(`- ${s.num} ${s.title} — ${s.type}${s.deps.length ? `, после ${s.deps.join(', ')}` : ''}`);
-    if (s.basis.size) out.push(`  - Основание: ${compactIds([...s.basis])}`);
-    const svc = parseHalves(s.halves).services;
-    out.push(`  - Половины: ${svc.length ? svc.join(' + ') : s.halves || '—'}`);
-    if (s.result) out.push(`  - Результат: ${s.result}`);
-    if (reason(s.why)) {
-      const adrs = adrNums(s.why).map((num) => m.adrs.find((a) => a.num === num)).filter((a) => a !== undefined);
-      const note = adrs.map((a) => `ADR-${a.num} «${a.status || '—'}»`).join(', ');
-      out.push(`  - Почему отдельно: ${/** @type {string} */ (s.why).replace(/^(\**\s*)P/u, '$1Р')}${note ? ` (${note})` : ''}`);
-    }
-  }
+  for (const s of p.slices) out.push(...previewSlice(m, s));
   const all = m.spec ? [...m.spec.reqs.values()].filter((r) => !r.deleted).map((r) => r.id) : [];
   const covered = new Set(p.slices.flatMap((s) => [...s.basis]));
-  if (all.length) out.push('', all.every((id) => covered.has(id)) ? `Покрыты все ${all.length} требований: ${compactIds(all)}.` : `Не покрыты: ${all.filter((id) => !covered.has(id)).join(', ')}.`);
+  if (all.length)
+    out.push(
+      '',
+      all.every((id) => covered.has(id))
+        ? `Покрыты все ${all.length} требований: ${compactIds(all)}.`
+        : `Не покрыты: ${all.filter((id) => !covered.has(id)).join(', ')}.`,
+    );
   const notes = [
     ...sharedReqs(p).map(([id, ns]) => `${id} — в ${ns.join(' и ')}: склеить или описать границу`),
     ...p.slices.filter(nfrOnly).map((s) => `${s.num} — только NFR: склеить с путём, к которому он относится?`),

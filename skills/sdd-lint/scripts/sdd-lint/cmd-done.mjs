@@ -41,7 +41,9 @@ export function cmdPlan(ctx) {
   const m = loadFeature(needDir(ctx, pos[0]));
   const dir = rel(m.dir);
   if (!m.plan) {
-    ctx.io.log(screen(`Плана нарезки ещё нет: ${rel(m.planFile)}.`, `запиши ${rel(m.planFile)} по шаблону assets/plan.md скилла sdd-slices`, G.then(['plan', dir])));
+    ctx.io.log(
+      screen(`Плана нарезки ещё нет: ${rel(m.planFile)}.`, `запиши ${rel(m.planFile)} по шаблону assets/plan.md скилла sdd-slices`, G.then(['plan', dir])),
+    );
     ctx.io.exit(2);
   }
   const all = runChecks(m);
@@ -99,18 +101,31 @@ export function cmdDone(ctx) {
   if (errs.length) {
     ctx.io.log('');
     report(ctx, findings);
-    retryOrStop(ctx, { dir: m.dir, kind: 'done', runs, what: `Этап не готов: ошибок ${errs.length}`, fix: 'исправь ошибки', then: ['done', dir], stuck: 'Ошибки', ask: 'Как быть?' });
+    retryOrStop(ctx, {
+      dir: m.dir,
+      kind: 'done',
+      runs,
+      what: `Этап не готов: ошибок ${errs.length}`,
+      fix: 'исправь ошибки',
+      then: ['done', dir],
+      stuck: 'Ошибки',
+      ask: 'Как быть?',
+    });
   }
   if (warns.length && !prev?.warnTried) {
     mark(m.dir, 'done', { warnTried: true });
     ctx.io.log('');
     report(ctx, findings);
-    ctx.io.log(
-      `\n${screen(`Ошибок нет, предупреждений ${warns.length} — поправлю те, что можно без вашего решения.`, 'исправь предупреждения, которые не требуют решения человека; остальные не трогай', G.then(['done', dir]))}`,
-    );
+    const say = `Ошибок нет, предупреждений ${warns.length} — поправлю те, что можно без вашего решения.`;
+    ctx.io.log(`\n${screen(say, 'исправь предупреждения, которые не требуют решения человека; остальные не трогай', G.then(['done', dir]))}`);
     ctx.io.exit(1);
   }
+  finishDone(ctx, m, warns);
+}
 
+// Этап готов: черновики — «на ревью», снимки для guard, счётчик прогонов сброшен; дальше — вопрос этапа.
+/** @param {Ctx} ctx @param {import('./model.mjs').Feature} m @param {import('./model.mjs').Finding[]} warns @returns {never} */
+function finishDone(ctx, m, warns) {
   const promoted = promote(m);
   const f = loadFeature(m.dir);
   for (const file of featureFiles(f)) saveSnapshot(file);
@@ -120,6 +135,6 @@ export function cmdDone(ctx) {
     ? `Осталось:\n${list([...warns.slice(0, 5).map((x) => line(x).replace(/^\S+\s+/, '')), ...(warns.length > 5 ? [`…и ещё ${warns.length - 5}`] : [])])}`
     : null;
   const { stage, questions } = askOf(f);
-  ctx.io.log(`\n${viewText(questionsView(dir, stage, questions, { lead: blocks(ready, left) }))}`);
-  ctx.io.exit(0);
+  ctx.io.log(`\n${viewText(questionsView(rel(m.dir), stage, questions, { lead: blocks(ready, left) }))}`);
+  return ctx.io.exit(0);
 }

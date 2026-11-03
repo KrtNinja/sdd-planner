@@ -32,28 +32,45 @@ function nextSkillQuestion(m, now, name, label, cont = false) {
   /** @type {Option} */
   const here = { id: `here:${name}`, label: 'Здесь, в этом окне', description: skill(name, m.name), action: { here: ['prompt', name, m.name] } };
   /** @type {Option} */
-  const fresh = { id: `window:${name}`, label: 'В новом контексте/окне', description: `${skill(name, m.name)} — запускаете сами, чистый контекст`, action: { show: showCmd(skill(name, m.name)) } };
+  const fresh = {
+    id: `window:${name}`,
+    label: 'В новом контексте/окне',
+    description: `${skill(name, m.name)} — запускаете сами, чистый контекст`,
+    action: { show: showCmd(skill(name, m.name)) },
+  };
   const options = cont ? [here, fresh] : [fresh, here];
   options[0].recommended = true;
   return { header: 'Следующий этап', question: `${now}. ${label}?`, options };
 }
 // Согласие с планом нарезки: «Да» создаёт файлы скриптом (gen slices), а не руками агента.
+// «Поправить нарезку» — одинаковый вариант при ошибках плана и без них.
+/** @type {Option} */
+const PLAN_EDIT = {
+  id: 'plan:edit',
+  label: 'Поправить нарезку',
+  description: 'напишите, что склеить или разрезать',
+  action: { show: 'Что поправить в нарезке? Напишите, какие slices склеить или разрезать, — поправлю план и покажу снова.' },
+};
 /** @param {Feature & { plan: import('./model.mjs').Plan }} m @returns {Question} */
 function planQuestion(m) {
   const dir = rel(m.dir);
   const errs = errorsOf(checkPlan(m)).length;
   const n = m.plan.slices.length;
-  const edit = {
-    id: 'plan:edit',
-    label: 'Поправить нарезку',
-    description: 'напишите, что склеить или разрезать',
-    action: { show: 'Что поправить в нарезке? Напишите, какие slices склеить или разрезать, — поправлю план и покажу снова.' },
-  };
+  const edit = PLAN_EDIT;
   if (errs) {
     return {
       header: 'План нарезки',
       question: `В плане нарезки ошибки lint: ${errs}. Исправить?`,
-      options: [{ id: 'plan:continue', label: 'Исправить план здесь', description: skill('sdd-slices', m.name), recommended: true, action: { here: ['prompt', 'sdd-slices', m.name] } }, edit],
+      options: [
+        {
+          id: 'plan:continue',
+          label: 'Исправить план здесь',
+          description: skill('sdd-slices', m.name),
+          recommended: true,
+          action: { here: ['prompt', 'sdd-slices', m.name] },
+        },
+        edit,
+      ],
     };
   }
   return {
@@ -82,8 +99,19 @@ function newAdrQuestions(m) {
     header: 'Нужен ADR',
     question: `Slice ${x.num} ждёт решения «${x.topic}», ADR ещё нет. Написать?`,
     options: [
-      { id: `adr-here:${x.num}`, label: 'Написать ADR здесь', description: skill('sdd-adr', m.name, `"${x.topic}"`), recommended: true, action: { here: ['prompt', 'sdd-adr', m.name, x.topic] } },
-      { id: `adr-window:${x.num}`, label: 'В новом контексте/окне', description: 'вы запускаете команду сами', action: { show: showCmd(skill('sdd-adr', m.name, `"${x.topic}"`)) } },
+      {
+        id: `adr-here:${x.num}`,
+        label: 'Написать ADR здесь',
+        description: skill('sdd-adr', m.name, `"${x.topic}"`),
+        recommended: true,
+        action: { here: ['prompt', 'sdd-adr', m.name, x.topic] },
+      },
+      {
+        id: `adr-window:${x.num}`,
+        label: 'В новом контексте/окне',
+        description: 'вы запускаете команду сами',
+        action: { show: showCmd(skill('sdd-adr', m.name, `"${x.topic}"`)) },
+      },
       { id: `adr-later:${x.num}`, label: 'Позже', description: 'ничего не делать', action: { none: true } },
     ],
   }));

@@ -62,11 +62,26 @@ function sourcesQuestion(m) {
   const d = rel(m.dir);
   const inv = inventory(m.name);
   /** @type {Option} */
-  const repo = { id: 'src:repo', label: 'Нет, хватит того, что в этой папке', description: 'сабагент изучит то, что уже здесь', action: { lint: ['start', d, '--sources', REPO] } };
+  const repo = {
+    id: 'src:repo',
+    label: 'Нет, хватит того, что в этой папке',
+    description: 'сабагент изучит то, что уже здесь',
+    action: { lint: ['start', d, '--sources', REPO] },
+  };
   /** @type {Option} */
-  const give = { id: 'src:give', label: 'Да, пришлю пути или ссылки', description: 'следующим сообщением', action: { wait: GIVE, then: ['start', d, '--sources', ANSWER] } };
+  const give = {
+    id: 'src:give',
+    label: 'Да, пришлю пути или ссылки',
+    description: 'следующим сообщением',
+    action: { wait: GIVE, then: ['start', d, '--sources', ANSWER] },
+  };
   /** @type {Option} */
-  const fresh = { id: 'src:new', label: 'Нет, это новый проект', description: 'изучать нечего: спрошу, как должно быть', action: { lint: ['start', d, '--sources', NEW_PROJECT] } };
+  const fresh = {
+    id: 'src:new',
+    label: 'Нет, это новый проект',
+    description: 'изучать нечего: спрошу, как должно быть',
+    action: { lint: ['start', d, '--sources', NEW_PROJECT] },
+  };
   // Есть код или несколько документов — изучить их и не мучить человека; почти пусто — попросить источники.
   const options = sourceOptions(inv, { repo, give, fresh });
   options[0].recommended = true;
@@ -101,9 +116,19 @@ function afterQuestion(m, ctx, src) {
   const nothing = projectSources(src).length > 0 && ctx.facts === 0;
   if (ctx.accepted || (!nothing && !ctx.unread.length)) return null;
   /** @type {Option} */
-  const go = { id: 'ctx:go', label: 'Продолжаем с тем, что есть', description: 'чего нет в источниках, спрошу у вас', action: { lint: ['start', d, '--accept'] } };
+  const go = {
+    id: 'ctx:go',
+    label: 'Продолжаем с тем, что есть',
+    description: 'чего нет в источниках, спрошу у вас',
+    action: { lint: ['start', d, '--accept'] },
+  };
   /** @type {Option} */
-  const more = { id: 'ctx:more', label: 'Дам доступ или пришлю ещё', description: 'пути, ссылки или «готово» после /directory add', action: { wait: MORE, then: ['start', d, '--sources', ANSWER] } };
+  const more = {
+    id: 'ctx:more',
+    label: 'Дам доступ или пришлю ещё',
+    description: 'пути, ссылки или «готово» после /directory add',
+    action: { wait: MORE, then: ['start', d, '--sources', ANSWER] },
+  };
   const options = nothing ? [more, go] : [go, more];
   options[0].recommended = true;
   return {

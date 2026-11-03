@@ -81,7 +81,8 @@ export function closeSummary(m) {
   else if (!approved(m.slicesStatus)) unfinished.push('slices не одобрены');
   const pending = pendingAdrs(m);
   if (pending.length) unfinished.push(`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`);
-  if (unfinished.length) risks.push(`Планирование не закончено (${unfinished.join('; ')}): протокол и ревью — основа для доработки, после удаления они будут только в истории git.`);
+  if (unfinished.length)
+    risks.push(`Планирование не закончено (${unfinished.join('; ')}): протокол и ревью — основа для доработки, после удаления они будут только в истории git.`);
 
   const dirty = uncommitted(m, files);
   // Куда денутся находки: закоммиченный файл ревью останется в истории git, незакоммиченный — нет.
@@ -95,8 +96,10 @@ export function closeSummary(m) {
   const rowsOf = (/** @type {(rv: import('./model.mjs').Review) => import('./model.mjs').ReviewRow[]} */ pick) =>
     reviews.flatMap((rv) => pick(rv).map((r) => ({ id: `${r.id} (${rel(rv.file)})`, file: rel(rv.file) })));
   const blockers = rowsOf(openBlockers);
-  if (blockers.length)
-    risks.push(`Блокеры ревью без решения: ${listed(blockers.map((x) => x.id))} — в FR и AC их нет, после удаления ${lost(blockers) || 'останутся только в истории git'}.`);
+  if (blockers.length) {
+    const after = lost(blockers) || 'останутся только в истории git';
+    risks.push(`Блокеры ревью без решения: ${listed(blockers.map((x) => x.id))} — в FR и AC их нет, после удаления ${after}.`);
+  }
   const notes = rowsOf((rv) => rv.rows.filter((r) => !r.blocker && undecided(r)));
   if (notes.length) risks.push(`Замечания ревью без решения: ${listed(notes.map((x) => x.id))} — ${lost(notes) || 'уйдут в историю git'}.`);
   if (dirty === null && files.length) risks.push('Не git-репозиторий: удалённое не восстановить.');
@@ -134,7 +137,13 @@ export function closeQuestion(m, s) {
 /** @param {Feature} m @returns {import('./question.mjs').Option[]} */
 export function closeOptions(m, clean = true) {
   /** @type {import('./question.mjs').Option} */
-  const yes = { id: 'close:yes', label: 'Удалить', description: 'скрипт удалит перечисленное и проверит фичу', recommended: clean, action: { lint: ['close', rel(m.dir), '--yes'], after: G.stop } };
+  const yes = {
+    id: 'close:yes',
+    label: 'Удалить',
+    description: 'скрипт удалит перечисленное и проверит фичу',
+    recommended: clean,
+    action: { lint: ['close', rel(m.dir), '--yes'], after: G.stop },
+  };
   /** @type {import('./question.mjs').Option} */
   const no = { id: 'close:no', label: 'Не удалять', description: 'ничего не делать', recommended: !clean, action: { none: true } };
   return clean ? [yes, no] : [no, yes];

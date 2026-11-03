@@ -115,7 +115,11 @@ export function cmdApprove(ctx) {
     report(ctx, findings);
     const hg = findings.some((x) => x.rule === 'HG-01');
     ctx.io.log(`\nНЕ ОДОБРЕНО: ${rel(target)} остаётся «${cur}».`);
-    if (hg) ctx.io.log(`\nЕсли защищённые части поменяли вы сами — снимите новый снимок (${lintCode('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`);
+    if (hg)
+      ctx.io.log(
+        `\nЕсли защищённые части поменяли вы сами — ` +
+          `снимите новый снимок (${lintCode('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`,
+      );
     ctx.io.exit(1);
   }
   fs.writeFileSync(target, next);
