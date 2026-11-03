@@ -38,7 +38,7 @@ function adrNum(arg, nums) {
 
 // Задача сабагенту убрать AI стиль: humanizer, затем guard скриптом. target — spec.md, ADR или папка фичи (slices).
 /** @param {string} target */
-export function humanizeTask(target) {
+function humanizeTask(target) {
   const files = /\.md$/.test(target) ? target : `каждому файлу в ${target.replace(/\/$/, '')}/slices/`;
   return [
     `# Убрать AI стиль: ${target}`,
