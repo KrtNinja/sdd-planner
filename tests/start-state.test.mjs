@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { renameFeature } from '../skills/sdd-lint/scripts/sdd-lint/start.mjs';
+import { renameFeature, startFrom } from '../skills/sdd-lint/scripts/sdd-lint/start.mjs';
 import { repo, inDir, JSON_ENV } from './helpers.mjs';
 
 test('renameFeature: spec, нет протокола и готовый протокол запрещают переименование', () => {
@@ -25,4 +25,13 @@ test('renameFeature: занятое точное имя остаётся цел�
     '`docs/new` уже есть. Какое имя взять?\n\n⚙ sdd: жди ответ → ["start","docs/old","--rename","<ответ человека>"]'));
   assert.deepEqual(fs.readdirSync(path.join(cwd, 'docs')).sort(), ['new', 'old']);
   assert.equal(fs.readFileSync(path.join(cwd, 'docs/new/README.md'), 'utf8'), 'занято\n');
+});
+
+
+test('startFrom: закрытый brainstorming со spec не запускается заново', () => {
+  const cwd = repo({ 'docs/old/spec.md': '# Spec\n' });
+  inDir(cwd, JSON_ENV, () => assert.equal(startFrom('old'),
+    'Brainstorming `docs/old` пройден и закрыт: есть spec.md. Поменять поведение — `/sdd-decide old "<вопрос>" "<решение>"`; ' +
+      'что дальше по фиче — `node scripts/sdd-lint.mjs old`.\n\n⚙ sdd: стоп'));
+  assert.deepEqual(fs.readdirSync(path.join(cwd, 'docs/old')), ['spec.md']);
 });
