@@ -8,12 +8,14 @@ import { checkCut } from '../skills/sdd-lint/scripts/sdd-lint/cut.mjs';
 import { checkSlices } from '../skills/sdd-lint/scripts/sdd-lint/slice-rules.mjs';
 import { feature, brief, slice, ac, SPEC } from './helpers.mjs';
 
-test('SL-19: покрытие «Основания» — удалённый AC не в счёт, пока есть AC-NNN-? — не считаем', () => {
+test('SL-19: покрытие «Основания» — удалённый AC не в счёт; пока есть AC-NNN-? или AC без «Проверяет:» — не считаем', () => {
   const body = ['', '## Tasks-core-половина', ...ac('AC-001-B1 Поиск'), '', ...ac('AC-001-B2 Дубль (удалён: повтор)', 'FR-2', ['  без WHEN'])];
   const m = feature({ 'spec.md': SPEC, 'slices/001-a.md': slice('001', { basis: 'FR-1, FR-2' }, ...body) });
   assert.deepEqual(brief(m, checkSlices(m), ['SL-14', 'SL-15', 'SL-19']), ['SL-19 slices/001-a.md:5 FR-2 из «Основание» не проверяет ни один AC']);
   const pending = feature({ 'spec.md': SPEC, 'slices/001-a.md': slice('001', { basis: 'FR-1, FR-2' }, ...body, '```', 'AC-001-?', '```') });
   assert.deepEqual(brief(pending, checkSlices(pending), ['SL-19']), []);
+  const noRefs = feature({ 'spec.md': SPEC, 'slices/001-a.md': slice('001', { basis: 'FR-1, FR-2' }, '', '## Tasks-core-половина', ...ac('AC-001-B1 Поиск', null)) });
+  assert.deepEqual(brief(noRefs, checkSlices(noRefs), ['SL-19']), []);
 });
 
 test('SL-19: FR не из spec и фича без spec — тоже без AC', () => {
