@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { root, tmpDir, git } from './helpers.mjs';
 import { unpack, shards } from '../tools/metrics/mutate.mjs';
@@ -12,7 +13,7 @@ const SOURCE = 'skills/sdd-lint/scripts/example.mjs';
 function fixture() {
   const dir = tmpDir('sdd-mutate-test-');
   fs.mkdirSync(path.join(dir, 'tools/metrics'), { recursive: true });
-  for (const f of ['mutate.mjs', 'edn.mjs']) fs.copyFileSync(path.join(root, 'tools/metrics', f), path.join(dir, 'tools/metrics', f));
+  for (const f of ['mutate.mjs', 'edn.mjs', 'mutate-results.mjs']) fs.copyFileSync(path.join(root, 'tools/metrics', f), path.join(dir, 'tools/metrics', f));
   fs.mkdirSync(path.dirname(path.join(dir, SOURCE)), { recursive: true });
   fs.writeFileSync(path.join(dir, SOURCE), 'export const x = 0;\n');
   const g = git(dir);
@@ -25,8 +26,16 @@ const run = (dir, args, env = {}) => spawnSync(process.execPath, ['tools/metrics
 const logOf = (payload) => ['--- mutate snapshot ---', zlib.gzipSync(JSON.stringify(payload)).toString('base64'), '--- конец ---'].join('\n');
 const snapshot = (source = SOURCE) => {
   const id = JSON.stringify([source, 'example', 'defn/x', 16, 17, '0', '1']);
-  return `{:source ${JSON.stringify(source)} :namespace "example" :forms [{:id "defn/x" :file ${JSON.stringify(source)} :line 1 :end-line 1 :killed 0 :survived 1 :uncovered 0}] :outcomes {${JSON.stringify(id)} :survived}}`;
+  return `{:source ${JSON.stringify(source)} :namespace "example" :forms [{:id "defn/x" :file ${JSON.stringify(source)} :line 1 :end-line 1 :hash "${"f".repeat(64)}" :sites 1 :killed 0 :survived 1 :uncovered 0}] :outcomes {${JSON.stringify(id)} :survived}}`;
 };
+
+function inventory(dir, forms = [{ namespace: 'example', id: 'defn/x', line: 1, 'end-line': 1, hash: 'f'.repeat(64) }]) {
+  const parts = path.join(dir, 'parts'); fs.mkdirSync(parts, { recursive: true });
+  const source = fs.readFileSync(path.join(dir, SOURCE));
+  fs.writeFileSync(path.join(parts, '0.inventory.json'), JSON.stringify({ version: 1,
+    files: [{ source: SOURCE, sha256: createHash('sha256').update(source).digest('hex'), forms }],
+  }));
+}
 
 test('mutate files: тестовый PR пуст; изменённый и новый код выбирается, удалённый исключён', () => {
   const { dir, g, base } = fixture();
@@ -48,7 +57,7 @@ test('mutate gate: выживший в изменённой функции ро�
   const { dir, g, base } = fixture();
   fs.writeFileSync(path.join(dir, SOURCE), 'export const x = 0; // changed\n');
   g('add', '.'); g('commit', '-qm', 'changed');
-  fs.mkdirSync(path.join(dir, 'parts'));
+  inventory(dir);
   fs.writeFileSync(path.join(dir, 'parts/example.edn'), snapshot());
   const result = run(dir, ['gate', '--from', 'parts', '--base', base]);
   assert.equal(result.status, 1, result.stderr);
@@ -99,4 +108,68 @@ test('mutate: старый формат, timestamp-only лог, повреждё
   assert.deepEqual(unpack(logOf({}).split('\n').map((l) => `2026-11-03T00:00:00Z ${l}`).join('\n')), { files: {}, sources: null });
   assert.throws(() => unpack('no snapshot'), /нет снимка/);
   assert.deepEqual(shards(['a', 'b', 'c'], 2, (f) => ({ a: 3, b: 2, c: 1 })[f]), [['a'], ['b', 'c']]);
+});
+
+test('mutate gate: отсутствие, частичный и устаревший снимок — ошибка, полный прогон ловит выжившего', () => {
+  const { dir, g, base } = fixture();
+  try {
+    fs.writeFileSync(path.join(dir, SOURCE), 'export const x = 0; // changed\n');
+    g('add', '.'); g('commit', '-qm', 'changed');
+    const args = ['gate', '--from', 'parts', '--base', base];
+    assert.equal(run(dir, args).status, 1); // нет описи
+    inventory(dir);
+    assert.equal(run(dir, args).status, 1); // есть опись, потерян снимок
+    const file = path.join(dir, 'parts/example.edn');
+    for (const text of ['{}', '{:source "x" :forms []}', snapshot().replace(':survived 1', ':survived -1')]) {
+      fs.writeFileSync(file, text);
+      assert.equal(run(dir, args).status, 1, text);
+    }
+    fs.writeFileSync(file, snapshot());
+    const full = run(dir, ['gate', '--from', 'parts']);
+    assert.equal(full.status, 1, full.stderr);
+    assert.match(full.stderr, /выжившие мутанты в полном прогоне/);
+    fs.writeFileSync(file, snapshot().replace(':killed 0 :survived 1', ':killed 1 :survived 0'));
+    assert.equal(run(dir, ['gate', '--from', 'parts']).status, 0);
+    const manifest = path.join(dir, 'parts/0.inventory.json');
+    const saved = fs.readFileSync(manifest, 'utf8');
+    const data = JSON.parse(saved);
+    data.files[0].forms.push({ ...data.files[0].forms[0], id: 'defn/missing' });
+    fs.writeFileSync(manifest, JSON.stringify(data));
+    assert.equal(run(dir, args).status, 1); // потеряна одна из двух форм
+    fs.writeFileSync(manifest, saved);
+    fs.appendFileSync(path.join(dir, SOURCE), '// next version\n');
+    assert.equal(run(dir, args).status, 1); // снимок прошлого исходника
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('mutate collect: опись без функций разрешена; потерянные результаты останавливают сборку', () => {
+  const { dir } = fixture();
+  try {
+    const list = path.join(dir, 'files.txt'); fs.writeFileSync(list, `${SOURCE}\n`);
+    const args = ['collect', 'parts', list];
+    inventory(dir);
+    assert.equal(run(dir, args).status, 1);
+    inventory(dir, []);
+    assert.equal(run(dir, args).status, 0);
+    assert.equal(run(dir, ['gate', '--from', 'parts']).status, 0);
+    inventory(dir);
+    const cache = path.join(dir, '.metrics/mutate'); fs.mkdirSync(cache, { recursive: true });
+    fs.writeFileSync(path.join(cache, 'example.edn'), snapshot());
+    assert.equal(run(dir, args).status, 0);
+    assert.equal(fs.readFileSync(path.join(dir, 'parts/example.edn'), 'utf8'), snapshot());
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('mutate: изменение измерителя выбирает весь код и проверяет неизменённые функции', () => {
+  const { dir, g, base } = fixture();
+  try {
+    fs.appendFileSync(path.join(dir, 'tools/metrics/mutate.mjs'), '\n// changed runner\n');
+    g('add', '.'); g('commit', '-qm', 'runner');
+    assert.equal(run(dir, ['files', '--base', base]).stdout, `${SOURCE}\n`);
+    inventory(dir);
+    fs.writeFileSync(path.join(dir, 'parts/example.edn'), snapshot());
+    const r = run(dir, ['gate', '--from', 'parts', '--base', base]);
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /выжившие мутанты в полном прогоне/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

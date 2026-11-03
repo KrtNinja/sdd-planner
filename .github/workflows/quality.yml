@@ -146,6 +146,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=1024
         run: |
           mkdir -p .metrics mutate-out
+          python tools/metrics/mutate-inventory.py mutate-files.txt > "mutate-out/${{ matrix.shard }}.inventory.json"
           set +e
           mutator --use-existing-coverage --max-workers 2 --test-command "node --test tests/*.test.mjs" \
             --mutate-all $(cat mutate-files.txt) 2>&1 | tee "mutate-out/mutator-${{ matrix.shard }}.txt"
@@ -188,3 +189,4 @@ jobs:
           path: |
             .metrics/mutate/
             mutate-out/*.txt
+            mutate-out/*.inventory.json
