@@ -9,18 +9,37 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { readEdn } from './edn.mjs';
-import { REPO, rel } from './lib.mjs';
+import { fileURLToPath } from 'node:url';
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const rel = (file) => path.relative(REPO, file);
 
 const METRICS = path.join(REPO, '.metrics');
 const BASELINE = path.join(REPO, 'tools/metrics/ub-baseline.json');
 const CRAP_MAX = 10;
 const DRY_MIN = 0.8;
 
-const readIf = (file) => (fs.existsSync(file) ? readEdn(fs.readFileSync(file, 'utf8')) : null);
+const finite = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0;
+const location = (x) => x && typeof x.file === 'string' && x.file.length > 0
+  && Number.isInteger(x['start-line']) && x['start-line'] > 0
+  && Number.isInteger(x['end-line']) && x['end-line'] >= x['start-line'];
+const validEntry = (e) => e && typeof e.namespace === 'string' && e.namespace.length > 0
+  && typeof e.name === 'string' && e.name.length > 0 && finite(e.complexity) && e.complexity >= 1
+  && finite(e.coverage) && e.coverage <= 100 && finite(e.crap) && e.crap >= e.complexity;
+const validPair = (e) => e && finite(e.score) && e.score <= 1 && location(e.left) && location(e.right);
+
+function readReport(name, field, valid, nonempty = false) {
+  const file = path.join(METRICS, name);
+  const data = readEdn(fs.readFileSync(file, 'utf8'));
+  if (!Array.isArray(data?.[field]) || (nonempty && !data[field].length) || !data[field].every(valid)) {
+    throw new Error(`Некорректный отчёт ${rel(file)}: ${field}`);
+  }
+  return data;
+}
 
 function collect() {
-  const crap = readIf(path.join(METRICS, 'crap.edn'));
-  const dry = readIf(path.join(METRICS, 'dry.edn'));
+  const crap = readReport('crap.edn', 'entries', validEntry, true);
+  const dry = readReport('dry.edn', 'candidates', validPair);
   const offenders = {};
   for (const e of crap?.entries ?? []) if ((e.crap ?? e.complexity) >= CRAP_MAX) offenders[`${e.namespace}#${e.name}`] = { complexity: e.complexity, coverage: e.coverage, crap: e.crap };
   // CI кладёт для dryer копию кода в dry-src/ с .ts вместо .mjs — возвращаем исходные пути.
@@ -43,7 +62,11 @@ function compare(now, base) {
   return bad;
 }
 
-const now = collect();
+let now;
+try { now = collect(); } catch (error) {
+  console.error(`ГЕЙТ НЕ ПРОЙДЕН — отчёты ub-mode: ${error.message}`);
+  process.exit(1);
+}
 console.log(`crapper: ${now.crap ? `${now.crap.functions} функций, CRAP ≥ ${CRAP_MAX}: ${now.crap.over10}` : 'нет .metrics/crap.edn'}`);
 for (const [k, e] of Object.entries(now.crap?.offenders ?? {}).sort((a, b) => (b[1].crap ?? 0) - (a[1].crap ?? 0)).slice(0, 15)) console.log(`  ${e.crap}\tCC ${e.complexity}\tcov ${e.coverage}%\t${k}`);
 console.log(`dryer: ${now.dry ? `пар со сходством ≥ ${DRY_MIN}: ${now.dry.candidates}` : 'нет .metrics/dry.edn'}`);

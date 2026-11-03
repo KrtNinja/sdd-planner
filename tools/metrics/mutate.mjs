@@ -1,7 +1,7 @@
 // mutator в CI: изменённые файлы с нуля; снимок хранится в логе прогона.
 // files --shard 3/12 [--base origin/main] — файлы части (без базы — весь код).
-// collect <dir> <files.txt> — снимки файлов части в артефакт.
-// gate [--base origin/main] [--from <dir>] — сводка и гейт изменённых функций.
+// collect <dir> <files.txt> — сверить с *.inventory.json и собрать снимки части в артефакт.
+// gate [--base origin/main] [--from <dir>] — полнота результатов и гейт; без базы/при изменении измерителя — весь код.
 // survivors --run <run-id> [модуль ...] — выжившие из лога, строки по исходникам прогона.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,6 +10,7 @@ import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readEdn } from './edn.mjs';
+import { inventories, verifyResults } from './mutate-results.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const CODE = 'skills/sdd-lint/scripts';
@@ -29,9 +30,15 @@ function arg(name) {
   return i < 0 ? null : process.argv[i + 1];
 }
 
+// Изменение измерителя проверяется полным прогоном; обычный тестовый PR код не выбирает.
+function runnerChanged(base) {
+  return base && lines(git('diff', '--name-only', `${base}...HEAD`)).some((f) =>
+    f === '.github/workflows/quality.yml' || /^tools\/metrics\/(mutate[^/]*|edn)\.(mjs|py)$/.test(f));
+}
+
 // В PR — только добавленные и изменённые файлы кода; тестовый PR не выбирает код.
 function sources(base) {
-  const files = base
+  const files = base && !runnerChanged(base)
     ? git('diff', '--name-only', '--no-renames', '--diff-filter=AM', `${base}...HEAD`, '--', CODE)
     : git('ls-files', '--', CODE);
   return uniqSorted(lines(files).filter(isCode));
@@ -62,6 +69,7 @@ function cmdCollect() {
   const mine = new Set(lines(fs.readFileSync(path.resolve(process.argv[4]), 'utf8')));
   fs.mkdirSync(dir, { recursive: true });
   const files = ednFiles(RUN).filter((f) => mine.has(readSnap(RUN, f).source));
+  verifyResults(files.map((f) => readSnap(RUN, f)), [...mine], inventories(dir), (f) => fs.readFileSync(path.join(REPO, f)));
   for (const f of files) fs.copyFileSync(path.join(RUN, f), path.join(dir, f));
   console.log(`Снимков файлов этой части: ${files.length} из ${mine.size}`);
 }
@@ -180,9 +188,17 @@ function printSnapshot() {
 
 function cmdGate() {
   const from = arg('--from');
-  const forms = summary(assemble(from && path.resolve(from)));
   const base = arg('--base');
-  if (base) gateChanged(forms, base);
+  const snaps = assemble(from && path.resolve(from));
+  const expected = sources(base);
+  verifyResults(snaps, expected, inventories(from), (f) => fs.readFileSync(path.join(REPO, f)));
+  console.log(`Полнота прогона подтверждена: выбранных файлов ${expected.length}.`);
+  const forms = summary(snaps);
+  if (base && !runnerChanged(base)) gateChanged(forms, base);
+  else if (forms.some(({ form }) => form.survived > 0)) {
+    console.error('ГЕЙТ НЕ ПРОЙДЕН — выжившие мутанты в полном прогоне.');
+    process.exitCode = 1;
+  }
   printSnapshot();
 }
 
@@ -203,5 +219,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error(`mutate.mjs: ${Object.keys(COMMANDS).join(' | ')} — см. шапку файла`);
     process.exit(1);
   }
-  cmd();
+  try { cmd(); } catch (error) {
+    console.error(`ГЕЙТ НЕ ПРОЙДЕН — ${error.message}`);
+    process.exitCode = 1;
+  }
 }
