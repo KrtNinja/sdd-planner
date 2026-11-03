@@ -3,8 +3,9 @@
 //
 //   node metrics/mutate.mjs files --shard 3/12 [--base origin/main]
 //       файлы одной части прогона, части поровну по размеру; с --base — только добавленные и изменённые в PR
-//   node metrics/mutate.mjs collect <dir>
-//       снимки из .metrics/mutate/, которые этот прогон записал заново, → в <dir> (артефакт части)
+//       (менялись тесты — и файлы, где в снимке есть выжившие)
+//   node metrics/mutate.mjs collect <dir> <files.txt>
+//       снимки из .metrics/mutate/ файлов этой части (список — вывод files) → в <dir> (артефакт части)
 //   node metrics/mutate.mjs gate [--base origin/main] [--from <dir>] [--fresh]
 //       собрать снимок в .metrics/mutate/: tools/metrics/mutate/ (без --fresh) и поверх него части из <dir>;
 //       сводка; с --base — код 1, если в функциях, которые задел diff, выжили мутанты; печатает снимок для коммита
@@ -32,16 +33,28 @@ const lines = (text) => text.split('\n').filter(Boolean);
 const isCode = (f) => f.endsWith('.mjs') && fs.existsSync(path.join(REPO, f));
 const ednFiles = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.edn')).sort() : []);
 const readSnap = (dir, f) => readEdn(fs.readFileSync(path.join(dir, f), 'utf8'));
+const uniqSorted = (a) => [...new Set(a)].sort();
 
 function arg(name) {
   const i = process.argv.indexOf(name);
   return i < 0 ? null : process.argv[i + 1];
 }
 
+// Файлы, где в снимке есть выжившие мутанты: новые тесты могли их убить.
+function withSurvivors() {
+  return ednFiles(SNAPSHOT)
+    .map((f) => readSnap(SNAPSHOT, f))
+    .filter((s) => (s.forms ?? []).some((form) => form.survived > 0))
+    .map((s) => s.source);
+}
+
 // Файлы кода: все или добавленные и изменённые относительно base. Переименование — новый файл (--no-renames).
+// Менялись тесты — плюс файлы с выжившими: mutator перепроверит только выживших, убитые в снимке не повторяет.
 function sources(base) {
-  const list = base ? git('diff', '--name-only', '--no-renames', '--diff-filter=AM', `${base}...HEAD`, '--', CODE) : git('ls-files', '--', CODE);
-  return lines(list).filter(isCode).sort();
+  if (!base) return lines(git('ls-files', '--', CODE)).filter(isCode).sort();
+  const changed = (...paths) => lines(git('diff', '--name-only', '--no-renames', '--diff-filter=AM', `${base}...HEAD`, '--', ...paths));
+  const tests = changed('tests').length ? withSurvivors() : [];
+  return uniqSorted([...changed(CODE), ...tests].filter(isCode));
 }
 
 // Части поровну по размеру: самый большой файл — в самую лёгкую часть. Порядок детерминированный.
@@ -62,19 +75,15 @@ function cmdFiles() {
   for (const f of shards(sources(arg('--base')), n, size)[k]) console.log(f);
 }
 
-// Части прогона пишут свои namespace; остальные файлы снимка — копия из репозитория, их в артефакт не кладём.
+// Снимки файлов этой части. mutator переписывает и чужие namespace (та же копия, но новое tested-at), поэтому
+// «отличается от репозитория» не годится: при сборке частей копия одной части затёрла бы свежий снимок другой.
 function cmdCollect() {
   const dir = path.resolve(process.argv[3]);
+  const mine = new Set(lines(fs.readFileSync(path.resolve(process.argv[4]), 'utf8')));
   fs.mkdirSync(dir, { recursive: true });
-  let n = 0;
-  for (const f of ednFiles(RUN)) {
-    const was = path.join(SNAPSHOT, f);
-    const now = fs.readFileSync(path.join(RUN, f));
-    if (fs.existsSync(was) && fs.readFileSync(was).equals(now)) continue;
-    fs.writeFileSync(path.join(dir, f), now);
-    n++;
-  }
-  console.log(`Снимков, записанных этим прогоном: ${n}`);
+  const files = ednFiles(RUN).filter((f) => mine.has(readSnap(RUN, f).source));
+  for (const f of files) fs.copyFileSync(path.join(RUN, f), path.join(dir, f));
+  console.log(`Снимков файлов этой части: ${files.length} из ${mine.size}`);
 }
 
 // Строки нового файла, которые задел diff: добавленные и изменённые; на месте удаления — соседние две.

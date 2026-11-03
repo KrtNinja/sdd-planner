@@ -20,12 +20,11 @@ export const uniq = (a) => [...new Set(a)];
 // 1 файл, 3 файла, 5 файлов
 /** @param {number} n @param {string} one @param {string} few @param {string} many */
 export const plural = (n, one, few, many) => `${n} ${[one, few, many][pluralForm(n)]}`;
-// Форма слова при числе: 0 — «файл» (1, 21, 101), 1 — «файла» (2–4, 22–24), 2 — «файлов» (5–20, 11–14, 25…).
+// Форма слова при числе: 0 — «файл» (1, 21, 101), 1 — «файла» (2–4, 22–24), 2 — «файлов» (0, 5–20, 25…).
+// По последней цифре; второй десяток (11–19) — всегда «файлов».
+const FORM_BY_DIGIT = [2, 0, 1, 1, 1, 2, 2, 2, 2, 2];
 /** @param {number} n */
-function pluralForm(n) {
-  if (n % 10 === 1 && n % 100 !== 11) return 0;
-  return n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 1 : 2;
-}
+const pluralForm = (n) => (Math.trunc(n / 10) % 10 === 1 ? 2 : FORM_BY_DIGIT[n % 10]);
 /** @param {Text} s */
 export const isEmptyCell = (s) => !s || /^[—–\-?]*$/.test(s.trim());
 /** @param {Text} status */
@@ -78,10 +77,11 @@ export const hasSection = (sc, re) => sc.lines.some((l) => isH2(l) && re.test(l.
 /** @param {Scan} sc @param {RegExp} re */
 export const sectionText = (sc, re) => inSection(sc, re).map((l) => l.text).join('\n').trim();
 
-/** @param {Text} md @param {string} key @returns {string | null} */
-export const header = (md, key) => {
+// Значение строки шапки «Ключ: значение»; строки нет — fallback.
+/** @template {string | null} [F=null] @param {Text} md @param {string} key @param {F} [fallback] @returns {string | F} */
+export const header = (md, key, fallback = /** @type {F} */ (null)) => {
   const m = (md || '').match(new RegExp(`^${key}:\\s*(.*)$`, 'm'));
-  return m ? m[1].trim() : null;
+  return m ? m[1].trim() : fallback;
 };
 // Строка шапки «Ключ: значение»: заменить или вставить после первой из after (иначе под заголовком).
 /** @param {string} md @param {string} key @param {string} value @param {string[]} [after] */
@@ -89,8 +89,9 @@ export function setHeader(md, key, value, after = []) {
   const re = new RegExp(`^${key}:.*$`, 'm');
   if (re.test(md)) return md.replace(re, () => `${key}: ${value}`);
   const ls = md.split('\n');
-  const i = after.map((k) => ls.findIndex((t) => t.startsWith(`${k}:`))).find((x) => x >= 0);
-  ls.splice(i === undefined ? 1 : i + 1, 0, '', `${key}: ${value}`);
+  // Вставить после строки с первым найденным ключом из after (номер строки с 1; не найден — 0), иначе после заголовка.
+  const at = /** @type {number} */ ([...after.map((k) => ls.findIndex((t) => t.startsWith(`${k}:`)) + 1), 1].find(Boolean));
+  ls.splice(at, 0, '', `${key}: ${value}`);
   return ls.join('\n');
 }
 /** @param {string} md @param {string} key */
@@ -127,6 +128,9 @@ export function tables(ls) {
 }
 /** @param {Table} t @param {string | RegExp} m */
 export const col = (t, m) => t.header.findIndex((h) => (typeof m === 'string' ? h === m : m.test(h)));
+// Ячейка строки по номеру колонки; колонки нет (-1) или строка короче шапки — пусто.
+/** @param {import('./model.mjs').TableRow} r @param {number} i */
+export const cell = (r, i) => (i in r.cells ? r.cells[i] : '');
 
 // Совпадение, которое уже проверено test() или фильтром: тип без null.
 /** @param {string} s @param {RegExp} re */
@@ -135,6 +139,9 @@ export const matched = (s, re) => /** @type {RegExpMatchArray} */ (s.match(re));
 export const REQ_RE = /\bN?FR-\d+\b/g;
 /** @param {Text} s */
 export const reqIds = (s) => uniq([...(s || '').matchAll(REQ_RE)].map((m) => m[0]));
+// Номера slices из «Зависимости:»: «нет», «—» или пусто — зависимостей нет.
+/** @param {string} [raw] */
+export const depNums = (raw = '') => (/^(нет|—|-)?$/i.test(raw.trim()) ? [] : uniq([...raw.matchAll(/\b\d{3}\b/g)].map((m) => m[0])));
 const NUM_RE = /(?<![\p{L}\d\-])\d+(?:[.,]\d+)?(?![\p{L}\d])/gu;
 /** @param {Text} s */
 export const numbers = (s) => [...(s || '').matchAll(NUM_RE)].map((m) => m[0]);
@@ -143,12 +150,15 @@ export const quotes = (s) => [...(s || '').matchAll(/«([^«»]+)»/g)].map((m) 
 
 // Расстояние Левенштейна: опечатка в команде («aprove»), в имени сервиса («notify-servise»).
 /** @param {string} a @param {string} b */
+// Две строки таблицы: prev — расстояния от префикса a до префиксов b, cur — с ещё одной буквой a.
 export function distance(a, b) {
-  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 1; j <= b.length; j++) d[0][j] = j;
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return d[a.length][b.length];
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (const ca of a.split('')) {
+    const cur = [prev[0] + 1];
+    for (const [j, cb] of b.split('').entries()) cur.push(Math.min(prev[j + 1] + 1, cur[j] + 1, prev[j] + (ca === cb ? 0 : 1)));
+    prev = cur;
+  }
+  return prev[b.length];
 }
 
 /** @param {string} re */
@@ -164,7 +174,7 @@ export const placeholders = (text) =>
     .filter((x) => !NOT_PLACEHOLDER.test(x.slice(1)));
 
 /** @param {string} w */
-export const stem = (w) => (w.length <= 4 ? w.slice(0, 3) : w.slice(0, -1));
+export const stem = (w) => (w.length < 4 ? w : w.slice(0, -1));
 
 // Раздел ## по заголовку: строки файла, сам заголовок, следующий ## и последняя строка раздела (end — до next).
 /** @param {string} md @param {RegExp} titleRe */

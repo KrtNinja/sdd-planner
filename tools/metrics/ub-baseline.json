@@ -1,17 +1,12 @@
 {
  "crap": {
-  "functions": 477,
-  "over10": 58,
+  "functions": 478,
+  "over10": 56,
   "offenders": {
    "skills.sdd-lint.scripts.sdd-lint.cmd-menu#complete": {
     "complexity": 48,
     "coverage": 71.875,
     "crap": 99.2578
-   },
-   "skills.sdd-lint.scripts.sdd-lint.protocol#parseProtocol": {
-    "complexity": 20,
-    "coverage": 48,
-    "crap": 76.2432
    },
    "skills.sdd-lint.scripts.sdd-lint.readme#genReadme": {
     "complexity": 26,
@@ -37,11 +32,6 @@
     "complexity": 18,
     "coverage": 69.5652,
     "crap": 27.1339
-   },
-   "skills.sdd-lint.scripts.sdd-lint.plan#slugify": {
-    "complexity": 6,
-    "coverage": 16.6667,
-    "crap": 26.8333
    },
    "skills.sdd-lint.scripts.sdd-lint.input#classify": {
     "complexity": 24,
@@ -78,11 +68,6 @@
     "coverage": 88.8889,
     "crap": 21.6049
    },
-   "skills.sdd-lint.scripts.sdd-lint.slices#parseSlice": {
-    "complexity": 19,
-    "coverage": 82.1429,
-    "crap": 21.0556
-   },
    "skills.sdd-lint.scripts.sdd-lint.gate-extra#reviewStep": {
     "complexity": 19,
     "coverage": 84,
@@ -118,11 +103,6 @@
     "coverage": 85.1852,
     "crap": 17.9397
    },
-   "skills.sdd-lint.scripts.sdd-lint.data#parseData": {
-    "complexity": 15,
-    "coverage": 76.4706,
-    "crap": 17.931
-   },
    "skills.sdd-lint.scripts.sdd-lint.cmd-guard#cmdGuard": {
     "complexity": 17,
     "coverage": 100,
@@ -138,15 +118,15 @@
     "coverage": 69.2308,
     "crap": 16.1948
    },
+   "skills.sdd-lint.scripts.sdd-lint.slices#parseSlice": {
+    "complexity": 16,
+    "coverage": 91.3043,
+    "crap": 16.1683
+   },
    "skills.sdd-lint.scripts.sdd-lint.gate-extra#impact": {
     "complexity": 14,
     "coverage": 78.2609,
     "crap": 16.0136
-   },
-   "skills.sdd-lint.scripts.sdd-lint.spec#parseSpec": {
-    "complexity": 14,
-    "coverage": 81.8182,
-    "crap": 15.1781
    },
    "skills.sdd-lint.scripts.sdd-lint.guide#eligible": {
     "complexity": 15,
@@ -157,11 +137,6 @@
     "complexity": 15,
     "coverage": 100,
     "crap": 15
-   },
-   "skills.sdd-lint.scripts.sdd-lint.plan#parsePlan": {
-    "complexity": 12,
-    "coverage": 73.3333,
-    "crap": 14.7307
    },
    "skills.sdd-lint.scripts.sdd-lint.services#halvesProblem": {
     "complexity": 12,
@@ -193,6 +168,16 @@
     "coverage": 93.75,
     "crap": 14.0479
    },
+   "skills.sdd-lint.scripts.sdd-lint.data#parseData": {
+    "complexity": 14,
+    "coverage": 94.1176,
+    "crap": 14.0399
+   },
+   "skills.sdd-lint.scripts.sdd-lint.spec#parseSpec": {
+    "complexity": 14,
+    "coverage": 100,
+    "crap": 14
+   },
    "skills.sdd-lint.scripts.sdd-lint.guide#stageName": {
     "complexity": 8,
     "coverage": 55.5556,
@@ -212,6 +197,11 @@
     "complexity": 12,
     "coverage": 83.3333,
     "crap": 12.6667
+   },
+   "skills.sdd-lint.scripts.sdd-lint.plan#parsePlan": {
+    "complexity": 12,
+    "coverage": 94.4444,
+    "crap": 12.0247
    },
    "skills.sdd-lint.scripts.sdd-lint.screen#mdProblems": {
     "complexity": 12,
@@ -301,7 +291,7 @@
  },
  "mutate": {
   "namespaces": 71,
-  "survivedForms": 93,
+  "survivedForms": 71,
   "survived": [
    "skills.sdd-lint.scripts.sdd-lint.ac-rules#defn/depBasisOf: 1",
    "skills.sdd-lint.scripts.sdd-lint.ac-rules#defn/sectionWhere: 1",
@@ -326,9 +316,6 @@
    "skills.sdd-lint.scripts.sdd-lint.cut#defn/headingServices: 1",
    "skills.sdd-lint.scripts.sdd-lint.cut#defn/volumeReason: 3",
    "skills.sdd-lint.scripts.sdd-lint.cut#defn/checkCut: 1",
-   "skills.sdd-lint.scripts.sdd-lint.data#defn/parseData: 4",
-   "skills.sdd-lint.scripts.sdd-lint.data#defn/mentionsData: 2",
-   "skills.sdd-lint.scripts.sdd-lint.data#defn/unknownNames: 5",
    "skills.sdd-lint.scripts.sdd-lint.edit-marks#defn/editMarks: 1",
    "skills.sdd-lint.scripts.sdd-lint.findings#defn/noStatus: 1",
    "skills.sdd-lint.scripts.sdd-lint.findings#defn/report: 12",
@@ -339,29 +326,12 @@
    "skills.sdd-lint.scripts.sdd-lint.mcp-server#defn/lint: 1",
    "skills.sdd-lint.scripts.sdd-lint.mcp-server#defn/withCode: 1",
    "skills.sdd-lint.scripts.sdd-lint.mcp-server#defn/callTool: 3",
-   "skills.sdd-lint.scripts.sdd-lint.md#defn/pluralForm: 6",
-   "skills.sdd-lint.scripts.sdd-lint.md#defn/hasSection: 1",
-   "skills.sdd-lint.scripts.sdd-lint.md#defn/setHeader: 7",
-   "skills.sdd-lint.scripts.sdd-lint.md#defn/headerLine: 5",
-   "skills.sdd-lint.scripts.sdd-lint.md#defn/distance: 5",
-   "skills.sdd-lint.scripts.sdd-lint.md#defn/placeholders: 2",
-   "skills.sdd-lint.scripts.sdd-lint.md#defn/stem: 3",
    "skills.sdd-lint.scripts.sdd-lint.pick#defn/listFeatures: 1",
    "skills.sdd-lint.scripts.sdd-lint.pick#defn/resolveFeature: 8",
    "skills.sdd-lint.scripts.sdd-lint.pick#defn/pickChoice: 8",
    "skills.sdd-lint.scripts.sdd-lint.pick#defn/needDir: 2",
    "skills.sdd-lint.scripts.sdd-lint.plan-rules#defn/at: 1",
    "skills.sdd-lint.scripts.sdd-lint.plan-rules#defn/uniqueNames: 1",
-   "skills.sdd-lint.scripts.sdd-lint.plan#defn/slugOf: 3",
-   "skills.sdd-lint.scripts.sdd-lint.plan#defn/planSlice: 5",
-   "skills.sdd-lint.scripts.sdd-lint.plan#defn/parsePlan: 3",
-   "skills.sdd-lint.scripts.sdd-lint.plan#defn/sharedReqs: 3",
-   "skills.sdd-lint.scripts.sdd-lint.plan#defn/frFirst: 4",
-   "skills.sdd-lint.scripts.sdd-lint.plan#defn/compactIds: 8",
-   "skills.sdd-lint.scripts.sdd-lint.plan#defn/previewSlice: 1",
-   "skills.sdd-lint.scripts.sdd-lint.plan#defn/planPreview: 9",
-   "skills.sdd-lint.scripts.sdd-lint.protocol#defn/parseProtocol: 20",
-   "skills.sdd-lint.scripts.sdd-lint.protocol#defn/checkProtocol: 4",
    "skills.sdd-lint.scripts.sdd-lint.read-size#defn/visibleLength: 1",
    "skills.sdd-lint.scripts.sdd-lint.read-size#defn/readSize: 1",
    "skills.sdd-lint.scripts.sdd-lint.readme-rules#defn/rowProblems: 4",
@@ -385,7 +355,6 @@
    "skills.sdd-lint.scripts.sdd-lint.slice-rules#defn/depsExist: 1",
    "skills.sdd-lint.scripts.sdd-lint.slice-rules#defn/acLinks: 2",
    "skills.sdd-lint.scripts.sdd-lint.slice-rules#defn/checkSlices: 1",
-   "skills.sdd-lint.scripts.sdd-lint.slices#defn/parseSlice: 7",
    "skills.sdd-lint.scripts.sdd-lint.sources#defn/srcRefs: 1",
    "skills.sdd-lint.scripts.sdd-lint.sources#defn/parseSources: 1",
    "skills.sdd-lint.scripts.sdd-lint.spec-rules#defn/stopWords: 2",
@@ -393,7 +362,6 @@
    "skills.sdd-lint.scripts.sdd-lint.spec-rules#defn/boundPairs: 7",
    "skills.sdd-lint.scripts.sdd-lint.spec-rules#defn/agentNumbers: 1",
    "skills.sdd-lint.scripts.sdd-lint.spec-rules#defn/traceFindings: 3",
-   "skills.sdd-lint.scripts.sdd-lint.spec#defn/parseSpec: 5",
    "skills.sdd-lint.scripts.sdd-lint.work#defn/refsInto: 1",
    "skills.sdd-lint.scripts.sdd-lint.work#defn/moveLegacy: 2"
   ]

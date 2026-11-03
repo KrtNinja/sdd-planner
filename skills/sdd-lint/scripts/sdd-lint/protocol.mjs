@@ -1,7 +1,7 @@
 // Протокол brainstorming: разбор, проверки PR-*.
 // @ts-check
 import { collect, noStatus } from './findings.mjs';
-import { isEmptyCell, scan, inSection, header, tables, col } from './md.mjs';
+import { isEmptyCell, scan, inSection, header, tables, col, cell } from './md.mjs';
 
 /** @typedef {import('./model.mjs').Feature} Feature */
 /** @typedef {import('./model.mjs').Protocol} Protocol */
@@ -23,10 +23,10 @@ export function parseProtocol(file, md) {
     const cq = col(main, /вопрос/i);
     for (const r of main.rows) {
       rows.push({
-        id: (r.cells[ci] ?? '').trim(),
-        q: r.cells[cq] ?? '',
-        rec: cr >= 0 ? r.cells[cr] ?? '' : '',
-        dec: cd >= 0 ? r.cells[cd] ?? '' : '',
+        id: cell(r, ci).trim(),
+        q: cell(r, cq),
+        rec: cell(r, cr),
+        dec: cell(r, cd),
         n: r.n,
         raw: r.cells.join(' | '),
       });
@@ -39,17 +39,17 @@ export function parseProtocol(file, md) {
     const ci = col(postT, '#');
     const cd = col(postT, /^решени/i);
     postT.rows.forEach((r, k) => {
-      let id = ci >= 0 ? (r.cells[ci] || '').trim() : '';
+      let id = cell(r, ci).trim();
       if (/^\d+$/.test(id)) id = `П${id}`;
       if (!id) id = `П${k + 1}`;
-      post.push({ id, dec: cd >= 0 ? r.cells[cd] ?? '' : '', n: r.n, raw: r.cells.join(' | ') });
+      post.push({ id, dec: cell(r, cd), n: r.n, raw: r.cells.join(' | ') });
     });
   }
   // Находки ревью, которые человек снял: повторное ревью их не поднимает (раздел пишет sdd-lint triage).
   const droppedT = tables(inSection(sc, DROPPED_RE))[0];
   const dropped = droppedT
     ? droppedT.rows.map((r) => {
-        const c = (/** @type {RegExp} */ re) => (r.cells[col(droppedT, re)] ?? '').trim();
+        const c = (/** @type {RegExp} */ re) => cell(r, col(droppedT, re)).trim();
         return { when: c(/^Когда/i), review: c(/^Ревью/i), where: c(/^Где/i), what: c(/^Что не так/i), status: c(/^Статус/i), n: r.n };
       })
     : [];

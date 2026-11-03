@@ -1,7 +1,7 @@
 // План нарезки _work/plan.md: разбор и превью для человека в вопросе этапа. Проверки PL-* — в plan-rules.mjs.
 // @ts-check
 import { adrNums, adrTopic, reason } from './cut.mjs';
-import { rel, uniq, approved, scan, reqIds } from './md.mjs';
+import { rel, uniq, approved, scan, reqIds, depNums } from './md.mjs';
 import { layers } from './readme.mjs';
 import { parseHalves } from './services.mjs';
 
@@ -62,8 +62,6 @@ export function slugify(s) {
 /** @param {string} raw @param {string} title */
 const slugOf = (raw, title) => (raw && /^[a-z0-9][a-z0-9-]*$/i.test(raw) ? raw.toLowerCase() : slugify(raw) || slugify(title) || 'slice');
 
-/** @param {string | null} raw */
-const depsOf = (raw) => (/^(нет|—|-)?$/i.test((raw || '').trim()) ? [] : uniq([...(raw || '').matchAll(/\b\d{3}\b/g)].map((x) => x[0])));
 // Тип можно не писать: без FR и NFR в «Основание» это подготовка (контракты), иначе поведение.
 /** @param {string | undefined} t @param {Set<string>} basis @returns {PlanSlice['type']} */
 function typeOf(t, basis) {
@@ -75,14 +73,12 @@ function typeOf(t, basis) {
 function planSlice(h) {
   const basisRaw = h.head['Основание'] ?? null;
   const basis = new Set(reqIds(basisRaw));
-  const depsRaw = h.head['Зависимости'] ?? null;
   return {
     ...h,
     slug: slugOf(h.slugRaw, h.title),
     basisRaw,
     basis,
-    depsRaw,
-    deps: depsOf(depsRaw),
+    deps: depNums(h.head['Зависимости']),
     halves: h.head['Половины'] ?? null,
     result: h.head['Результат'] ?? null,
     why: h.head['Почему отдельно'] ?? null,
@@ -133,12 +129,9 @@ export function sharedReqs(p) {
 /** @param {PlanSlice} s */
 export const nfrOnly = (s) => s.basis.size > 0 && [...s.basis].every((id) => id.startsWith('NFR'));
 
-// Порядок групп ID: FR первым, остальные (NFR…) — по алфавиту.
-/** @param {string} a @param {string} b */
-function frFirst(a, b) {
-  if (a === 'FR') return -1;
-  return b === 'FR' ? 1 : a.localeCompare(b);
-}
+// Порядок групп ID: FR первым (пустая строка раньше любой), остальные (NFR…) — по алфавиту.
+/** @param {string} pre */
+const groupKey = (pre) => (pre === 'FR' ? '' : pre);
 // «FR-1, FR-2, FR-3, FR-7» → «FR-1…FR-3, FR-7»: план читают в терминале.
 /** @param {string[]} ids */
 export function compactIds(ids) {
@@ -149,11 +142,12 @@ export function compactIds(ids) {
     groups.set(pre, [...(groups.get(pre) || []), n]);
   }
   const out = [];
-  for (const [pre, ns] of [...groups].sort((a, b) => frFirst(a[0], b[0]))) {
+  for (const [pre, ns] of [...groups].sort((a, b) => groupKey(a[0]).localeCompare(groupKey(b[0])))) {
     const sorted = uniq(ns).sort((a, b) => a - b);
     for (let i = 0; i < sorted.length; ) {
       let j = i;
-      while (j + 1 < sorted.length && sorted[j + 1] === sorted[j] + 1) j += 1;
+      // За концом массива undefined: сравнение само останавливает цикл.
+      while (sorted[j + 1] === sorted[j] + 1) j += 1;
       out.push(j - i >= 2 ? `${pre}-${sorted[i]}…${pre}-${sorted[j]}` : sorted.slice(i, j + 1).map((x) => `${pre}-${x}`).join(', '));
       i = j + 1;
     }

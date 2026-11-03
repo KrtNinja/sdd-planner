@@ -66,7 +66,9 @@ export function checkTypo(ctx) {
   const { pos } = ctx.args;
   const w = pos[0];
   if (!w || /[\\/.]/.test(w) || resolveFeature(w)) return;
-  const near = COMMANDS.map((c) => [c, distance(w.toLowerCase(), c)]).filter(([c, n]) => n <= (c.length > 4 ? 2 : 1)).sort((a, b) => a[1] - b[1]);
+  const near = COMMANDS.map((c) => /** @type {[string, number]} */ ([c, distance(w.toLowerCase(), c)]))
+    .filter(([c, n]) => n <= (c.length > 4 ? 2 : 1))
+    .sort((a, b) => a[1] - b[1]);
   if (!near.length) return;
   const fixed = lintCmd(near[0][0], ...pos.slice(1));
   ctx.io.error(`Нет команды «${w}». Может, ${near[0][0]}? ${code(fixed)}`);
