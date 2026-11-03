@@ -283,10 +283,5 @@
  "dry": {
   "candidates": 0,
   "pairs": []
- },
- "mutate": {
-  "namespaces": 71,
-  "survivedForms": 0,
-  "survived": []
  }
 }
