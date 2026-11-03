@@ -41,19 +41,7 @@ export function cmdGuard(ctx) {
   let bad = 0;
   const noBase = [];
   for (const f of files) {
-    let before = null;
-    let from = null;
-    if (!flags.base && fs.existsSync(snapPath(f))) {
-      before = JSON.parse(fs.readFileSync(snapPath(f), 'utf8')).parts;
-      from = 'снимок';
-    } else {
-      const g = gitInfo(path.dirname(f));
-      const md = g ? gitShow(g, flags.base || 'HEAD', f) : null;
-      if (md != null) {
-        before = protectedParts(md);
-        from = flags.base || 'HEAD';
-      }
-    }
+    const { before, from } = guardBase(f, flags.base);
     if (!before) {
       noBase.push(f);
       continue;
@@ -67,17 +55,40 @@ export function cmdGuard(ctx) {
     for (const d of diffs) add('HG-01', f, null, `(против: ${from}) ${d}`);
   }
   report(ctx, found, { noBase: noBase.map(rel) });
-  if (!flags.json) {
-    const ok = files.length - bad - noBase.length;
-    const out = [];
-    if (bad) out.push(`Защищённые части изменены в ${bad} файл(ах) — верните их как были.`);
-    if (noBase.length)
-      out.push(
-        `Не с чем сверить ${noBase.length} файл(ов): нет снимка и версии в git — ${noBase.map((f) => code(rel(f))).join(', ')}. Снимок снимают до humanizer: ` +
-          `${lintCode('snapshot', '<файл>')}. Если humanizer уже прошёл, сверьте защищённые части глазами.`,
-      );
-    if (ok) out.push(`Защищённые части не тронуты в ${ok} файл(ах).`);
-    ctx.io.log(`\n${out.join('\n\n')}`);
-  }
+  if (!flags.json) guardSummary(ctx, { total: files.length, bad, noBase });
   ctx.io.exit(bad || noBase.length ? 1 : 0);
+}
+
+// Явный --base имеет приоритет над снимком; без него используем снимок или HEAD.
+/** @param {string} f @param {string | null} base */
+function guardBase(f, base) {
+  let before = null;
+  let from = null;
+  if (!base && fs.existsSync(snapPath(f))) {
+    before = JSON.parse(fs.readFileSync(snapPath(f), 'utf8')).parts;
+    from = 'снимок';
+  } else {
+    const g = gitInfo(path.dirname(f));
+    const md = g ? gitShow(g, base || 'HEAD', f) : null;
+    if (md != null) {
+      before = protectedParts(md);
+      from = base || 'HEAD';
+    }
+  }
+  return { before, from };
+}
+
+// Сводка различает изменённые, неизменённые файлы и отсутствие базы.
+/** @param {Ctx} ctx @param {{ total: number, bad: number, noBase: string[] }} state */
+function guardSummary(ctx, { total, bad, noBase }) {
+  const ok = total - bad - noBase.length;
+  const out = [];
+  if (bad) out.push(`Защищённые части изменены в ${bad} файл(ах) — верните их как были.`);
+  if (noBase.length)
+    out.push(
+      `Не с чем сверить ${noBase.length} файл(ов): нет снимка и версии в git — ${noBase.map((f) => code(rel(f))).join(', ')}. Снимок снимают до humanizer: ` +
+        `${lintCode('snapshot', '<файл>')}. Если humanizer уже прошёл, сверьте защищённые части глазами.`,
+    );
+  if (ok) out.push(`Защищённые части не тронуты в ${ok} файл(ах).`);
+  ctx.io.log(`\n${out.join('\n\n')}`);
 }
