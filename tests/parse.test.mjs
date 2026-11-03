@@ -194,3 +194,15 @@ test('data: пустой раздел, таблица объектов и стр
     });
   }
 });
+
+test('spec: пустой и отсутствующий документ, удалённое требование и строка трассировки', () => {
+  assert.equal(parseSpec('spec.md', undefined), null);
+  const md = '# X — Dev Spec\n## Трассировка\n```\nNFR-7 (удалён)\n```';
+  const sc = scan(md);
+  assert.deepEqual(parseSpec('spec.md', md), {
+    file: 'spec.md', md, sc, status: null,
+    reqs: new Map([['NFR-7', { id: 'NFR-7', n: 4, text: 'NFR-7 (удалён)', first: 'NFR-7 (удалён)', deleted: true, h2: 'Трассировка', block: 0 }]]),
+    dups: [], outside: [], multi: [], data: { people: [], objects: new Set(), objNames: new Set() },
+    sources: [], oldTraceT: null, oldTraceLine: 2, title: 'X',
+  });
+});
