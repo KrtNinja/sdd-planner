@@ -53,6 +53,8 @@ function collect() {
 
 function compare(now, base) {
   const bad = [];
+  if (now.crap.over10 !== 0) bad.push('crapper: функций с CRAP >= 10 должно быть 0');
+  if (now.dry.candidates !== 0) bad.push('dryer: пар >= 0.8 должно быть 0');
   for (const [key, e] of Object.entries(now.crap?.offenders ?? {})) {
     const was = base.crap?.offenders?.[key];
     if (!was) bad.push(`crapper: новая функция ${key}, CRAP ${e.crap ?? `— (CC ${e.complexity})`}`);
