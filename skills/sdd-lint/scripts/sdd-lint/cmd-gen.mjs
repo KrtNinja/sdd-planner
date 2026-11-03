@@ -31,20 +31,8 @@ export function cmdTrace(ctx) {
     ctx.io.log(`В ${rel(s.file)} старый раздел «Трассировка»: ${lintCode('fix', pos[0])}`);
     ctx.io.exit(1);
   }
-  /** @type {Map<string, string[]>} */
-  const where = new Map();
-  for (const src of s.sources) {
-    const label = sourceLabel(s, src);
-    for (const r of src.refs) where.set(r.id, [...(where.get(r.id) || []), label]);
-  }
-  const short = (/** @type {string} */ x) => (x.length > 60 ? `${x.slice(0, 57)}…` : x);
-  let lost = 0;
-  for (const r of [...p.rows, ...p.post]) {
-    const to = where.get(r.id);
-    if (!to) lost += 1;
-    ctx.io.log(`- **#${r.id}** \`${rel(p.file)}:${r.n}\` ${short(r.dec || '—')} → ${to ? codePaths(uniq(to).join('; ')) : '**НИКУДА**'}`);
-  }
-  ctx.io.exit(lost ? 1 : 0);
+  const where = sourceIndex(s);
+  traceRows(ctx, p, where);
 }
 
 // Куда ушла строка протокола: требования блока со своими строками, раздел или «?» — непонятно куда.
@@ -70,20 +58,57 @@ export function cmdNext(ctx) {
   const kind = (pos[0] || '').toLowerCase();
   if (!['fr', 'nfr', 'ac', 'slice', 'adr'].includes(kind)) pickChoice(ctx, 'next');
   const m = loadFeature(needDir(ctx, pos[1], 1));
-  const max = (/** @type {number[]} */ arr) => arr.reduce((a, b) => Math.max(a, b), 0);
   if (kind === 'fr' || kind === 'nfr') {
-    const pre = kind.toUpperCase();
-    const n = max([...(m.spec?.reqs.keys() || [])].filter((id) => id.startsWith(`${pre}-`)).map((id) => Number(id.split('-')[1])));
-    ctx.io.log(`${pre}-${n + 1}`);
+    nextRequirement(ctx, m, kind);
   } else if (kind === 'ac') {
-    const num = pos[2];
-    if (!/^\d{3}$/.test(num || '')) usage(ctx, 'next AC docs/<feature> <NNN> [B|F]');
-    const side = (pos[3] || '').toUpperCase().replace(/[^BF]/g, '');
-    const all = [...m.slices.values()].flatMap((s) => s.acs).filter((a) => a.acNum === num && a.side === side);
-    ctx.io.log(`AC-${num}-${side}${max(all.map((a) => a.k)) + 1}`);
+    nextAc(ctx, m);
   } else if (kind === 'slice') {
     ctx.io.log(String(max([...m.slices.keys()].map(Number)) + 1).padStart(3, '0'));
   } else if (kind === 'adr') {
     ctx.io.log(String(max(m.adrs.map((a) => Number(a.num))) + 1).padStart(4, '0'));
   } else usage(ctx, 'next FR | NFR | AC | slice | adr');
+}
+
+// Индекс назначения строк протокола в порядке источников spec.
+/** @param {import('./model.mjs').Spec} s */
+function sourceIndex(s) {
+  /** @type {Map<string, string[]>} */
+  const where = new Map();
+  for (const src of s.sources) {
+    const label = sourceLabel(s, src);
+    for (const r of src.refs) where.set(r.id, [...(where.get(r.id) || []), label]);
+  }
+  return where;
+}
+
+/** @param {Ctx} ctx @param {import('./model.mjs').Protocol} p @param {Map<string, string[]>} where */
+function traceRows(ctx, p, where) {
+  const short = (/** @type {string} */ x) => (x.length > 60 ? `${x.slice(0, 57)}…` : x);
+  let lost = 0;
+  for (const r of [...p.rows, ...p.post]) {
+    const to = where.get(r.id);
+    if (!to) lost += 1;
+    ctx.io.log(`- **#${r.id}** \`${rel(p.file)}:${r.n}\` ${short(r.dec || '—')} → ${to ? codePaths(uniq(to).join('; ')) : '**НИКУДА**'}`);
+  }
+  ctx.io.exit(lost ? 1 : 0);
+}
+
+/** @param {number[]} arr */
+const max = (arr) => arr.reduce((a, b) => Math.max(a, b), 0);
+
+/** @param {Ctx} ctx @param {import('./model.mjs').Feature} m @param {string} kind */
+function nextRequirement(ctx, m, kind) {
+  const pre = kind.toUpperCase();
+  const n = max([...(m.spec?.reqs.keys() || [])].filter((id) => id.startsWith(`${pre}-`)).map((id) => Number(id.split('-')[1])));
+  ctx.io.log(`${pre}-${n + 1}`);
+}
+
+/** @param {Ctx} ctx @param {import('./model.mjs').Feature} m */
+function nextAc(ctx, m) {
+  const { pos } = ctx.args;
+  const num = pos[2];
+  if (!/^\d{3}$/.test(num || '')) usage(ctx, 'next AC docs/<feature> <NNN> [B|F]');
+  const side = (pos[3] || '').toUpperCase().replace(/[^BF]/g, '');
+  const all = [...m.slices.values()].flatMap((s) => s.acs).filter((a) => a.acNum === num && a.side === side);
+  ctx.io.log(`AC-${num}-${side}${max(all.map((a) => a.k)) + 1}`);
 }
