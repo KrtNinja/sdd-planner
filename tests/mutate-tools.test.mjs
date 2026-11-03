@@ -54,6 +54,9 @@ test('mutate gate: выживший в изменённой функции ро�
   assert.equal(result.status, 1, result.stderr);
   assert.ok(result.stdout.includes(`${SOURCE}:1 0 → 1`));
   assert.deepEqual(unpack(result.stdout), { version: 2, files: { 'example.edn': snapshot() }, sources: { [SOURCE]: 'export const x = 0; // changed\n' } });
+  const untouched = run(dir, ['gate', '--from', 'parts', '--base', 'HEAD']);
+  assert.equal(untouched.status, 0, untouched.stderr);
+  assert.ok(untouched.stdout.includes('с выжившими: 0'));
   const empty = run(dir, ['gate', '--base', 'HEAD']);
   assert.equal(empty.status, 0, empty.stderr);
   assert.deepEqual(unpack(empty.stdout), { version: 2, files: {}, sources: {} });
@@ -67,7 +70,7 @@ test('mutate survivors: исторические байтовые позиции
   const edn = snapshot().replace(',16,17,', `,${offset},${offset + 1},`);
   const payload = { version: 2, files: { 'example.edn': edn }, sources: { [SOURCE]: src } };
   const bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
-  fs.writeFileSync(path.join(bin, 'gh'), '#!/bin/sh\ncat "$MUTATE_TEST_LOG"\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, 'gh'), '#!/bin/sh\nif [ "$1" = api ]; then printf %s "$MUTATE_TEST_SOURCE"; elif [ "$4" = --json ]; then printf old-sha; else cat "$MUTATE_TEST_LOG"; fi\n', { mode: 0o755 });
   const logfile = path.join(dir, 'run.log');
   fs.writeFileSync(logfile, logOf(payload).split('\n').map((l) => `job\tstep\t2026-11-03T00:00:00Z ${l}`).join('\n'));
   const temp = path.join(dir, 'temp'); fs.mkdirSync(temp);
@@ -81,6 +84,10 @@ test('mutate survivors: исторические байтовые позиции
   assert.deepEqual(fs.readdirSync(temp), []);
   assert.equal(fs.existsSync(path.join(dir, 'tools/metrics/mutate')), false);
   assert.equal(g('diff'), before);
+  fs.writeFileSync(logfile, logOf(payload.files));
+  const legacy = run(dir, ['survivors', '--run', '123'], { ...env, MUTATE_TEST_SOURCE: Buffer.from(src).toString('base64') });
+  assert.equal(legacy.status, 0, legacy.stderr);
+  assert.equal(legacy.stdout, result.stdout);
   fs.writeFileSync(logfile, 'broken log');
   assert.notEqual(run(dir, ['survivors', '--run', '123'], env).status, 0);
   assert.deepEqual(fs.readdirSync(temp), []);
