@@ -156,7 +156,7 @@ jobs:
             $all $(cat mutate-files.txt) 2>&1 | tee "mutate-out/mutator-${{ matrix.shard }}.txt"
           code=${PIPESTATUS[0]}
           set -e
-          node tools/metrics/mutate.mjs collect mutate-out
+          node tools/metrics/mutate.mjs collect mutate-out mutate-files.txt
           [ "$code" = 0 ] || [ "$code" = 3 ]
       - if: always() && steps.files.outputs.count != '0'
         uses: actions/upload-artifact@v4
