@@ -17,6 +17,11 @@ on:
 permissions:
   contents: read
 
+# Новый коммит в PR отменяет прогон прошлого: части mutator идут десятки минут и занимают раннеры.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   # Инструменты ub-mode закреплены по коммиту: гейт не должен меняться сам по себе.
   CRAPPER_SHA: 6fd92c4c9bcc56efb64a2f8743d5a2993bcfd42d
@@ -134,8 +139,12 @@ jobs:
       - if: steps.files.outputs.count != '0'
         run: npm --prefix tools run lcov
       # Код 3 — выжили мутанты: решает гейт ниже, по изменённым функциям. Код 2 (тесты падают без мутанта) и прочие — сбой.
+      # Мутант может зациклить разбор с ростом памяти: куча Node ограничена, такой мутант падает сам (убит),
+      # а не съедает память раннера (без предела раннер падал целиком: «runner has received a shutdown signal»).
       - if: steps.files.outputs.count != '0'
         name: mutator
+        env:
+          NODE_OPTIONS: --max-old-space-size=1024
         run: |
           mkdir -p .metrics mutate-out
           # PR — от снимка в репозитории; полный прогон — с нуля, все мутанты.
