@@ -183,7 +183,10 @@ export function titleOf(task, slug) {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 /** @param {Task} task */
-export const requestOf = (task) => (task.text ? `«${task.text}»` : task.file ? `файл ${task.file}` : `ссылка ${task.url}`);
+export function requestOf(task) {
+  if (task.text) return `«${task.text}»`;
+  return task.file ? `файл ${task.file}` : `ссылка ${task.url}`;
+}
 
 // Ответ человека на вопрос об источниках → записи «Источники:» или что переспросить.
 // none — источников больше нет; retry — человек дал доступ и просит изучить снова.

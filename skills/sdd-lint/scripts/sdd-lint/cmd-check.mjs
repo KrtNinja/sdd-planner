@@ -73,6 +73,15 @@ export function gateClosed(m, stage, found) {
   return closed;
 }
 
+// Аргументы после фичи: тема ADR, находка ревью для decide, режим ревью; у остальных ворот их нет.
+/** @param {Feature} m @param {string} stage @param {string[]} pos */
+function afterFeature(m, stage, pos) {
+  if (stage === 'adr') return adrTopicStep(m, pos.slice(2).join(' ').trim());
+  if (stage === 'decide' && /^(\w+:)?R\d+$/i.test(pos[2] || '')) return findingStep(m, pos[2]);
+  if (stage === 'review') return reviewStep(m, pos[2], pos[3]);
+  return null;
+}
+
 /** @param {Ctx} ctx */
 export function cmdGate(ctx) {
   const { pos } = ctx.args;
@@ -100,14 +109,7 @@ export function cmdGate(ctx) {
     ctx.io.exit(3);
   }
   // Что после фичи, разбирает скрипт: тема ADR, находка ревью, режим ревью.
-  const extra =
-    stage === 'adr'
-      ? adrTopicStep(m, pos.slice(2).join(' ').trim())
-      : stage === 'decide' && /^(\w+:)?R\d+$/i.test(pos[2] || '')
-        ? findingStep(m, pos[2])
-        : stage === 'review'
-          ? reviewStep(m, pos[2], pos[3])
-          : null;
+  const extra = afterFeature(m, stage, pos);
   // Вопрос или стоп вместо этапа — готовый вывод целиком.
   if (extra?.stop) {
     ctx.io.log(blocks(note, extra.text));

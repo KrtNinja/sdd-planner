@@ -166,6 +166,10 @@ export function startFrom(raw, slug = null, name = null) {
   return blocks(note, resume(/** @type {string} */ (r.dir), { created: true }));
 }
 
+// То, что уже в папке, как источник: «репозиторий», если там что-то есть.
+/** @param {Feature} m */
+const inventoryRepo = (m) => (inventory(m.name).empty ? [] : [REPO]);
+
 // Ответ человека про источники: пути и ссылки дописываются, «нет» и «новый проект» — особые значения.
 /** @param {string} dir @param {string} answer */
 export function addSources(dir, answer) {
@@ -193,7 +197,7 @@ export function addSources(dir, answer) {
   if (!fresh.length) writeSources(m, projectSources(cur).length ? projectSources(cur) : [NEW_PROJECT]);
   else {
     // «Да, вот …» на первый вопрос — это дополнительная документация: то, что уже в папке, изучаем тоже.
-    const base = cur.length ? projectSources(cur) : inventory(m.name).empty ? [] : [REPO];
+    const base = cur.length ? projectSources(cur) : inventoryRepo(m);
     writeSources(m, uniq([...base, ...fresh]));
   }
   return resume(dir);

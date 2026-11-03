@@ -112,6 +112,13 @@ export function linkSpec(m) {
   );
 }
 
+// Строка slice со ссылками: «Основание:» — одна ссылка на spec.md, «Проверяет:» — ссылки на строки FR.
+/** @param {string} t @param {string} file @param {Spec} spec */
+function linkLine(t, file, spec) {
+  if (/^Основание:/.test(t)) return linkBasis(t, file, spec.file);
+  return CHECKS_RE.test(t) ? linkReqs(t, file, spec) : t;
+}
+
 // slice: «[FR-n]» из строки AC → «Проверяет:» под блоком; FR в «Основание» и «Проверяет:» → ссылки на spec.
 /** @param {Slice} sl @param {Spec} spec */
 export function linkSlice(sl, spec) {
@@ -126,7 +133,7 @@ export function linkSlice(sl, spec) {
     moved.push([closingFence(ls, i + 1) + 1, `Проверяет: ${ac.oldRefs.join(', ')}`]);
   }
   for (const [at, text] of moved.sort((a, b) => b[0] - a[0])) ls.splice(at, 0, text);
-  const out = ls.map((t) => (/^Основание:/.test(t) ? linkBasis(t, sl.file, spec.file) : CHECKS_RE.test(t) ? linkReqs(t, sl.file, spec) : t)).join('\n');
+  const out = ls.map((t) => linkLine(t, sl.file, spec)).join('\n');
   if (out !== sl.md) fs.writeFileSync(sl.file, out);
   return moved.length;
 }

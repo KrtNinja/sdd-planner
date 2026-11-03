@@ -26,6 +26,13 @@ const SUB =
   'Ты сабагент: человеку вопросов не задавай. Когда done вернёт вопрос этапа, не задавай его — последним сообщением выведи ' +
   'список изменений (файл → ID → что изменилось). Без ответа человека дальше нельзя — выведи вопрос последним сообщением и остановись.';
 
+// Номер ADR для ревью: назван — он; не назван — единственный ADR фичи; иначе нет.
+/** @param {string | undefined} arg @param {string[]} nums */
+function adrNum(arg, nums) {
+  if (arg) return arg.padStart(4, '0');
+  return nums.length === 1 ? nums[0] : null;
+}
+
 // Задача сабагенту убрать AI стиль: humanizer, затем guard скриптом. target — spec.md, ADR или папка фичи (slices).
 /** @param {string} target */
 export function humanizeTask(target) {
@@ -48,6 +55,7 @@ export function skillPrompt(ctx, name, args) {
   let links = uniq([...body.matchAll(/\]\(((?:references|assets)\/[^)\s]+\.md)\)/g)].map((x) => x[1]));
   // Ревьюеру — только чеклист своего режима.
   if (name === 'sdd-review') links = links.filter((f) => !f.startsWith('references/') || f === `references/${args[1]}.md`);
+  const note = flags.note ? ['', flags.note] : [];
   const head =
     name === 'sdd-review'
       ? [
@@ -58,9 +66,7 @@ export function skillPrompt(ctx, name, args) {
           'Последним сообщением выведи таблицу находок и итог из шага 5 — его прочитает человек;',
           'свои шаги не пересказывай. Шаг 6 не выполняй: находки с человеком разберёт основное окно.',
         ]
-      : flags.sub
-        ? [`# Скилл ${name}: ${shownArgs(args)}`, '', SUB, ...(flags.note ? ['', flags.note] : [])]
-        : [`# Скилл ${name}: ${shownArgs(args)}`, '', 'Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.', ...(flags.note ? ['', flags.note] : [])];
+      : [`# Скилл ${name}: ${shownArgs(args)}`, '', flags.sub ? SUB : 'Человек выбрал этот шаг — выполняй скилл ниже здесь, в этом окне.', ...note];
   return [
     ...head,
     `Аргументы скилла: \`${shownArgs(args)}\`. Lint — инструмент MCP \`sdd_lint\`. Нет его в списке — найди поиском инструментов; вызов не удался — вопрос из «Если sdd_lint не отвечает» в правилах планирования; скрипт для вариантов 2 и 3 — \`${SELF}\`.`,
@@ -101,7 +107,7 @@ export function cmdPrompt(ctx) {
       }
       if (args[1] === 'adr') {
         const nums = m.featureAdrs.map((a) => a.num);
-        const num = args[2] ? args[2].padStart(4, '0') : nums.length === 1 ? nums[0] : null;
+        const num = adrNum(args[2], nums);
         if (!num || !nums.includes(num)) {
           const list = nums.length ? nums.map((n) => `  ${lintCmd('prompt', name, m.name, 'adr', n)}`).join('\n') : '  у фичи нет ADR';
           ctx.io.error(`${args[2] ? `ADR ${args[2]} у фичи нет` : 'Укажи номер ADR'}:\n${list}`);

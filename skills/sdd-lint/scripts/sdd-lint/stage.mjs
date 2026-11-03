@@ -32,7 +32,10 @@ export function tempArtifacts(m) {
 // Рекомендуемая команда при ревью артефакта — та же очерёдность, что в вопросе этапа (ask):
 // ревью не было — ревью; открытые блокеры — их разбор; ревью разобрано — одобрить.
 /** @param {Feature} m @param {Review | undefined} rv @param {ReviewRow[]} open @param {string} review @param {string} approve */
-const reviewTip = (m, rv, open, review, approve) => (open.length ? lintCmd('ask', rel(m.dir)) : rv ? approve : review);
+function reviewTip(m, rv, open, review, approve) {
+  if (open.length) return lintCmd('ask', rel(m.dir));
+  return rv ? approve : review;
+}
 
 /** @param {Feature} m @param {'spec' | 'slices'} what @returns {Steps} */
 function handoff(m, what) {

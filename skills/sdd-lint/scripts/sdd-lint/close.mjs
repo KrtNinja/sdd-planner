@@ -86,7 +86,10 @@ export function closeSummary(m) {
   const dirty = uncommitted(m, files);
   // Куда денутся находки: закоммиченный файл ревью останется в истории git, незакоммиченный — нет.
   /** @param {{ file: string }[]} rows */
-  const lost = (rows) => (!dirty ? 'пропадут совсем: не git-репозиторий' : rows.some((x) => dirty.includes(x.file)) ? 'пропадут совсем: файл ревью не закоммичен' : null);
+  const lost = (rows) => {
+    if (!dirty) return 'пропадут совсем: не git-репозиторий';
+    return rows.some((x) => dirty.includes(x.file)) ? 'пропадут совсем: файл ревью не закоммичен' : null;
+  };
   const reviews = [...m.reviews.values()];
   // Находки ревью, которые подходят под pick: «R2 (путь ревью)» и файл ревью.
   const rowsOf = (/** @type {(rv: import('./model.mjs').Review) => import('./model.mjs').ReviewRow[]} */ pick) =>

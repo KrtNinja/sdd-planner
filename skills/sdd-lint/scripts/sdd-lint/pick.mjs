@@ -55,7 +55,11 @@ export function pickChoice(ctx, name, n = 0) {
   const opts = Object.entries(CHOICES[name]);
   // completion запускают в терминале, у остальных после варианта идёт фича.
   const withFeature = SLOTS[name].includes('feature');
-  const line = (/** @type {string} */ k) => (name === 'completion' ? `sdd-lint completion ${k}` : withFeature ? lintCmd(name, k, ex) : lintCmd(name, k));
+  /** @param {string} k */
+  const line = (k) => {
+    if (name === 'completion') return `sdd-lint completion ${k}`;
+    return withFeature ? lintCmd(name, k, ex) : lintCmd(name, k);
+  };
   const cmdsList = opts.map(([k]) => line(k));
   const bad = pos[n] ? `Нет варианта «${pos[n]}» у ${name}` : `${name} — выбери вариант`;
   ctx.io.error(`${bad}:\n\n${opts.map(([, d], i) => `- ${code(cmdsList[i])} — ${d}`).join('\n')}`);

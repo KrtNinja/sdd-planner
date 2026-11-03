@@ -55,7 +55,9 @@ export const AC_ANY = [
   },
 ];
 // --- AC с текстом: не удалён и не заготовка (заготовку ловит SL-37) ---
-const sectionWhere = (/** @type {string} */ side) => (side === '' ? '«Общая приёмка»' : side === 'F' ? '«Frontend-половина»' : '«<Сервис>-половина»');
+/** @type {Record<string, string>} */
+const SECTION_OF_SIDE = { '': '«Общая приёмка»', F: '«Frontend-половина»' };
+const sectionWhere = (/** @type {string} */ side) => SECTION_OF_SIDE[side] ?? '«<Сервис>-половина»';
 const serviceOfH2 = (/** @type {string} */ h2) => h2.replace(/[-–—\s]*половина.*$/i, '').trim().toLowerCase();
 
 // SL-14: первая строка после имени — WHEN, где-то есть THEN.
