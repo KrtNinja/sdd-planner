@@ -185,3 +185,12 @@ test('slices: parseSlice — ссылки из [ … ] и «Проверяет:�
   assert.equal(bare.basisRaw, '');
   assert.deepEqual(bare.deps, ['002', '001']);
 });
+
+test('data: пустой раздел, таблица объектов и строка без имени сохраняют полную модель', () => {
+  for (const md of ['', '## Данные для примеров\n| Объект | Описание |\n|---|---|\n| ITEM-2 | «Чай» |\n- без имени']) {
+    const hasObjects = md !== '';
+    assert.deepEqual(parseData(scan(md)), {
+      people: [], objects: new Set(hasObjects ? ['ITEM-2'] : []), objNames: new Set(hasObjects ? ['Чай'] : []),
+    });
+  }
+});
