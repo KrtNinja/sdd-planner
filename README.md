@@ -400,7 +400,7 @@ skills/
    ```
    Дальше `sdd-lint ⇥` показывает фичи и команды, `sdd-lint guard docs/⇥` спускается по папкам.
 
-Нужен Node 18+ для `sdd-lint`.
+Нужен Node 22.5+ для `sdd-lint`.
 
 ### Если sdd-lint не отвечает
 
@@ -414,7 +414,7 @@ skills/
 3. **«Покажи команду — запущу сам»** — агент покажет команду, вы запускаете её в терминале
    из корня репозитория с доками и присылаете вывод.
 
-Выбор 2 или 3 действует до конца сессии. Частые причины: нет Node 18+ в PATH у GigaCode,
+Выбор 2 или 3 действует до конца сессии. Частые причины: нет Node 22.5+ в PATH у GigaCode,
 расширение подключено не из той папки (`gigacode extensions list`).
 
 Расширение раньше называлось `sdd-workflow`. Если оно уже стоит: `gigacode extensions uninstall sdd-workflow`,
@@ -429,7 +429,7 @@ GitLab, если нужен: скопируйте `skills/sdd-lint/scripts/sdd-l
 в `scripts/` репозитория с доками (точка входа импортирует модули из соседней папки) и
 ```yaml
 sdd-lint:
-  image: node:20-alpine
+  image: node:22-alpine
   rules:
     - changes: [docs/**/*]
   script:
