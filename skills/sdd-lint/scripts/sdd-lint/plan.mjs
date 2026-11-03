@@ -169,12 +169,15 @@ function previewSlice(m, s) {
   const svc = parseHalves(s.halves).services;
   out.push(`  - Половины: ${svc.length ? svc.join(' + ') : s.halves || '—'}`);
   if (s.result) out.push(`  - Результат: ${s.result}`);
-  if (reason(s.why)) {
-    const adrs = adrNums(s.why).map((num) => m.adrs.find((a) => a.num === num)).filter((a) => a !== undefined);
-    const note = adrs.map((a) => `ADR-${a.num} «${a.status || '—'}»`).join(', ');
-    out.push(`  - Почему отдельно: ${/** @type {string} */ (s.why).replace(/^(\**\s*)P/u, '$1Р')}${note ? ` (${note})` : ''}`);
-  }
+  if (reason(s.why)) out.push(whyLine(m, /** @type {string} */ (s.why)));
   return out;
+}
+// «Почему отдельно» в превью: причина с кириллической Р и статусы ADR, на которые она ссылается.
+/** @param {Feature} m @param {string} why */
+function whyLine(m, why) {
+  const adrs = adrNums(why).map((num) => m.adrs.find((a) => a.num === num)).filter((a) => a !== undefined);
+  const note = adrs.map((a) => `ADR-${a.num} «${a.status || '—'}»`).join(', ');
+  return `  - Почему отдельно: ${why.replace(/^(\**\s*)P/u, '$1Р')}${note ? ` (${note})` : ''}`;
 }
 
 // План для человека: вложенный список, а не широкая таблица — терминал её переносит,

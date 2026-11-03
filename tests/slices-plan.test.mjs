@@ -123,6 +123,15 @@ test('gate slices: путь фичи из любого вида аргумент
   assert.match(r.out, /ADR фичи:\n- `docs\/adr\/0001-mention-notifications\.md` «предложено»/);
   assert.match(r.out, / · плана нет — начни с него: docs\/comments\/_work\/plan\.md · /);
 });
+test('gate slices: ADR без названия и без статуса — в брифе «без названия» и «—»', () => {
+  const cwd = planWorkspace(null);
+  const adr = 'adr/0001-mention-notifications.md';
+  edit(cwd, adr, /^# ADR-0001:.*$/m.exec(read(cwd, adr))[0], '# ADR-0001');
+  edit(cwd, adr, 'Статус: предложено\n', '');
+  const r = run(cwd, 'gate', 'slices', 'docs/comments');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /ADR фичи:\n- `docs\/adr\/0001-mention-notifications\.md` «—» — без названия/);
+});
 test('plan: чистый план — без ошибок, латинская P в причине не ошибка', () => {
   const r = run(planWorkspace(), 'plan', 'docs/comments');
   assert.equal(r.code, 0, r.out);
