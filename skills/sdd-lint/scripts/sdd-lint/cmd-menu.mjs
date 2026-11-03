@@ -25,12 +25,7 @@ export function cmdMenu(ctx) {
   else if (!known.length) out.push(`В ${DOCS}/ пока нет фич. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.`);
   else {
     out.push(`Фичи в ${code(`${DOCS}/`)}:`, '');
-    for (const f of known) {
-      const st = stageOf(loadFeature(path.join(DOCS, f)));
-      // Тот же шаг, что в строке Tip: рекомендованный, а не первый по списку.
-      const step = st.next.find((x) => st.tip && x.includes(st.tip)) || st.next.find((x) => !x.startsWith('по желанию')) || st.next[0];
-      out.push(`- **${f}** — ${st.now}${step ? ` → ${step}` : ''}`);
-    }
+    out.push(...known.map(featureMenuLine));
     // Фича одна — её шаг уходит в подсказку строки ввода; при нескольких выбор за человеком.
     if (known.length === 1) tip = tipLine(stageOf(loadFeature(path.join(DOCS, known[0]))).tip);
   }
@@ -82,69 +77,22 @@ const gitRefs = () => git(['for-each-ref', '--format=%(refname:short)', 'refs/he
 export function complete(words) {
   const cur = words.length ? words[words.length - 1] : '';
   const prev = words.slice(0, -1);
-  /** @type {string[]} */
-  const out = [];
-  const emit = (/** @type {string} */ v, d = '') => {
-    if (v.startsWith(cur) && !out.some((x) => x.split('\t')[0] === v)) out.push(d ? `${v}\t${d}` : v);
-  };
-  const paths = (/** @type {boolean} */ dirsOnly) => {
-    const dirPart = cur.includes('/') ? cur.slice(0, cur.lastIndexOf('/') + 1) : '';
-    const base = cur.slice(dirPart.length);
-    if (!isDir(dirPart || '.')) return;
-    for (const e of fs.readdirSync(dirPart || '.').sort()) {
-      if (e.startsWith('.') && !base.startsWith('.')) continue;
-      if (isDir(path.join(dirPart || '.', e))) emit(`${dirPart}${e}/`);
-      else if (!dirsOnly && e.endsWith('.md')) emit(`${dirPart}${e}`);
-    }
-  };
-  const features = (/** @type {boolean} */ dirsOnly) => {
-    if (cur.includes('/') || cur.startsWith('.')) return paths(dirsOnly);
-    for (const f of listFeatures()) {
-      let st = '';
-      try {
-        st = stageOf(loadFeature(path.join(DOCS, f))).now;
-      } catch {}
-      emit(f, st);
-    }
-    if (isDir(DOCS)) emit(`${DOCS}/`);
-  };
+  const { out, emit } = completions(cur);
   if (prev[prev.length - 1] === '--base') {
-    let refs = ['HEAD'];
-    try {
-      refs = [...refs, ...gitRefs()];
-    } catch {}
-    refs.forEach((r) => emit(r));
+    completeRefs(emit);
     return out;
   }
-  const args = prev.filter((a, i) => !a.startsWith('-') && prev[i - 1] !== '--base').map((a) => a.replace(/^@/, ''));
-  const c = COMMANDS.includes(args[0]) ? /** @type {string} */ (args.shift()) : 'check';
+  const { args, c } = completionArgs(prev);
   if (cur.startsWith('-')) {
     (FLAGS[c] || []).forEach((f) => emit(f));
     return out;
   }
   if (c === 'check' && !args.length) {
-    features(true);
+    completeFeatures(cur, true, emit);
     for (const k of COMMANDS.filter((k) => k !== 'check')) emit(k, CMD_INFO[k]);
     return out;
   }
-  const slot = (SLOTS[c] || [])[args.length];
-  // Фича — второе слово: «approve adr <фича>», «next AC <фича>»; найдена — строка.
-  const feature = () => /** @type {string} */ (resolveFeature(args[1]));
-  if (slot === 'choice') Object.entries(CHOICES[c]).forEach(([k, d]) => emit(k, d));
-  else if (slot === 'command') COMMANDS.forEach((k) => emit(k, CMD_INFO[k]));
-  else if (slot === 'feature') features(true);
-  else if (slot === 'target') features(false);
-  else if (slot === 'adr' && args[0] === 'adr' && feature())
-    loadFeature(feature()).featureAdrs.forEach((a) => emit(a.num, a.status || ''));
-  else if (slot === 'slice' && /^ac$/i.test(args[0]) && feature())
-    [...loadFeature(feature()).slices].forEach(([num, s]) => emit(num, s.title || ''));
-  else if (slot === 'option' && resolveFeature(args[0]))
-    askOf(loadFeature(/** @type {string} */ (resolveFeature(args[0])))).questions.forEach((q) => q.options.forEach((o) => emit(o.id, o.label)));
-  else if (slot === 'skill') promptSkills().forEach((k) => emit(k));
-  else if (slot === 'side' && /^ac$/i.test(args[0])) {
-    emit('B', 'AC сервисной половины');
-    emit('F', 'AC frontend-половины');
-  }
+  completeSlot(c, args, { cur, emit });
   return out;
 }
 
@@ -182,4 +130,98 @@ _sdd_lint() {
 compdef _sdd_lint sdd-lint sdd-lint.mjs`);
   }
   ctx.io.exit(0);
+}
+
+/** @param {string} f */
+function featureMenuLine(f) {
+  const st = stageOf(loadFeature(path.join(DOCS, f)));
+  // Тот же шаг, что в строке Tip: рекомендованный, а не первый по списку.
+  const step = st.next.find((x) => st.tip && x.includes(st.tip)) || st.next.find((x) => !x.startsWith('по желанию')) || st.next[0];
+  return `- **${f}** — ${st.now}${step ? ` → ${step}` : ''}`;
+}
+
+/** @typedef {(value: string, description?: string) => void} Emit */
+/** @param {string} cur @param {boolean} dirsOnly @param {Emit} emit */
+function completePaths(cur, dirsOnly, emit) {
+  const dirPart = cur.includes('/') ? cur.slice(0, cur.lastIndexOf('/') + 1) : '';
+  const base = cur.slice(dirPart.length);
+  const dir = dirPart || '.';
+  if (!isDir(dir)) return;
+  const entries = fs.readdirSync(dir).sort().filter((e) => base.startsWith('.') || !e.startsWith('.'));
+  for (const e of entries) {
+    if (isDir(path.join(dir, e))) emit(`${dirPart}${e}/`);
+    else if (!dirsOnly && e.endsWith('.md')) emit(`${dirPart}${e}`);
+  }
+}
+
+/** @param {string} cur @param {boolean} dirsOnly @param {Emit} emit */
+function completeFeatures(cur, dirsOnly, emit) {
+  if (cur.includes('/') || cur.startsWith('.')) return completePaths(cur, dirsOnly, emit);
+  for (const f of listFeatures()) {
+    let st = '';
+    try {
+      st = stageOf(loadFeature(path.join(DOCS, f))).now;
+    } catch {}
+    emit(f, st);
+  }
+  if (isDir(DOCS)) emit(`${DOCS}/`);
+}
+
+/** @param {string} c @param {string[]} args @param {{cur: string, emit: Emit}} state */
+function completeSlot(c, args, { cur, emit }) {
+  const slot = (SLOTS[c] || [])[args.length];
+  if (slot === 'choice') Object.entries(CHOICES[c]).forEach(([k, d]) => emit(k, d));
+  else if (slot === 'command') COMMANDS.forEach((k) => emit(k, CMD_INFO[k]));
+  else if (slot === 'feature') completeFeatures(cur, true, emit);
+  else if (slot === 'target') completeFeatures(cur, false, emit);
+  else if (slot === 'skill') promptSkills().forEach((k) => emit(k));
+  else contextualOptions(slot, args, emit);
+}
+
+/** @param {string | undefined} slot @param {string[]} args @param {Emit} emit */
+function contextualOptions(slot, args, emit) {
+  if (slot === 'adr' || slot === 'slice') artifactOptions(slot, args, emit);
+  else if (slot === 'option' && resolveFeature(args[0]))
+    askOf(loadFeature(/** @type {string} */ (resolveFeature(args[0])))).questions.forEach((q) => q.options.forEach((o) => emit(o.id, o.label)));
+  else if (slot === 'side' && /^ac$/i.test(args[0])) {
+    emit('B', 'AC сервисной половины');
+    emit('F', 'AC frontend-половины');
+  }
+}
+
+/** @param {string} slot @param {string[]} args @param {Emit} emit */
+function artifactOptions(slot, args, emit) {
+  const allowed = slot === 'adr' ? args[0] === 'adr' : /^ac$/i.test(args[0]);
+  if (!allowed) return;
+  const dir = resolveFeature(args[1]);
+  if (!dir) return;
+  const m = loadFeature(dir);
+  if (slot === 'adr') m.featureAdrs.forEach((a) => emit(a.num, a.status || ''));
+  else [...m.slices].forEach(([num, sl]) => emit(num, sl.title || ''));
+}
+
+/** @param {Emit} emit */
+function completeRefs(emit) {
+  let refs = ['HEAD'];
+  try {
+    refs = [...refs, ...gitRefs()];
+  } catch {}
+  refs.forEach((r) => emit(r));
+}
+
+/** @param {string} cur */
+function completions(cur) {
+  /** @type {string[]} */
+  const out = [];
+  const emit = (/** @type {string} */ v, d = '') => {
+    if (v.startsWith(cur) && !out.some((x) => x.split('\t')[0] === v)) out.push(d ? `${v}\t${d}` : v);
+  };
+  return { out, emit };
+}
+
+/** @param {string[]} prev */
+function completionArgs(prev) {
+  const args = prev.filter((a, i) => !a.startsWith('-') && prev[i - 1] !== '--base').map((a) => a.replace(/^@/, ''));
+  const c = COMMANDS.includes(args[0]) ? /** @type {string} */ (args.shift()) : 'check';
+  return { args, c };
 }
