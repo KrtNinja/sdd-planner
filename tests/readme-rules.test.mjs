@@ -121,3 +121,16 @@ test('gen readme: пустые поля slice получают явные заг
   ]);
   assert.ok(generated.includes('## Покрытие Dev Spec\n| Требование | Slice |\n|---|---|\n'));
 });
+
+test('gen readme: отсутствующая таблица вставляется перед первым H2 или в конец', () => {
+  const rows = table(['Slice', 'Тип', 'Стороны', 'Основание', 'Зависит от', 'Почему отдельно'],
+    ['[001 Срез 001](001-a.md)', 'поведение', 'tasks-core + frontend, принимаются вместе', 'FR-1', '—', '—']).join('\n');
+  for (const [old, prefix] of [
+    ['# Existing\n\n## Notes\nkeep\n', `# Existing\n\n${rows}\n\n## Notes\nkeep`],
+    ['# Existing\nkeep\n', `# Existing\nkeep\n\n${rows}`],
+  ]) {
+    const m = feature({ 'slices/001-a.md': slice('001'), 'slices/README.md': old });
+    assert.equal(genOf(m), `${prefix}\n\n## Покрытие Dev Spec\n| Требование | Slice |\n|---|---|\n| FR-1 | 001 |\n\n` +
+      '## Порядок работ\n001\n\nЧерез запятую — slices, которые можно делать параллельно.\n');
+  }
+});
