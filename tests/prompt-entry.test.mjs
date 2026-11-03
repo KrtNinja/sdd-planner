@@ -47,3 +47,10 @@ test('cmdPrompt: пустая фича сохраняет имя скилла в
     assert.deepEqual(ctx.io.chunks, [[2, 'Укажи фичу. Фичи в `docs/`:\n\n- `node scripts/sdd-lint.mjs prompt sdd-review search`\n']]);
   });
 });
+
+test('cmdPrompt: humanize без цели не запускает задание', () => {
+  const ctx = context('humanize');
+  assert.throws(() => cmdPrompt(ctx), (e) => e instanceof Exit && e.code === 2);
+  assert.deepEqual(ctx.io.chunks, [[2,
+    'Нет скилла «humanize». Скиллы: sdd-adr, sdd-close, sdd-decide, sdd-grill, sdd-review, sdd-slices, sdd-spec\n']]);
+});
