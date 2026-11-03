@@ -14,6 +14,7 @@ import { deps } from './deps.mjs';
 import { clones } from './clones.mjs';
 import { crap, coverageMasks } from './crap.mjs';
 import { runTsc } from './tsc.mjs';
+import { requiredQuality } from './quality.mjs';
 
 const TOOLS = path.join(REPO, 'tools');
 const OUT = path.join(TOOLS, 'metrics/.out');
@@ -124,7 +125,7 @@ function summary(r) {
 }
 
 function compare(now, base) {
-  const bad = [];
+  const bad = requiredQuality(now, { checkTests: opt.coverage });
   const better = [];
   const notWorse = (name, cur, was) => {
     if (cur > was) bad.push(`${name}: ${was} → ${cur}`);
