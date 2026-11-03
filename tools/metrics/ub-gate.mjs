@@ -1,5 +1,5 @@
 // Гейт по отчётам инструментов ub-mode (unclebob/crapper, dryer, mutator) — их запускает CI.
-// Читает .metrics/crap.edn, .metrics/dry.edn и .metrics/mutate/*.edn, сравнивает с metrics/ub-baseline.json.
+// Читает .metrics/crap.edn, .metrics/dry.edn и снимок mutator tools/metrics/mutate/*.edn, сравнивает с metrics/ub-baseline.json.
 //
 //   node metrics/ub-gate.mjs             — сводка и код 1, если хуже базовой линии (нет её — только сводка)
 //   node metrics/ub-gate.mjs --baseline  — записать базовую линию (коммитит человек)
@@ -8,50 +8,22 @@
 // Пока код до них не дорос, гейт держит «не хуже»: новых нарушителей нет, старые не ухудшились.
 import fs from 'node:fs';
 import path from 'node:path';
+import { readEdn } from './edn.mjs';
 import { REPO, rel } from './lib.mjs';
 
 const METRICS = path.join(REPO, '.metrics');
 const BASELINE = path.join(REPO, 'tools/metrics/ub-baseline.json');
+const MUTATE = path.join(REPO, 'tools/metrics/mutate');
 const CRAP_MAX = 10;
 const DRY_MIN = 0.8;
-
-// Подмножество EDN, которое пишут crapper/dryer/mutator: карты, векторы, строки, ключевые слова, числа, nil.
-export function readEdn(text) {
-  let i = 0;
-  const ws = () => { while (i < text.length && /[\s,]/.test(text[i])) i++; };
-  const value = () => {
-    ws();
-    const c = text[i];
-    if (c === '{' || c === '[') return coll(c === '{' ? '}' : ']', c === '{');
-    if (c === '"') { const m = text.slice(i).match(/^"((?:[^"\\]|\\.)*)"/); i += m[0].length; return JSON.parse(m[0]); }
-    const m = text.slice(i).match(/^[^\s,{}[\]]+/);
-    i += m[0].length;
-    const atom = m[0];
-    if (atom === 'nil') return null;
-    if (atom === 'true' || atom === 'false') return atom === 'true';
-    if (atom.startsWith(':')) return atom.slice(1);
-    return Number.isNaN(Number(atom)) ? atom : Number(atom);
-  };
-  const coll = (close, isMap) => {
-    i++;
-    const items = [];
-    for (ws(); text[i] !== close; ws()) items.push(value());
-    i++;
-    if (!isMap) return items;
-    const o = {};
-    for (let k = 0; k < items.length; k += 2) o[items[k]] = items[k + 1];
-    return o;
-  };
-  return value();
-}
 
 const readIf = (file) => (fs.existsSync(file) ? readEdn(fs.readFileSync(file, 'utf8')) : null);
 
 function collect() {
   const crap = readIf(path.join(METRICS, 'crap.edn'));
   const dry = readIf(path.join(METRICS, 'dry.edn'));
-  const mutDir = path.join(METRICS, 'mutate');
-  const mut = fs.existsSync(mutDir) ? fs.readdirSync(mutDir).filter((f) => f.endsWith('.edn')).map((f) => readIf(path.join(mutDir, f))) : [];
+  // Снимок mutator — в репозитории (tools/metrics/mutate/, его обновляет полный прогон или PR, см. mutate.mjs).
+  const mut = fs.existsSync(MUTATE) ? fs.readdirSync(MUTATE).filter((f) => f.endsWith('.edn')).map((f) => readIf(path.join(MUTATE, f))) : [];
   const offenders = {};
   for (const e of crap?.entries ?? []) if ((e.crap ?? e.complexity) >= CRAP_MAX) offenders[`${e.namespace}#${e.name}`] = { complexity: e.complexity, coverage: e.coverage, crap: e.crap };
   // CI кладёт для dryer копию кода в dry-src/ с .ts вместо .mjs — возвращаем исходные пути.
@@ -82,7 +54,7 @@ console.log(`crapper: ${now.crap ? `${now.crap.functions} функций, CRAP �
 for (const [k, e] of Object.entries(now.crap?.offenders ?? {}).sort((a, b) => (b[1].crap ?? 0) - (a[1].crap ?? 0)).slice(0, 15)) console.log(`  ${e.crap}\tCC ${e.complexity}\tcov ${e.coverage}%\t${k}`);
 console.log(`dryer: ${now.dry ? `пар со сходством ≥ ${DRY_MIN}: ${now.dry.candidates}` : 'нет .metrics/dry.edn'}`);
 for (const p of now.dry?.pairs.slice(0, 15) ?? []) console.log(`  ${p.score}\t${p.left}  ↔  ${p.right}`);
-console.log(`mutator: ${now.mutate ? `функций с выжившими: ${now.mutate.survivedForms}` : 'не запускался'}`);
+console.log(`mutator: ${now.mutate ? `функций с выжившими: ${now.mutate.survivedForms}` : 'снимка нет'}`);
 
 if (process.argv.includes('--baseline')) {
   fs.writeFileSync(BASELINE, `${JSON.stringify(now, null, 1)}\n`);
@@ -97,7 +69,8 @@ if (process.argv.includes('--baseline')) {
     printBaseline('Если ухудшение ожидаемо и решено принять — новая базовая линия');
   } else console.log('\nГейт пройден: не хуже базовой линии.');
   const count = (x) => [x.crap?.over10, x.dry?.candidates, x.mutate?.survivedForms].map((n) => n ?? 0);
-  if (!bad.length && count(now).some((n, i) => n < count(base)[i])) printBaseline('Стало лучше базовой линии — её можно обновить');
+  if (!bad.length && now.mutate && !base.mutate) printBaseline('Появился снимок mutator — базовую линию нужно обновить');
+  else if (!bad.length && count(now).some((n, i) => n < count(base)[i])) printBaseline('Стало лучше базовой линии — её можно обновить');
 } else printBaseline(`Базовой линии нет (${rel(BASELINE)}) — только сводка`);
 
 // Отчёты лежат и в артефакте ub-metrics, но базовую линию удобнее взять прямо из лога CI.

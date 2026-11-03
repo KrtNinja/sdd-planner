@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       mutate:
-        description: 'Путь для mutator (пусто — без мутационного тестирования)'
-        required: false
-        default: ''
+        description: 'mutator по всему коду заново (--mutate-all, около получаса): снимок для tools/metrics/mutate/'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -95,17 +95,35 @@ jobs:
             dryer.txt
             mutator-scan.txt
 
+  # Мутационное тестирование. В PR — только файлы, изменённые относительно базы, от снимка tools/metrics/mutate/:
+  # mutator гоняет мутанты в функциях, чей текст изменился, и выживших прошлого прогона. Вручную (mutate: true) —
+  # весь код заново. Прогон делится на части поровну по размеру файлов, каждая часть — своя джоба.
   mutate:
-    if: github.event_name == 'workflow_dispatch' && inputs.mutate != ''
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mutate)
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: { shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }
+    env:
+      SHARDS: 12
+      BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || '' }}
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - uses: actions/setup-python@v5
+      - name: Файлы этой части
+        id: files
+        run: |
+          node tools/metrics/mutate.mjs files --shard "${{ matrix.shard }}/$SHARDS" ${BASE:+--base "$BASE"} | tee mutate-files.txt
+          echo "count=$(wc -l < mutate-files.txt)" >> "$GITHUB_OUTPUT"
+      - if: steps.files.outputs.count != '0'
+        uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - run: |
+      - if: steps.files.outputs.count != '0'
+        name: crapper и mutator
+        run: |
           mkdir -p "$RUNNER_TEMP/ub"
           for t in crapper:$CRAPPER_SHA mutator:$MUTATOR_SHA; do
             name=${t%%:*}; sha=${t##*:}
@@ -113,14 +131,56 @@ jobs:
             git -C "$RUNNER_TEMP/ub/$name" checkout --quiet "$sha"
           done
           pip install --quiet "$RUNNER_TEMP/ub/crapper" "$RUNNER_TEMP/ub/mutator"
-      - run: npm install --prefix tools --no-audit --no-fund && npm --prefix tools run lcov
-      - name: mutator
-        run: mutator --use-existing-coverage --test-command "node --test tests/" "${{ inputs.mutate }}" | tee mutator.txt
+      - if: steps.files.outputs.count != '0'
+        run: npm --prefix tools run lcov
+      # Код 3 — выжили мутанты: решает гейт ниже, по изменённым функциям. Код 2 (тесты падают без мутанта) и прочие — сбой.
+      - if: steps.files.outputs.count != '0'
+        name: mutator
+        run: |
+          mkdir -p .metrics mutate-out
+          # PR — от снимка в репозитории; полный прогон — с нуля, все мутанты.
+          all=--mutate-all
+          if [ -n "$BASE" ]; then all=; fi
+          if [ -n "$BASE" ] && [ -d tools/metrics/mutate ]; then cp -r tools/metrics/mutate .metrics/mutate; fi
+          set +e
+          mutator --use-existing-coverage --max-workers 2 --test-command "node --test tests/*.test.mjs" \
+            $all $(cat mutate-files.txt) 2>&1 | tee "mutate-out/mutator-${{ matrix.shard }}.txt"
+          code=${PIPESTATUS[0]}
+          set -e
+          node tools/metrics/mutate.mjs collect mutate-out
+          [ "$code" = 0 ] || [ "$code" = 3 ]
+      - if: always() && steps.files.outputs.count != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutate-${{ matrix.shard }}
+          include-hidden-files: true
+          path: mutate-out/
+
+  # Части прогона → один снимок. В PR — гейт «в изменённых функциях выживших нет». Снимок печатается в лог:
+  # npm --prefix tools run mutate:pull -- <run-id> кладёт его в tools/metrics/mutate/, коммит — отдельный.
+  mutate-gate:
+    needs: mutate
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mutate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with: { pattern: 'mutate-*', merge-multiple: true, path: mutate-out }
+      - name: Гейт mutator
+        run: |
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            node tools/metrics/mutate.mjs gate --from mutate-out --base "origin/${{ github.base_ref }}"
+          else
+            node tools/metrics/mutate.mjs gate --from mutate-out --fresh
+          fi
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mutate
+          name: mutate-snapshot
           include-hidden-files: true
           path: |
             .metrics/mutate/
-            mutator.txt
+            mutate-out/*.txt

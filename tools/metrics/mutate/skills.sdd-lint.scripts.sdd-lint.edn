@@ -1,0 +1,1 @@
+{:version 1 :tested-at "2026-11-03T06:35:59+00:00" :source "skills/sdd-lint/scripts/sdd-lint.mjs" :namespace "skills.sdd-lint.scripts.sdd-lint" :outcomes {} :forms [{:id "defn/write" :kind "defn" :file "skills/sdd-lint/scripts/sdd-lint.mjs" :line 15 :end-line 15 :hash "f7ea08f42995f913a57a98dc9a2b610c0b9014fd34c32c09b7618832b2732301" :killed 0 :survived 0 :uncovered 1 :sites 1}]}
