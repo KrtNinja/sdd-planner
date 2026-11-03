@@ -6,5 +6,11 @@ export function requiredQuality(now, { checkTests = true } = {}) {
     bad.push('тесты: нужны все прошедшие тесты, не меньше 359');
   }
   if (now.unusedExports !== 0) bad.push('экспортов без потребителей должно быть 0');
+  for (const key of ['crapAtLeast10', 'complexityAtLeast10']) {
+    if (now[key] !== 0) bad.push(`${key}: должно быть 0`);
+  }
+  for (const rule of ['complexity', 'max-len', 'no-nested-ternary']) {
+    if (!now.eslint || (now.eslint[rule] ?? 0) !== 0) bad.push(`eslint ${rule}: должно быть 0`);
+  }
   return bad;
 }
