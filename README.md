@@ -351,7 +351,7 @@ gigacode-extension.json    — манифест расширения GigaCode CL
 rules/AGENTS.planning.md   — правила этапов и артефактов; расширение подключает их как контекст
 tests/                     — тесты sdd-lint на эталонной фиче и её порче, проверка манифеста
 tools/                     — замеры и гейт качества кода sdd-lint, свой package.json; нужен только
-                             тому, кто правит инструмент (план — REFACTORING.md)
+                             тому, кто правит инструмент (проверки — tools/README.md)
 skills/
   sdd-lint/     — assets/: шаблон контекста и задания сабагенту (их отдаёт research на любом этапе);
                   scripts/sdd-lint.mjs: проверки, ворота, генерация README и номеров, diff по git,
