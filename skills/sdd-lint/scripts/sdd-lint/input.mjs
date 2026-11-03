@@ -17,7 +17,7 @@ import { DOCS, isDir, listFeatures, resolveFeature } from './pick.mjs';
 
 // Имя папки фичи: латиница, цифры, дефис — его набирают в командах и видят в путях. Регистр — как дал
 // человек (PROJECT-4567 — ключ тикета); имена, которые отличаются только регистром, — одна папка (caseTwin).
-export const SLUG_RE = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
+const SLUG_RE = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
 export const SLUG_MAX = 40;
 // Ключ тикета: PROJECT-4567, ABC-12.
 const TICKET_RE = /^[A-Z][A-Z0-9]*-\d+$/;
@@ -33,9 +33,9 @@ const DOC_EXT = /\.(md|markdown|txt|adoc|rst|docx?|pdf|html?|ya?ml|json)$/i;
 /** @param {string} p */
 const expand = (p) => p.replace(/^~(?=$|[\\/])/, os.homedir());
 /** @param {string} p */
-export const exists = (p) => fs.existsSync(expand(p));
+const exists = (p) => fs.existsSync(expand(p));
 /** @param {string} p */
-export const isFile = (p) => exists(p) && fs.statSync(expand(p)).isFile();
+const isFile = (p) => exists(p) && fs.statSync(expand(p)).isFile();
 // Путь вне папки, из которой запущен агент: GigaCode может не дать его читать без /directory add.
 /** @param {string} p */
 export const outside = (p) => !/^https?:/.test(p) && p !== REPO && path.relative(process.cwd(), path.resolve(expand(p))).startsWith('..');
@@ -56,7 +56,7 @@ function trimFiller(s) {
 
 // Свободный текст → ссылки, найденные пути, похожие на путь, но не найденные, остальные слова.
 /** @param {string | null | undefined} raw */
-export function splitInput(raw) {
+function splitInput(raw) {
   const urls = [...(raw || '').matchAll(URL_RE)].map((m) => m[0].replace(/[.,;:!?)\]]+$/, ''));
   /** @type {string[]} */
   const paths = [];

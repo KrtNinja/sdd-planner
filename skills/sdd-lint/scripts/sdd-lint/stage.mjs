@@ -57,7 +57,7 @@ function handoff(m, what) {
 }
 // open — открытые блокеры этого ревью: раз они есть, есть и файл ревью.
 /** @param {Feature} m @param {Review} rv @param {ReviewRow[]} open */
-export function blockersStep(m, rv, open) {
+function blockersStep(m, rv, open) {
   const ids = open.map((r) => r.id);
   return `закрыть блокеры ревью ${ids.join(', ')} (${code(rel(rv.file))}): по одному — вопрос этапа (${code(lintCmd('ask', rel(m.dir)))}); ` +
     `решение — ${code(skill('sdd-decide', m.name, ids[0], '"<решение>"'))}, правка — исправьте файл и впишите «исправлено» в колонку «Решение»`;

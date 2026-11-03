@@ -40,7 +40,7 @@ const short = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 // на каждую находку. Сабагентов нет — тот же скилл здесь. next — вызов после него (нет — вопрос этапа).
 // Что сабагенту делать иначе, чем человеку в окне, — флаг --sub у prompt; note — уточнение задачи (--note).
 /** @param {Feature} m @param {string} ref @param {string} decision @param {string[]} [next] @returns {Action} */
-export function decideAction(m, ref, decision, next, note = '') {
+function decideAction(m, ref, decision, next, note = '') {
   const args = ['prompt', 'sdd-decide', m.name, ref, decision];
   const say = `Провожу решение по ${/:R\d+$/.test(ref) ? ref.split(':')[1] : 'вопросу'} через ${skillCode('sdd-decide')} в сабагенте: протокол → FR → AC. ` +
     `В конце покажу, что изменилось.`;

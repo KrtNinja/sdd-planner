@@ -30,7 +30,7 @@ import { visibleLength } from './read-size.mjs';
  */
 
 // Контекст читают целиком в окне flash-модели: факты, а не пересказ источников.
-export const CONTEXT_LIMIT = 6000;
+const CONTEXT_LIMIT = 6000;
 const PROJECT = ['Как устроено сейчас', 'Роли и доступ', 'Данные и объекты', 'Сервисы и связи', 'Ограничения'];
 const TASK = ['Задача', 'Уже решено в задаче'];
 const FREE = ['Не нашёл', 'Не удалось прочитать'];
@@ -43,12 +43,12 @@ const tpl = (name) => read(path.join(SKILLS_DIR, 'sdd-lint', 'assets', name)) ||
 /** @param {string} t @param {Record<string, string>} vars */
 const fill = (t, vars) => t.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '');
 /** @param {Feature} m */
-export const contextFile = (m) => path.join(m.workDir, 'context.md');
+const contextFile = (m) => path.join(m.workDir, 'context.md');
 /** @param {string} t */
 const blank = (t) => /^\s*[-*]\s*[-—–]?\s*$/.test(t);
 
 /** @param {string} file @param {string | null | undefined} md @returns {Context | null} */
-export function parseContext(file, md) {
+function parseContext(file, md) {
   if (md == null) return null;
   /** @type {Map<string, Fact[]>} */
   const sections = new Map();
@@ -147,7 +147,7 @@ const CONTEXT = [
 ];
 
 /** @param {Context} ctx @returns {Finding[]} */
-export function checkContext(ctx) {
+function checkContext(ctx) {
   return CONTEXT.flatMap((r) => r.check(ctx));
 }
 // Находки CX-* — отдельно от проверок фичи: их показывают старт и задание сабагенту.

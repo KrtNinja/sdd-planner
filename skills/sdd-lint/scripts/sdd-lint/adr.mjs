@@ -11,7 +11,7 @@ import { scan, inSection, header, matched } from './md.mjs';
 
 // Ограничение — то, что в решении не обсуждается: решение компании, бюджет, ресурсы, сроки.
 // Описывается в «Контексте» строкой «- ОГР-n что именно — кто поставил», на него ссылаются варианты.
-export const LIMIT_RE = /(?<![\p{L}\d])ОГР-(\d+)(?!\d)/gu;
+const LIMIT_RE = /(?<![\p{L}\d])ОГР-(\d+)(?!\d)/gu;
 export const limitIds = (/** @type {string | undefined} */ s) => [...(s || '').matchAll(LIMIT_RE)].map((m) => m[0]);
 
 /** @param {string} file @param {string} md @returns {Adr} */
