@@ -56,6 +56,7 @@ export function feature(files, name = 'search') {
   const dir = path.join(tmpDir(), 'docs', name);
   fs.mkdirSync(dir, { recursive: true });
   for (const [f, t] of Object.entries(files)) {
+    if (t == null) continue; // { ...files, 'spec.md': null } — фича без файла
     fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true });
     fs.writeFileSync(path.join(dir, f), t);
   }
@@ -64,6 +65,16 @@ export function feature(files, name = 'search') {
 // Находка строкой «ID файл:строка текст», файл — от папки фичи; only — какие ID оставить.
 export const brief = (m, found, only = null) =>
   found.filter((f) => !only || only.includes(f.rule)).map((f) => `${f.rule} ${path.relative(m.dir, f.file)}:${f.line ?? '-'} ${f.msg}`);
+
+// Шапка slice — строки 1–13 (Основание — 5, Зависимости — 7, Почему отдельно — 13), body — с 14-й.
+export const slice = (num, { type = 'поведение', basis = 'FR-1', deps = 'нет', halves = 'tasks-core + frontend, принимаются вместе', why = '—' } = {}, ...body) =>
+  [`# ${num} — Срез ${num}`, '', `Тип: ${type}`, '', `Основание: ${basis}`, '', `Зависимости: ${deps}`, '', `Половины: ${halves}`, '',
+    'Результат: есть', '', `Почему отдельно: ${why}`, ...body, ''].join('\n');
+// Блок AC: строка ID, тело, «Проверяет:» (null — без неё).
+export const ac = (id, checks = 'FR-1', lines = ['  WHEN Анна ищет', '  THEN список']) => ['```', id, ...lines, '```', ...(checks ? [`Проверяет: ${checks}`] : [])];
+export const SPEC = ['# Поиск — Dev Spec', '', 'Статус: черновик', '', '## Функциональные требования', '',
+  ...['FR-1', 'FR-2', 'FR-3', 'FR-4'].flatMap((id) => ['```', `${id}  Текст.`, '      Пример: Анна.', '```', '']),
+  '```', 'NFR-1  Ответ за 1 с.', '```', ''].join('\n');
 
 // git в папке: g('status') → вывод. Автор задан, подпись коммитов выключена.
 export const git = (cwd) => (...a) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...a], { cwd, encoding: 'utf8', stdio: 'pipe' });
