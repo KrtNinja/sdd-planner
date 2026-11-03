@@ -1,4 +1,5 @@
 // Один вызов sdd-lint функцией: run(argv) → { code, chunks }. Точка входа CLI и тесты зовут его одинаково.
+// @ts-check
 import { parseArgs } from './args.mjs';
 import { HELP, helpFor } from './cli.mjs';
 import { cmdApprove } from './cmd-approve.mjs';

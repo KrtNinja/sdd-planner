@@ -1,4 +1,5 @@
 // Фича и вариант из аргументов: разбор пути к фиче, список фич, подсказка, если аргумента нет.
+// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -9,6 +10,7 @@ import { rel } from './md.mjs';
 /** @typedef {import('./io.mjs').Ctx} Ctx */
 
 export const DOCS = 'docs';
+/** @param {string} d */
 export const isDir = (d) => fs.existsSync(d) && fs.statSync(d).isDirectory();
 // Фичи в docs/: папки с протоколом или spec (adr — не фича).
 export function listFeatures(root = DOCS) {
@@ -20,6 +22,7 @@ export function listFeatures(root = DOCS) {
     .sort();
 }
 // «comments», «docs/comments», «docs/comments/slices/002-x.md» → «docs/comments»; иначе null.
+/** @param {string | null | undefined} d @returns {string | null} */
 export function resolveFeature(d) {
   if (!d) return null;
   const clean = d.replace(/^@/, '').replace(/[\\/]+$/, '');
@@ -32,8 +35,8 @@ export function resolveFeature(d) {
 }
 // Аргументы до фичи в текущем вызове — чтобы предложить готовую команду.
 /** @param {import('./args.mjs').Args} args @param {number} n */
-const callPrefix = ({ cmd, pos }, n) => [cmd === 'check' ? null : cmd, ...pos.slice(0, n)].filter(Boolean);
-/** @param {Ctx} ctx */
+const callPrefix = ({ cmd, pos }, n) => [cmd === 'check' ? null : cmd, ...pos.slice(0, n)].filter((x) => x != null);
+/** @param {Ctx} ctx @param {string} why @param {number} n @returns {never} */
 export function pickFeature(ctx, why, n) {
   const known = listFeatures();
   if (!known.length) {
@@ -42,22 +45,23 @@ export function pickFeature(ctx, why, n) {
   }
   const lines = known.map((f) => `- ${lintCode(...callPrefix(ctx.args, n), f)}`);
   ctx.io.error(`${why}. Фичи в ${code(`${DOCS}/`)}:\n\n${lines.join('\n')}`);
-  ctx.io.exit(2);
+  return ctx.io.exit(2);
 }
 // Нет варианта (approve без spec|slices|adr) — показать варианты готовыми командами.
-/** @param {Ctx} ctx */
+/** @param {Ctx} ctx @param {keyof typeof CHOICES} name @returns {never} */
 export function pickChoice(ctx, name, n = 0) {
   const { pos } = ctx.args;
   const ex = pos[n + 1] && resolveFeature(pos[n + 1]) ? pos[n + 1] : listFeatures()[0] || '<feature>';
   const opts = Object.entries(CHOICES[name]);
   // completion запускают в терминале, у остальных после варианта идёт фича.
-  const line = (k) => (name === 'completion' ? `sdd-lint completion ${k}` : SLOTS[name].includes('feature') ? lintCmd(name, k, ex) : lintCmd(name, k));
+  const withFeature = SLOTS[/** @type {keyof typeof SLOTS} */ (name)].includes('feature');
+  const line = (/** @type {string} */ k) => (name === 'completion' ? `sdd-lint completion ${k}` : withFeature ? lintCmd(name, k, ex) : lintCmd(name, k));
   const cmdsList = opts.map(([k]) => line(k));
   const bad = pos[n] ? `Нет варианта «${pos[n]}» у ${name}` : `${name} — выбери вариант`;
   ctx.io.error(`${bad}:\n\n${opts.map(([, d], i) => `- ${code(cmdsList[i])} — ${d}`).join('\n')}`);
-  ctx.io.exit(2);
+  return ctx.io.exit(2);
 }
-/** @param {Ctx} ctx */
+/** @param {Ctx} ctx @param {string | undefined} d @returns {string} */
 export function needDir(ctx, d, n = 0) {
   if (!d) pickFeature(ctx, 'Укажи фичу', n);
   const found = resolveFeature(d);
@@ -79,5 +83,5 @@ export function needDir(ctx, d, n = 0) {
       `Новая фича начинается с ${skillCode('sdd-grill', slug)}.`,
     ].join(' '),
   );
-  ctx.io.exit(2);
+  return ctx.io.exit(2);
 }

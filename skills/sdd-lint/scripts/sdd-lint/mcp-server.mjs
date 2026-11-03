@@ -1,4 +1,5 @@
 // MCP-сервер sdd-lint функцией: строка JSON-RPC → строка ответа. Точка входа mcp.mjs только читает stdin и печатает.
+// @ts-check
 import { run } from './run.mjs';
 
 const VERSION = '0.7.0';
