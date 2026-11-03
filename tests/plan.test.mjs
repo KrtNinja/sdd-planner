@@ -126,3 +126,13 @@ test('plan: planPreview — всё покрыто; ADR не принят — з�
   const r2 = parsePlan('/x/plan.md', '## 001-a — A\nОснование: FR-1\nПочему отдельно: Р2 — ADR-0003\n');
   assert.doesNotMatch(planPreview({ plan: r2, spec: null, adrs: [{ num: '0003', status: 'принято' }] }), /уже принят/);
 });
+
+test('plan: код и поля вне корректного раздела не создают slices; первый ключ остаётся', () => {
+  const md = 'Основание: FR-9\n```\n## 009 — Код\n```\n## Заметки\nОснование: FR-8\n## 001 — A\nОснование: FR-1\nОснование: FR-2\nтекст';
+  const p = parsePlan('plan.md', md);
+  assert.deepEqual(p.bad, [{ n: 5, text: '## Заметки' }]);
+  assert.deepEqual(p.slices, [{
+    num: '001', slugRaw: '', title: 'A', n: 7, head: { Основание: 'FR-1' }, headN: { Основание: 8 },
+    slug: 'a', basisRaw: 'FR-1', basis: new Set(['FR-1']), deps: [], halves: null, result: null, why: null, type: 'поведение',
+  }]);
+});
