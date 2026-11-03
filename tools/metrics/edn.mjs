@@ -22,9 +22,13 @@ export function readEdn(text) {
     for (ws(); text[i] !== close; ws()) items.push(value());
     i++;
     if (!isMap) return items;
+    if (items.length % 2) throw new Error('EDN: у ключа нет значения');
     const o = {};
     for (let k = 0; k < items.length; k += 2) o[items[k]] = items[k + 1];
     return o;
   };
-  return value();
+  const result = value();
+  ws();
+  if (i !== text.length) throw new Error('EDN: данные после значения');
+  return result;
 }
