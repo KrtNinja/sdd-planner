@@ -37,7 +37,7 @@ export const reviewKey = (what, adrNum) => (what === 'adr' ? `adr-${adrNum}` : w
 // П<n> и «исправлено» пишет /sdd-decide — тоже через triage.
 export const DECISION = { open: 'открытый вопрос', ignore: 'отклонено: не исправлять', queue: 'к разбору' };
 /** @param {ReviewRow} r */
-export const isQueued = (r) => r.decision.trim().toLowerCase() === DECISION.queue;
+const isQueued = (r) => r.decision.trim().toLowerCase() === DECISION.queue;
 // Нет решения: пусто или замечание стоит в очереди «к разбору».
 /** @param {ReviewRow} r */
 export const undecided = (r) => isEmptyCell(r.decision) || isQueued(r);
