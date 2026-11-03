@@ -57,6 +57,8 @@ test('pickChoice: default n, выбранная фича и запасная ф�
       const heading = args ? 'Нет варианта «bad» у approve' : 'approve — выбери вариант';
       assert.deepEqual(output(argv, (ctx) => pickChoice(ctx, 'approve')), [[2, `${heading}:\n\n${choices(expected)}`]]);
     }
+    assert.deepEqual(output(['approve', '', 'beta'], (ctx) => pickChoice(ctx, 'approve')),
+      [[2, `approve — выбери вариант:\n\n${choices('beta')}`]]);
     assert.deepEqual(output(['approve', 'prefix', 'bad', 'beta'], (ctx) => pickChoice(ctx, 'approve', 1)),
       [[2, `Нет варианта «bad» у approve:\n\n${choices('beta')}`]]);
   });
