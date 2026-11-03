@@ -73,43 +73,60 @@ export function cmdTriage(ctx) {
   const file = rel(rv.file);
 
   if (verb === 'remarks') {
-    const pending = untriagedRemarks(rv);
-    if (!pending.length) fail(`В ${file} нет замечаний без решения.`);
-    const arg = rest.join(' ').trim();
-    const all = pending.map((r) => r.id);
-    /** @type {string[]} */
-    let take;
-    if (arg === 'all') take = all;
-    else if (arg === 'none') take = [];
-    else {
-      const ids = pickedIds(arg);
-      const unknown = ids.filter((x) => !all.includes(x));
-      if (!ids.length || unknown.length) {
-        const why = ids.length ? `Не нашёл среди замечаний без решения: ${unknown.join(', ')}.` : 'Не понял номера.';
-        fail(`${why} Замечания: ${all.join(', ')}. Напишите номера ещё раз, например: ${all.slice(0, 2).join(', ')}.`);
-      }
-      take = ids;
-    }
-    const drop = pending.filter((r) => !take.includes(r.id));
-    const decisions = /** @type {[string, string][]} */ ([...take.map((id) => [id, DECISION.queue]), ...drop.map((r) => [r.id, DECISION.ignore])]);
-    save(rv, new Map(decisions));
-    const logged = addDropped(m, key, drop);
-    /** @type {string[]} */
-    const out = [];
-    if (take.length) out.push(`К разбору: ${take.join(', ')} — по одному.`);
-    if (drop.length) {
-      const inProtocol = logged ? `, ${plural(drop.length, 'строка', 'строки', 'строк')} в «${DROPPED_TITLE}» протокола: повторное ревью их не поднимет` : '';
-      out.push(`Сняты: ${drop.map((r) => r.id).join(', ')} — «отклонено» в ${file}${inProtocol}.`);
-    }
-    say(out.join('\n\n'));
+    triageRemarks(m, rv, { key, rest, say, fail });
     ctx.io.exit(0);
   }
 
   const r = findRow(rv, rid);
   if (!r) fail(`Находки ${rid || '—'} в ${file} нет. Есть: ${rv.rows.map((x) => x.id).join(', ') || 'нет'}.`);
+  triageFinding(m, rv, { key, r, verb, say, fail });
+  ctx.io.exit(0);
+}
+
+/** @typedef {{say: (msg: string) => void, fail: (msg: string) => never}} TriageOutput */
+/** @param {Feature} m @param {Review} rv @param {TriageOutput & {key: string, rest: string[]}} input */
+function triageRemarks(m, rv, { key, rest, say, fail }) {
+  const file = rel(rv.file);
+  const pending = untriagedRemarks(rv);
+  if (!pending.length) fail(`В ${file} нет замечаний без решения.`);
+  const arg = rest.join(' ').trim();
+  const all = pending.map((r) => r.id);
+  const take = selectedRemarks(arg, all, fail);
+  const drop = pending.filter((r) => !take.includes(r.id));
+  const decisions = /** @type {[string, string][]} */ ([...take.map((id) => [id, DECISION.queue]), ...drop.map((r) => [r.id, DECISION.ignore])]);
+  save(rv, new Map(decisions));
+  const logged = addDropped(m, key, drop);
+  /** @type {string[]} */
+  const out = [];
+  if (take.length) out.push(`К разбору: ${take.join(', ')} — по одному.`);
+  if (drop.length) {
+    const inProtocol = logged ? `, ${plural(drop.length, 'строка', 'строки', 'строк')} в «${DROPPED_TITLE}» протокола: повторное ревью их не поднимет` : '';
+    out.push(`Сняты: ${drop.map((r) => r.id).join(', ')} — «отклонено» в ${file}${inProtocol}.`);
+  }
+  say(out.join('\n\n'));
+}
+
+/** @param {string} arg @param {string[]} all @param {TriageOutput['fail']} fail */
+function selectedRemarks(arg, all, fail) {
+  if (arg === 'all') return all;
+  else if (arg === 'none') return [];
+  else {
+    const ids = pickedIds(arg);
+    const unknown = ids.filter((x) => !all.includes(x));
+    if (!ids.length || unknown.length) {
+      const why = ids.length ? `Не нашёл среди замечаний без решения: ${unknown.join(', ')}.` : 'Не понял номера.';
+      fail(`${why} Замечания: ${all.join(', ')}. Напишите номера ещё раз, например: ${all.slice(0, 2).join(', ')}.`);
+    }
+    return ids;
+  }
+}
+
+/** @param {Feature} m @param {Review} rv @param {TriageOutput & {key: string, r: ReviewRow, verb: string}} input */
+function triageFinding(m, rv, { key, r, verb, say, fail }) {
+  const file = rel(rv.file);
   if (verb === 'open') {
     const target = openTarget(m, key, r);
-    if (!target) fail(`Не понял, в какой файл записать вопрос по ${r.id}: в «Где» нет slice, AC или FR. Куда его записать?`);
+    if (!target) return fail(`Не понял, в какой файл записать вопрос по ${r.id}: в «Где» нет slice, AC или FR. Куда его записать?`);
     const n = addOpenQuestion(target, openText(r, target.adr));
     save(rv, new Map([[r.id, DECISION.open]]));
     say(
@@ -124,5 +141,4 @@ export function cmdTriage(ctx) {
     save(rv, new Map([[r.id, verb]]));
     say(`${r.id}: «Решение» — ${verb} (${file}).`);
   } else fail(`Решение «${verb}» не бывает: open, ignore, П<n> или «исправлено».`);
-  ctx.io.exit(0);
 }
