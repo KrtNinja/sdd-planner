@@ -52,74 +52,94 @@ export function layers(m, items = m.slices) {
 /** @param {Ctx} ctx @param {Feature} m */
 export function genReadme(ctx, m, quiet = false) {
   if (!m.slices.size) usage(ctx, 'В slices/ нет файлов NNN-*.md');
-  const spec = m.spec;
-  const link = (/** @type {string} */ text) => (spec ? linkReqs(text, m.readmeFile, spec) : text);
-  const row = (/** @type {Slice} */ sl) =>
+  const table = ['| Slice | Тип | Стороны | Основание | Зависит ' +
+    'от | Почему отдельно |', '|---|---|---|---|---|---|', ...[...m.slices.values()].map(sliceRow)].join('\n');
+  const covered = coverage(m);
+  const covTable = coverageTable(m, covered);
+  const order = layers(m).map((l) => l.join(', ')).join(' → ');
+  const orderText = `${order}\n\nЧерез запятую — slices, которые можно делать параллельно.`;
+
+  let md = m.readme;
+  if (md == null) {
+    md = initialReadme(m, { table, covTable, orderText, covered });
+  } else {
+    md = replaceSliceTable(md, table);
+    md = replaceSection(md, /^Покрытие/, 'Покрытие Dev Spec', covTable);
+    md = replaceSection(md, /^Порядок/, 'Порядок работ', orderText);
+  }
+  fs.writeFileSync(m.readmeFile, md.endsWith('\n') ? md : `${md}\n`);
+  if (!quiet) ctx.io.log(`${rel(m.readmeFile)}: таблица slices, «Покрытие Dev Spec», «Порядок работ» собраны из файлов slices. Порядок: ${order}`);
+}
+
+// Строка описи с прежними значениями для пустых полей.
+const sliceRow = (/** @type {Slice} */ sl) =>
     `| [${sl.num} ${sl.title || sl.name}](${sl.name}) | ${sl.type || '—'} | ${sl.halves || '—'} | ${basisPlain(sl.basisRaw) || '—'} | ` +
       `${sl.deps.join(', ') || '—'} | ${sl.why || '—'} |`;
-  const table = ['| Slice | Тип | Стороны | Основание | Зависит ' +
-    'от | Почему отдельно |', '|---|---|---|---|---|---|', ...[...m.slices.values()].map(row)].join('\n');
-  const covered = coverage(m);
+
+/** @param {Feature} m @param {Map<string, Set<string>>} covered */
+function coverageTable(m, covered) {
+  const spec = m.spec;
+  const link = (/** @type {string} */ text) => (spec ? linkReqs(text, m.readmeFile, spec) : text);
   const ids = m.spec ? [...m.spec.reqs.values()].filter((r) => !r.deleted).map((r) => r.id) : [...covered.keys()];
   const covTable = [
     '| Требование | Slice |',
     '|---|---|',
     ...ids.map((id) => `| ${link(id)} | ${[...(covered.get(id) || [])].sort().join(', ') || '—'} |`),
   ].join('\n');
-  const order = layers(m).map((l) => l.join(', ')).join(' → ');
-  const orderText = `${order}\n\nЧерез запятую — slices, которые можно делать параллельно.`;
+  return covTable;
+}
 
-  let md = m.readme;
-  if (md == null) {
-    const adrs = m.featureAdrs.map((a) => `[${a.num}](../../adr/${path.basename(a.file)})`).join(', ') || 'нет';
-    const reg = registry(m);
-    // Заготовки: какие FR делят slices и сквозной шаг на каждый поведенческий slice — смысл допишет агент.
-    const shared = [...covered].map(([id, nums]) => /** @type {[string, string[]]} */ ([id, sharing(m, nums).sort()])).filter(([, nums]) => nums.length > 1);
-    const behaviour = [...m.slices.values()].filter((s) => /поведение/i.test(s.type || '') && [...s.basis].some((id) => id.startsWith('FR')));
-    md = [
-      `# ${m.spec?.title || m.name} — slices`,
-      '',
-      'Статус: черновик',
-      '',
-      'Dev Spec: [../spec.md](../spec.md)',
-      '',
-      `ADR: ${adrs}`,
-      '',
-      ...(reg ? [`Сервисы: ${reg.list.join(', ')}`, ''] : []),
-      '<!-- Таблицу, «Покрытие Dev Spec» и «Порядок работ» собирает sdd-lint fix: руками не правь. -->',
-      '',
-      table,
-      '',
-      '## Покрытие Dev Spec',
-      covTable,
-      '',
-      '## Порядок работ',
-      orderText,
-      '',
-      '## Пересечения',
-      ...(shared.length ? shared.map(([id, nums]) => `- ${id} — ${nums.join(', ')}: <где граница>`) : ['Нет.']),
-      '',
-      '## Проверка фичи (после всех slices)',
-      '| Шаг | Действие | Ожидание | Требования |',
-      '|---|---|---|---|',
-      ...(behaviour.length
-        ? behaviour.map((s, i) => `| ${i + 1} | <действие> | <ожидание> | ${[...s.basis].filter((id) => id.startsWith('FR')).join(', ')} |`)
-        : ['| 1 | <действие> | <ожидание> | <FR-n> |']),
-      '',
-    ].join('\n');
-  } else {
-    const sc = scan(md);
-    const t = tables(sc.lines.filter((l) => !l.inCode)).find((x) => /^slice$/i.test(x.header[0] || ''));
-    const ls = md.split('\n');
-    if (t) md = [...ls.slice(0, t.start - 1), table, ...ls.slice(t.end)].join('\n');
-    else {
-      const firstH2 = sc.lines.find(isH2);
-      const at = firstH2 ? firstH2.n - 1 : ls.length;
-      md = [...ls.slice(0, at), table, '', ...ls.slice(at)].join('\n');
-    }
-    md = replaceSection(md, /^Покрытие/, 'Покрытие Dev Spec', covTable);
-    md = replaceSection(md, /^Порядок/, 'Порядок работ', orderText);
+/** @param {Feature} m @param {{ table: string, covTable: string, orderText: string, covered: Map<string, Set<string>> }} sections */
+function initialReadme(m, { table, covTable, orderText, covered }) {
+  const adrs = m.featureAdrs.map((a) => `[${a.num}](../../adr/${path.basename(a.file)})`).join(', ') || 'нет';
+  const reg = registry(m);
+  // Заготовки: какие FR делят slices и сквозной шаг на каждый поведенческий slice — смысл допишет агент.
+  const shared = [...covered].map(([id, nums]) => /** @type {[string, string[]]} */ ([id, sharing(m, nums).sort()])).filter(([, nums]) => nums.length > 1);
+  const behaviour = [...m.slices.values()].filter((s) => /поведение/i.test(s.type || '') && [...s.basis].some((id) => id.startsWith('FR')));
+  return [
+    `# ${m.spec?.title || m.name} — slices`,
+    '',
+    'Статус: черновик',
+    '',
+    'Dev Spec: [../spec.md](../spec.md)',
+    '',
+    `ADR: ${adrs}`,
+    '',
+    ...(reg ? [`Сервисы: ${reg.list.join(', ')}`, ''] : []),
+    '<!-- Таблицу, «Покрытие Dev Spec» и «Порядок работ» собирает sdd-lint fix: руками не правь. -->',
+    '',
+    table,
+    '',
+    '## Покрытие Dev Spec',
+    covTable,
+    '',
+    '## Порядок работ',
+    orderText,
+    '',
+    '## Пересечения',
+    ...(shared.length ? shared.map(([id, nums]) => `- ${id} — ${nums.join(', ')}: <где граница>`) : ['Нет.']),
+    '',
+    '## Проверка фичи (после всех slices)',
+    '| Шаг | Действие | Ожидание | Требования |',
+    '|---|---|---|---|',
+    ...(behaviour.length
+      ? behaviour.map((s, i) => `| ${i + 1} | <действие> | <ожидание> | ${[...s.basis].filter((id) => id.startsWith('FR')).join(', ')} |`)
+      : ['| 1 | <действие> | <ожидание> | <FR-n> |']),
+    '',
+  ].join('\n');
+}
+
+/** @param {string} original @param {string} table */
+function replaceSliceTable(original, table) {
+  let md = original;
+  const sc = scan(md);
+  const t = tables(sc.lines.filter((l) => !l.inCode)).find((x) => /^slice$/i.test(x.header[0] || ''));
+  const ls = md.split('\n');
+  if (t) md = [...ls.slice(0, t.start - 1), table, ...ls.slice(t.end)].join('\n');
+  else {
+    const firstH2 = sc.lines.find(isH2);
+    const at = firstH2 ? firstH2.n - 1 : ls.length;
+    md = [...ls.slice(0, at), table, '', ...ls.slice(at)].join('\n');
   }
-  fs.writeFileSync(m.readmeFile, md.endsWith('\n') ? md : `${md}\n`);
-  if (!quiet) ctx.io.log(`${rel(m.readmeFile)}: таблица slices, «Покрытие Dev Spec», «Порядок работ» собраны из файлов slices. Порядок: ${order}`);
+  return md;
 }
