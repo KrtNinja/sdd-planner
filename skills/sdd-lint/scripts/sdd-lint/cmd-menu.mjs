@@ -9,7 +9,8 @@ import { SELF, promptSkills } from './cmd-prompt.mjs';
 import { code, lintCmd, skillCode, lintCode } from './config.mjs';
 import { loadFeature } from './feature.mjs';
 import { git } from './git.mjs';
-import { DOCS, isDir, listFeatures, resolveFeature, pickChoice } from './pick.mjs';
+import { distance } from './md.mjs';
+import { DOCS, isDir, listFeatures, resolveFeature, choiceOf } from './pick.mjs';
 import { stageOf, tipLine } from './stage.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
@@ -56,15 +57,6 @@ export function cmdMenu(ctx) {
   ctx.io.exit(0);
 }
 
-/** @param {string} a @param {string} b */
-function distance(a, b) {
-  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 1; j <= b.length; j++) d[0][j] = j;
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++)
-      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return d[a.length][b.length];
-}
 // «aprove docs/x» — не фича, а опечатка в команде.
 /** @param {Ctx} ctx */
 export function checkTypo(ctx) {
@@ -151,8 +143,7 @@ export function complete(words) {
 // Скрипт для bash / zsh с путём к этому файлу: работает и через alias, и через ссылку в PATH.
 /** @param {Ctx} ctx */
 export function cmdCompletion(ctx) {
-  const shell = ctx.args.pos[0];
-  if (!['bash', 'zsh'].includes(shell)) pickChoice(ctx, 'completion');
+  const shell = choiceOf(ctx, 'completion');
   const self = SELF.replace(/'/g, `'\\''`);
   const run = `node '${self}' __complete`;
   if (shell === 'bash') {

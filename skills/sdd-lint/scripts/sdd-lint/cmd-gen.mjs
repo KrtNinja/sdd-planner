@@ -6,7 +6,7 @@ import { impact } from './gate-extra.mjs';
 import { loadFeature } from './feature.mjs';
 import { genLinks } from './gen-links.mjs';
 import { rel, uniq } from './md.mjs';
-import { pickChoice, needDir } from './pick.mjs';
+import { choiceOf, pickChoice, needDir } from './pick.mjs';
 import { genReadme } from './readme.mjs';
 import { genSlices } from './scaffold.mjs';
 import { codePaths } from './screen.mjs';
@@ -53,10 +53,8 @@ export function cmdTrace(ctx) {
 
 /** @param {Ctx} ctx */
 export function cmdGen(ctx) {
-  const { pos } = ctx.args;
-  const what = pos[0];
-  if (!['readme', 'links', 'slices'].includes(what)) pickChoice(ctx, 'gen');
-  const m = loadFeature(needDir(ctx, pos[1], 1));
+  const what = choiceOf(ctx, 'gen');
+  const m = loadFeature(needDir(ctx, ctx.args.pos[1], 1));
   if (what === 'slices') genSlices(ctx, m);
   else if (what === 'readme') genReadme(ctx, m);
   else genLinks(ctx, m);
