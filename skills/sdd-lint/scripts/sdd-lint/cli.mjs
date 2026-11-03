@@ -117,6 +117,7 @@ export function usage(ctx, msg) {
 /** @param {string} name */
 export function helpFor(name) {
   const blocks = HELP.split('\n\n')[1].split(/\n(?=  sdd-lint)/);
-  const own = blocks.filter((b) => b.match(/^\s*sdd-lint\s+\[?(\S+?)\]?(\s|$)/)?.[1] === name);
+  // Каждый блок постоянного HELP начинается с sdd-lint и имени команды.
+  const own = blocks.filter((b) => /** @type {RegExpMatchArray} */ (b.match(/^\s*sdd-lint\s+\[?(\S+?)\]?(\s|$)/))[1] === name);
   return own.length ? own.join('\n') : null;
 }

@@ -36,8 +36,7 @@ function lint(args) {
   Object.assign(process.env, LINT_ENV);
   try {
     const { code, chunks } = run(args);
-    const text = (/** @type {1 | 2} */ fd) => chunks.filter(([f]) => f === fd).map(([, t]) => t).join('');
-    return { code, out: [text(1), text(2)].filter(Boolean).join('\n').trimEnd() };
+    return { code, out: lintOutput(chunks) };
   } catch (e) {
     return { code: 1, out: String(e instanceof Error ? e.stack : e) };
   } finally {
@@ -45,12 +44,19 @@ function lint(args) {
   }
 }
 
+// stdout перед stderr; каждый поток склеивается без добавочных переносов.
+/** @param {import('./io.mjs').Io['chunks']} chunks */
+export function lintOutput(chunks) {
+  const text = (/** @type {1 | 2} */ fd) => chunks.filter(([f]) => f === fd).map(([, t]) => t).join('');
+  return [text(1), text(2)].filter(Boolean).join('\n').trimEnd();
+}
+
 // Код выхода — в строку ⚙: она последняя и единственная для агента. Нет её у команды (check, trace) — своя.
 /** @param {string} out @param {number} code */
 function withCode(out, code) {
   const lines = String(out).trimEnd().split('\n');
   const last = lines.length - 1;
-  if (lines[last]?.startsWith('⚙ sdd:')) lines[last] += ` · код ${code}`;
+  if (lines[last].startsWith('⚙ sdd:')) lines[last] += ` · код ${code}`;
   else lines.push('', `⚙ sdd: код ${code}`);
   return lines.join('\n').replace(/^\n+/, '');
 }

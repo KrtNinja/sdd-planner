@@ -28,7 +28,7 @@ export class Exit extends Error {
 export function createIo(write) {
   /** @type {[1 | 2, string][]} */
   const chunks = [];
-  const put = write ?? ((fd, text) => chunks.push([fd, text]));
+  const put = write || ((fd, text) => chunks.push([fd, text]));
   return {
     chunks,
     log: (/** @type {unknown[]} */ ...a) => put(1, `${format(...a)}\n`),
