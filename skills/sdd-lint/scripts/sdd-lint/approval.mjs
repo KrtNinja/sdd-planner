@@ -61,7 +61,7 @@ export function verifyApprovals(m) {
     const state = approvalState(m, kind, file, (text.match(FP_RE) || [])[1]);
     const raw = text.replace(FP_RE, '');
     m.approvals.push({ kind, file, raw, state });
-    return SHOWN[state] ?? raw;
+    return SHOWN[state] || raw;
   };
   if (m.spec) m.spec.status = one('spec', m.spec.file, m.spec.status);
   if (m.readme != null) m.slicesStatus = one('slices', m.readmeFile, m.slicesStatus);
@@ -73,7 +73,7 @@ export const ownApprovals = (m) => m.approvals.filter((x) => x.kind !== 'adr' ||
 export function checkApprovals(m) {
   const { found, add } = collect();
   for (const x of ownApprovals(m)) {
-    const md = read(x.file) ?? '';
+    const md = read(x.file);
     if (x.state === 'manual') add('AP-01', x.file, headerLine(md, 'Статус'), `«${x.raw}» без отметки approve — одобрением не считается`);
     if (x.state === 'changed') add('AP-02', x.file, headerLine(md, 'Статус'), `«${x.raw}»: файл менялся после approve`);
   }

@@ -2,7 +2,7 @@
 // @ts-check
 import { finding } from './findings.mjs';
 import { staleReqLinks } from './links.mjs';
-import { uniq, inSection, sectionText, tables, col, reqIds } from './md.mjs';
+import { uniq, inSection, sectionText, tables, col, cell, reqIds } from './md.mjs';
 import { coverage, sharing } from './readme.mjs';
 
 /** @typedef {import('./model.mjs').Feature} Feature */
@@ -23,15 +23,18 @@ const sameSet = (/** @type {Iterable<string>} */ a, /** @type {Iterable<string>}
 const nums3 = (/** @type {string | undefined} */ s) => (s || '').match(/\b\d{3}\b/g) || [];
 
 // Таблица slices: строка на каждый файл, «Основание» и «Зависит от» как в файле, лишних строк нет.
+// Колонки нет — сверять нечего: ячейка null.
+/** @param {import('./model.mjs').Table} t @param {import('./model.mjs').TableRow} r @param {RegExp} re */
+const cellOf = (t, r, re) => (t.header.some((h) => re.test(h)) ? cell(r, col(t, re)) : null);
 /** @param {import('./model.mjs').Table} t @param {Map<string, import('./model.mjs').TableRow>} rows @param {string} f */
 const rowProblems = (t, rows, f) => (/** @type {[string, import('./model.mjs').Slice]} */ [num, sl]) => {
   const r = rows.get(num);
   if (!r) return [finding('RM-02', f, t.start, `в таблице нет slice ${num}`)];
-  const cb = col(t, /основани/i);
-  const cd = col(t, /завис/i);
+  const basis = cellOf(t, r, /основани/i);
+  const deps = cellOf(t, r, /завис/i);
   return [
-    ...(cb >= 0 && !sameSet(reqIds(r.cells[cb]), sl.basis) ? [finding('RM-02', f, r.n, `${num}: «Основание» в README не совпадает со slice`)] : []),
-    ...(cd >= 0 && !sameSet(uniq(nums3(r.cells[cd])), sl.deps) ? [finding('RM-02', f, r.n, `${num}: «Зависит от» в README не совпадает со slice`)] : []),
+    ...(basis !== null && !sameSet(reqIds(basis), sl.basis) ? [finding('RM-02', f, r.n, `${num}: «Основание» в README не совпадает со slice`)] : []),
+    ...(deps !== null && !sameSet(uniq(nums3(deps)), sl.deps) ? [finding('RM-02', f, r.n, `${num}: «Зависит от» в README не совпадает со slice`)] : []),
   ];
 };
 /** @param {ReadmeContext} c */

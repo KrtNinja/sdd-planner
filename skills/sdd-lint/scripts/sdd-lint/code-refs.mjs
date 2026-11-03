@@ -69,19 +69,19 @@ export function internalNames(text) {
 }
 
 const WHAT = { 'CD-01': 'путь или файл кода', 'CD-02': 'ссылка на код', 'CD-03': 'вызов из кода' };
-/** @typedef {{ names?: boolean, inAc?: boolean }} RefOpts */
+/** @typedef {{ inAc?: boolean }} RefOpts */
 
 // Строка: ссылки на код (каждая один раз) и внутренние имена — если их проверяем в этом месте.
 /** @param {string} file @param {import('./model.mjs').Line} l @param {RefOpts} opts */
-function lineRefs(file, l, { names = true, inAc = true }) {
+function lineRefs(file, l, { inAc = true }) {
   const refs = [...new Map(codeRefs(l.text).map((r) => [r.join(''), r])).values()];
-  const internal = !names || (l.inCode && !inAc) ? [] : internalNames(l.text);
+  const internal = l.inCode && !inAc ? [] : internalNames(l.text);
   return [
     ...refs.map(([rule, x]) => finding(rule, file, l.n, `«${x}» — ${WHAT[/** @type {keyof typeof WHAT} */ (rule)]}`)),
     ...internal.map((x) => finding('CD-05', file, l.n, `«${x}» — внутреннее имя из кода`)),
   ];
 }
-// names — проверять ли внутренние имена; inAc — и в блоках AC (в slices их уже ловит SL-22).
+// inAc — проверять ли внутренние имена в блоках кода (AC в slices; там их уже ловит SL-22).
 /** @param {string} file @param {import('./model.mjs').Scan} sc @param {RefOpts} [opts] */
 function checkFile(file, sc, opts = {}) {
   return [

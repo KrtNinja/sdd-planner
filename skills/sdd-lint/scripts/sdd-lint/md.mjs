@@ -13,6 +13,9 @@ import path from 'node:path';
 export const read = (f) => (f && fs.existsSync(f) && fs.statSync(f).isFile() ? fs.readFileSync(f, 'utf8') : null);
 /** @param {string | null | undefined} f */
 export const rel = (f) => (f ? path.relative(process.cwd(), f) || f : '');
+// Ссылка из файла from на файл to — как в markdown: путь от папки from через «/».
+/** @param {string} from @param {string} to */
+export const fileHref = (from, to) => path.relative(path.dirname(from), to).split(path.sep).join('/');
 /** @param {string} s */
 export const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** @template T @param {Iterable<T>} a @returns {T[]} */

@@ -2,9 +2,9 @@
 // @ts-check
 import { finding } from './findings.mjs';
 import { dependencyCycles } from './graph.mjs';
-import { reqRefs, BASIS_LINK_RE, specFileHref, staleReqLinks } from './links.mjs';
+import { reqRefs, BASIS_LINK_RE, staleReqLinks } from './links.mjs';
 import { AC_ANY, AC_LIVE } from './ac-rules.mjs';
-import { read, uniq, approved, noneText, scan, sectionText, header, headerLine, matched } from './md.mjs';
+import { read, uniq, approved, noneText, scan, sectionText, header, headerLine, matched, fileHref } from './md.mjs';
 import { coverage } from './readme.mjs';
 import { checkReadme } from './readme-rules.mjs';
 
@@ -71,7 +71,7 @@ const SLICE_HEAD = [
       if (!s) return [];
       const basis = header(sl.md, 'Основание') || '';
       const got = (basis.match(BASIS_LINK_RE) || [])[1];
-      const bad = got !== specFileHref(sl.file, s.file) || reqRefs(basis).some((r) => r.href);
+      const bad = got !== fileHref(sl.file, s.file) || reqRefs(basis).some((r) => r.href);
       const msg = got === undefined ? '«Основание» без ссылки на spec.md' : '«Основание»: ссылка на spec.md не та или ссылки на отдельные FR';
       const links = sl.acs.flatMap((ac) => (ac.checks ? staleReqLinks(sl.file, ac.checks.n, ac.checks.text, s) : []));
       return [...(bad ? [finding('SL-28', sl.file, sl.basisLine, msg)] : []), ...links];
@@ -97,7 +97,7 @@ function behaviourCovered(sl, c) {
 function boundsRefs(sl, c) {
   const bounds = sectionText(sl.sc, /^Границы/);
   const refs = [
-    ...[...bounds.matchAll(/\((\d{3}(?:\s*(?:,|и)\s*\d{3})*)\)/g)].flatMap((x) => matched(x[1], /\d{3}/g)),
+    ...[...bounds.matchAll(/\(\d{3}(?:\s*(?:,|и)\s*\d{3})*\)/g)].flatMap(([x]) => matched(x, /\d{3}/g)),
     ...[...bounds.matchAll(/slice\s+(\d{3})/gi)].map((x) => x[1]),
   ];
   return uniq(refs).filter((r) => !c.slices.has(r)).map((r) => finding('SL-25', sl.file, null, `«Границы»: slice ${r} нет`));

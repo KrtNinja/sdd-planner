@@ -46,9 +46,9 @@ export function halvesProblem(raw, reg) {
     if (!h.bad.length) return `«Половины: ${raw}» — нет ни одного сервиса`;
     const hint = (/** @type {string} */ t) => {
       const parts = t.split(/\s+и\s+|\s+/).filter(Boolean);
-      const known = reg ? parts.map((x) => reg.list.find((r) => r === x) || null) : [];
+      const known = reg ? parts.filter((x) => reg.list.includes(x)) : [];
       const near = reg ? unknownService(t.replace(/\s+/g, '-'), reg) : null;
-      if (known.filter(Boolean).length > 1) return `разделяй сервисы «+»: «${known.filter(Boolean).join(' + ')}»`;
+      if (known.length > 1) return `разделяй сервисы «+»: «${known.join(' + ')}»`;
       if (reg?.list.includes(t.replace(/\s+/g, '-'))) return `верно «${t.replace(/\s+/g, '-')}»`;
       return near && /похоже на/.test(near) ? near.slice(near.indexOf('похоже на')) : 'сервисы — через «+», имена латиницей как в «Сервисы:»';
     };

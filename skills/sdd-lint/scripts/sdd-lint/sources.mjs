@@ -1,8 +1,6 @@
 // «Из протокола:» — откуда пришло требование: разбор ссылок на протокол и их снятие.
 // @ts-check
-import path from 'node:path';
-
-import { setSection } from './md.mjs';
+import { setSection, fileHref } from './md.mjs';
 
 /** @typedef {import('./model.mjs').Scan} Scan */
 /** @typedef {import('./model.mjs').Req} Req */
@@ -40,7 +38,7 @@ export function stripProtocol(md) {
   return out.replace(/\n{3,}/g, '\n\n');
 }
 /** @param {string} spec @param {string} proto @param {{ n: number }} row */
-export const protoHref = (spec, proto, row) => `${path.relative(path.dirname(spec), proto).split(path.sep).join('/')}#L${row.n}`;
+export const protoHref = (spec, proto, row) => `${fileHref(spec, proto)}#L${row.n}`;
 
 // Строка прозы сразу под блоком кода (пустые строки между ними допустимы): блок → строка.
 /** @param {Scan} sc @param {RegExp} re */
