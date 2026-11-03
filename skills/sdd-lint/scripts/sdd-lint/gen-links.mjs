@@ -1,4 +1,5 @@
 // gen links: проставляет и обновляет ссылки в spec и slices, переносит старые форматы.
+// @ts-check
 import fs from 'node:fs';
 
 import { usage } from './cli.mjs';
@@ -10,12 +11,20 @@ import { SRC_RE, SRC_REF_RE, hasProtocolTraces, stripProtocol, protoHref } from 
 import { parseSpec } from './spec.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Spec} Spec */
+/** @typedef {import('./model.mjs').Slice} Slice */
+/** Фича со spec: ссылки ставят только при нём. @typedef {Feature & { spec: Spec }} SpecFeature */
 
 // Старый раздел «Трассировка» → «Из протокола:» под требованиями и в разделах. Возвращает новый md.
+/** @param {Spec} s */
 function migrateTrace(s) {
   const t = s.oldTraceT;
+  /** @type {Map<string, string[]>} */
   const perReq = new Map();
+  /** @type {Map<string, string[]>} */
   const perSection = new Map();
+  /** @type {string[]} */
   const tech = [];
   if (t) {
     const ct = Math.max(1, col(t, /куда|цель|требован/i));
@@ -23,7 +32,7 @@ function migrateTrace(s) {
       const refs = [...(r.cells[0] || '').matchAll(/П?\d+/gu)].map((x) => x[0]);
       const cell = r.cells[ct] || '';
       const ids = reqIds(cell);
-      const push = (map, key) => map.set(key, uniq([...(map.get(key) || []), ...refs]));
+      const push = (/** @type {Map<string, string[]>} */ map, /** @type {string} */ key) => map.set(key, uniq([...(map.get(key) || []), ...refs]));
       if (ids.length) for (const id of ids) push(perReq, id);
       else if (/вне scope/i.test(cell)) push(perSection, 'Вне scope');
       else if (/открыт/i.test(cell)) push(perSection, 'Открытые вопросы');
@@ -32,6 +41,7 @@ function migrateTrace(s) {
   }
   // строки под блоками кода — снизу вверх, чтобы номера строк выше не сдвигались
   const ls = s.md.split('\n');
+  /** @type {[number, string][]} */
   const ends = [];
   for (const b of s.sc.blocks) {
     const ids = [...s.reqs.values()].filter((r) => r.block === b.idx).map((r) => r.id);
@@ -54,6 +64,7 @@ function migrateTrace(s) {
 }
 
 // spec: «Из протокола:» → ссылки на строку протокола (или убрать, если протокола нет).
+/** @param {SpecFeature} m */
 export function linkSpec(m) {
   const p = m.protocol;
   let md = m.spec.md;
@@ -64,9 +75,9 @@ export function linkSpec(m) {
   }
   const migrated = !!m.spec.oldTraceLine;
   if (migrated) md = migrateTrace(m.spec);
-  const s = parseSpec(m.spec.file, md);
+  const s = /** @type {Spec} */ (parseSpec(m.spec.file, md));
   const byId = new Map([...p.rows, ...p.post].map((r) => [r.id, r]));
-  const unknown = [];
+  const unknown = /** @type {string[]} */ ([]);
   let links = 0;
   const ls = md.split('\n');
   for (const src of s.sources) {
@@ -74,9 +85,9 @@ export function linkSpec(m) {
     const i = l.search(SRC_RE);
     ls[src.n - 1] =
       l.slice(0, i) +
-      l.slice(i).replace(/^(из протокола:)(.*)$/iu, (_, kw, rest) =>
+      l.slice(i).replace(/^(из протокола:)(.*)$/iu, (/** @type {string} */ _, /** @type {string} */ kw, /** @type {string} */ rest) =>
         kw +
-        rest.replace(SRC_REF_RE, (all, a, _h, b) => {
+        rest.replace(SRC_REF_RE, (/** @type {string} */ all, /** @type {string | undefined} */ a, /** @type {unknown} */ _h, /** @type {string} */ b) => {
           const row = byId.get(a || b);
           if (!row) {
             unknown.push(a || b);
@@ -96,8 +107,10 @@ export function linkSpec(m) {
 }
 
 // slice: «[FR-n]» из строки AC → «Проверяет:» под блоком; FR в «Основание» и «Проверяет:» → ссылки на spec.
+/** @param {Slice} sl @param {Spec} spec */
 export function linkSlice(sl, spec) {
   const ls = sl.md.split('\n');
+  /** @type {[number, string][]} */
   const moved = [];
   for (const ac of sl.acs) {
     if (!ac.oldRefs.length) continue;
@@ -114,16 +127,18 @@ export function linkSlice(sl, spec) {
   return moved.length;
 }
 
-/** @param {Ctx} ctx */
+/** @param {Ctx} ctx @param {Feature} m */
 export function genLinks(ctx, m) {
   if (!m.spec) usage(ctx, 'Нет spec.md');
+  /** @type {string[]} */
   const out = [];
-  const specMsg = linkSpec(m);
+  const specMsg = linkSpec(/** @type {SpecFeature} */ (m));
   if (specMsg) out.push(specMsg);
   let f = loadFeature(m.dir);
   if (f.slices.size) {
     let moved = 0;
-    for (const sl of f.slices.values()) moved += linkSlice(sl, f.spec);
+    // spec был у m — после записи ссылок он есть и у f.
+    for (const sl of f.slices.values()) moved += linkSlice(sl, /** @type {Spec} */ (f.spec));
     out.push(`slices: «Основание» — ссылка на spec.md, FR в «Проверяет:» — ссылки на их строки.${moved ? ` Перенесено из строк AC в «Проверяет:»: ${moved}.` : ''}`);
     f = loadFeature(m.dir);
     if (f.readme != null) {

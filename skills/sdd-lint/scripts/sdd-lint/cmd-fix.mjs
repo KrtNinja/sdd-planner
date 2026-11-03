@@ -1,4 +1,5 @@
 // Команда fix: номера вместо FR-? и AC-NNN-?, ссылки, README, затем проверки и diff.
+// @ts-check
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -18,17 +19,24 @@ import { moveLegacy } from './work.mjs';
 import { hasProtocolTraces } from './sources.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Finding} Finding */
 
 // Модель пишет «FR-?» и «AC-003-B?», номера строк не считает, README и ссылки не трогает:
 // всё это скрипт делает здесь, затем проверяет фичу и сверяет её с git.
 const PH_REQ = /^(\s*)(N?FR)-\?(?=\s|$)/;
 const PH_AC = /^(\s*)AC-(?:\d{3}-)?([BF]?)\?(?=\s|$)/;
+/** @param {import('./model.mjs').CodeBlock} b */
 const firstLine = (b) => b.lines.find((l) => l.text.trim());
+/** @param {number[]} arr */
 const maxNum = (arr) => arr.reduce((a, b) => Math.max(a, b), 0);
+/** @param {Feature} m */
 function numberPlaceholders(m) {
+  /** @type {string[]} */
   const done = [];
   if (m.spec) {
     const ids = [...m.spec.reqs.keys()];
+    /** @type {Record<string, number>} */
     const last = { FR: maxNum(ids.filter((x) => x.startsWith('FR-')).map((x) => Number(x.slice(3)))), NFR: maxNum(ids.filter((x) => x.startsWith('NFR-')).map((x) => Number(x.slice(4)))) };
     const ls = m.spec.md.split('\n');
     for (const b of m.spec.sc.blocks) {
@@ -41,6 +49,7 @@ function numberPlaceholders(m) {
     }
     if (done.length) fs.writeFileSync(m.spec.file, ls.join('\n'));
   }
+  /** @type {{ acNum: string, side: string, k: number }[]} */
   const all = [...m.slices.values()].flatMap((s) => s.acs);
   for (const sl of m.slices.values()) {
     const ls = sl.md.split('\n');
@@ -63,18 +72,25 @@ function numberPlaceholders(m) {
 }
 // Вся механика fix: кириллица в ID, номера, ссылки, README, сброс одобрения правленого; затем проверки
 // и сверка с git. Находки — в findings результата: их печатают fix и done.
-/** @param {Ctx} ctx */
+/**
+ * @param {Ctx} ctx @param {string} dir @param {{ snapshot?: boolean }} [opts]
+ * @returns {{ m: Feature, changed: string[], notes: string[], findings: Finding[] }}
+ */
 export function fixFeature(ctx, dir, { snapshot = false } = {}) {
-  const files = (m) => uniq([...featureFiles(m), m.readmeFile, m.planFile].map((f) => path.resolve(f)));
+  const files = (/** @type {Feature} */ m) => uniq([...featureFiles(m), m.readmeFile, m.planFile].map((f) => path.resolve(f)));
   let m = loadFeature(dir);
+  /** @type {string[]} */
   const notes = [];
   // Старые review/ и slices/plan.md — в _work/ до всего остального: дальше fix работает уже с новыми путями.
   const moved = moveLegacy(m);
   if (moved.length) notes.push(`Временные артефакты перенесены в ${rel(m.workDir)}/: ${moved.join('; ')}`);
   m = loadFeature(dir);
   const before = new Map(files(m).map((f) => [f, read(f)]));
+  /** @type {Map<string, string[]>} */
   const detail = new Map();
-  const note = (file, text) => detail.set(path.resolve(file), [...(detail.get(path.resolve(file)) || []), text]);
+  // Что поправлено в файле — для строки «Скрипт поправил»; зовут, когда detail.has(f).
+  const detailOf = (/** @type {string} */ f) => /** @type {string[]} */ (detail.get(f)).join(', ');
+  const note = (/** @type {string} */ file, /** @type {string} */ text) => detail.set(path.resolve(file), [...(detail.get(path.resolve(file)) || []), text]);
   // Кириллица в ID — до нумерации: «AC-002-В?» станет заготовкой, которую fix пронумерует.
   for (const file of [...[...m.slices.values()].map((s) => s.file), m.readmeFile, m.planFile]) {
     const md = read(file);
@@ -89,7 +105,7 @@ export function fixFeature(ctx, dir, { snapshot = false } = {}) {
   m = loadFeature(dir);
   // Порядок — сверху вниз: spec ссылается на строки протокола, slices — на строки spec.
   // Ссылки на протокол: без протокола их убирает только close (/sdd-close) — fix их не трогает.
-  if (m.spec && m.protocol) linkSpec(m);
+  if (m.spec && m.protocol) linkSpec(/** @type {import('./gen-links.mjs').SpecFeature} */ (m));
   else if (m.spec && hasProtocolTraces(m.spec.md))
     notes.push(`${rel(m.protocolFile)} нет, а spec ссылается на протокол: ссылки не тронуты. Если фича закрывается — ${skillCode('sdd-close', m.name)}`);
   m = loadFeature(dir);
@@ -112,9 +128,10 @@ export function fixFeature(ctx, dir, { snapshot = false } = {}) {
 
   const changed = files(m)
     .filter((f) => before.get(f) !== read(f))
-    .map((f) => `${rel(f)}${before.get(f) == null ? ' — создан' : read(f) == null ? ' — удалён' : ''}${detail.has(f) ? `: ${detail.get(f).join(', ')}` : ''}`);
+    .map((f) => `${rel(f)}${before.get(f) == null ? ' — создан' : read(f) == null ? ' — удалён' : ''}${detail.has(f) ? `: ${detailOf(f)}` : ''}`);
   return { m, changed, notes, findings };
 }
+/** @param {string[]} changed */
 export const fixedText = (changed) => (changed.length ? `Скрипт поправил:\n${changed.map((x) => `- ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');
 
 /** @param {Ctx} ctx */

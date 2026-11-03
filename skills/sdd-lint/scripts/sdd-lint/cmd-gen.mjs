@@ -1,4 +1,5 @@
 // Команды gen, next и trace.
+// @ts-check
 import { usage } from './cli.mjs';
 import { lintCode } from './config.mjs';
 import { impact } from './gate-extra.mjs';
@@ -30,16 +31,17 @@ export function cmdTrace(ctx) {
     ctx.io.log(`В ${rel(s.file)} старый раздел «Трассировка»: ${lintCode('fix', pos[0])}`);
     ctx.io.exit(1);
   }
+  /** @type {Map<string, string[]>} */
   const where = new Map();
   for (const src of s.sources) {
     const label = !src.target
       ? `? ${rel(s.file)}:${src.n}`
       : src.target.kind === 'req'
-        ? src.target.ids.map((id) => `${id} ${rel(s.file)}:${s.reqs.get(id).n}`).join(', ')
+        ? src.target.ids.map((id) => `${id} ${rel(s.file)}:${/** @type {import('./model.mjs').Req} */ (s.reqs.get(id)).n}`).join(', ')
         : `${src.target.kind} ${rel(s.file)}:${src.n}`;
     for (const r of src.refs) where.set(r.id, [...(where.get(r.id) || []), label]);
   }
-  const short = (x) => (x.length > 60 ? `${x.slice(0, 57)}…` : x);
+  const short = (/** @type {string} */ x) => (x.length > 60 ? `${x.slice(0, 57)}…` : x);
   let lost = 0;
   for (const r of [...p.rows, ...p.post]) {
     const to = where.get(r.id);
@@ -66,7 +68,7 @@ export function cmdNext(ctx) {
   const kind = (pos[0] || '').toLowerCase();
   if (!['fr', 'nfr', 'ac', 'slice', 'adr'].includes(kind)) pickChoice(ctx, 'next');
   const m = loadFeature(needDir(ctx, pos[1], 1));
-  const max = (arr) => arr.reduce((a, b) => Math.max(a, b), 0);
+  const max = (/** @type {number[]} */ arr) => arr.reduce((a, b) => Math.max(a, b), 0);
   if (kind === 'fr' || kind === 'nfr') {
     const pre = kind.toUpperCase();
     const n = max([...(m.spec?.reqs.keys() || [])].filter((id) => id.startsWith(`${pre}-`)).map((id) => Number(id.split('-')[1])));
