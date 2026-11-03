@@ -1,6 +1,6 @@
 // Сервисы фичи: реестр «Сервисы:» (протокол, потом README), разбор «Половины:» и заголовков половин — для lint и export.
 // @ts-check
-import { header, uniq } from './md.mjs';
+import { distance, header, uniq } from './md.mjs';
 
 /** @typedef {import('./model.mjs').Registry} Registry */
 /** @typedef {import('./model.mjs').Feature} Feature */
@@ -73,14 +73,6 @@ export const halfHeading = (svc) => `${svc[0].toUpperCase()}${svc.slice(1)}-по
 /** @param {{ halves: Text }} sl @param {{ service?: string | null }[]} acs */
 export const servicesOf = (sl, acs) => uniq([...parseHalves(sl.halves).services, ...acs.map((a) => a.service).filter(Boolean)]);
 
-/** @param {string} a @param {string} b */
-function distance(a, b) {
-  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 1; j <= b.length; j++) d[0][j] = j;
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return d[a.length][b.length];
-}
 // Неизвестный сервис и подсказка «похоже на …».
 /** @param {string} name @param {Registry | null} reg */
 export function unknownService(name, reg) {

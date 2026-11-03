@@ -1,7 +1,7 @@
 {
  "crap": {
-  "functions": 451,
-  "over10": 64,
+  "functions": 455,
+  "over10": 62,
   "offenders": {
    "skills.sdd-lint.scripts.sdd-lint.cmd-menu#complete": {
     "complexity": 48,
@@ -34,14 +34,14 @@
     "crap": 29.4604
    },
    "skills.sdd-lint.scripts.sdd-lint.cmd-approve#cmdApprove": {
-    "complexity": 28,
-    "coverage": 88,
-    "crap": 29.3548
+    "complexity": 27,
+    "coverage": 87.5,
+    "crap": 28.4238
    },
    "skills.sdd-lint.scripts.sdd-lint.gen-links#migrateTrace": {
-    "complexity": 20,
-    "coverage": 73.0769,
-    "crap": 27.8061
+    "complexity": 18,
+    "coverage": 69.5652,
+    "crap": 27.1339
    },
    "skills.sdd-lint.scripts.sdd-lint.plan#slugify": {
     "complexity": 6,
@@ -85,18 +85,13 @@
    },
    "skills.sdd-lint.scripts.sdd-lint.cmd-fix#fixFeature": {
     "complexity": 22,
-    "coverage": 96.9697,
-    "crap": 22.0135
+    "coverage": 97.0588,
+    "crap": 22.0123
    },
    "skills.sdd-lint.scripts.sdd-lint.slices#parseSlice": {
     "complexity": 19,
     "coverage": 82.1429,
     "crap": 21.0556
-   },
-   "skills.sdd-lint.scripts.sdd-lint.cmd-check#cmdGate": {
-    "complexity": 21,
-    "coverage": 100,
-    "crap": 21
    },
    "skills.sdd-lint.scripts.sdd-lint.plan#planPreview": {
     "complexity": 17,
@@ -112,6 +107,11 @@
     "complexity": 10,
     "coverage": 53.3333,
     "crap": 20.163
+   },
+   "skills.sdd-lint.scripts.sdd-lint.cmd-check#cmdGate": {
+    "complexity": 20,
+    "coverage": 100,
+    "crap": 20
    },
    "skills.sdd-lint.scripts.sdd-lint.cmd-diff#diffChecks": {
     "complexity": 19,
@@ -233,11 +233,6 @@
     "coverage": 83.3333,
     "crap": 12.6667
    },
-   "skills.sdd-lint.scripts.sdd-lint.gen-links#linkSlice": {
-    "complexity": 10,
-    "coverage": 72.7273,
-    "crap": 12.0285
-   },
    "skills.sdd-lint.scripts.sdd-lint.cmd-fix#numberPlaceholders": {
     "complexity": 12,
     "coverage": 100,
@@ -278,17 +273,7 @@
     "coverage": 88.2353,
     "crap": 11.197
    },
-   "skills.sdd-lint.scripts.sdd-lint.cmd-done#cmdDone": {
-    "complexity": 11,
-    "coverage": 89.4737,
-    "crap": 11.1411
-   },
    "skills.sdd-lint.scripts.sdd-lint.context#parseContext": {
-    "complexity": 11,
-    "coverage": 100,
-    "crap": 11
-   },
-   "skills.sdd-lint.scripts.sdd-lint.feature#loadFeature": {
     "complexity": 11,
     "coverage": 100,
     "crap": 11
@@ -318,6 +303,11 @@
     "coverage": 93.75,
     "crap": 10.0244
    },
+   "skills.sdd-lint.scripts.sdd-lint.cmd-done#cmdDone": {
+    "complexity": 10,
+    "coverage": 94.4444,
+    "crap": 10.0171
+   },
    "skills.sdd-lint.scripts.sdd-lint.findings#report": {
     "complexity": 10,
     "coverage": 100,
@@ -326,14 +316,8 @@
   }
  },
  "dry": {
-  "candidates": 1,
-  "pairs": [
-   {
-    "score": 1,
-    "left": "skills/sdd-lint/scripts/sdd-lint/cmd-menu.mjs:58-65",
-    "right": "skills/sdd-lint/scripts/sdd-lint/services.mjs:77-83"
-   }
-  ]
+  "candidates": 0,
+  "pairs": []
  },
  "mutate": null
 }

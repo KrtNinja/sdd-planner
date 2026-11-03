@@ -22,6 +22,11 @@ const CRAP_MAX = 10;
 // Окно поиска повторов. В тестах однотипные проверки с разными данными (run → code → match) при окне 50
 // совпадают по токенам и считаются копиями; окно 75 оставляет только скопированные блоки.
 const CLONE_WINDOW = { code: 50, tests: 75 };
+// Модули-данные: строки одной формы («'SP-03': ['err', 'подсказка']», фразы человеку) совпадают по токенам,
+// но это не скопированный код — повторы в них не ищут (решение в чате, шаг 7.1). Чтобы сюда не прятали код,
+// функции в них — без ветвлений: сложность больше 1 — гейт падает. Путь — файл или папка с «/» на конце.
+const DATA_MODULES = ['skills/sdd-lint/scripts/sdd-lint/rules.mjs', 'skills/sdd-lint/scripts/sdd-lint/texts/'];
+const isData = (f) => DATA_MODULES.some((d) => (d.endsWith('/') ? f.startsWith(d) : f === d));
 // Где можно печатать и завершать процесс: точка входа CLI и MCP-сервер.
 const IO_ALLOWED = new Set(['skills/sdd-lint/scripts/sdd-lint.mjs', 'skills/sdd-lint/scripts/mcp.mjs']);
 
@@ -103,6 +108,8 @@ function summary(r) {
     crapOver30: r.crap.entries.filter((e) => e.crap > 30).length,
     complexityAtLeast10: r.crap.entries.filter((e) => e.complexity >= 10).length,
     offenders: Object.fromEntries(offenders.map((e) => [e.key, { complexity: e.complexity, crap: e.crap }])),
+    // Функции с ветвлениями в модулях-данных: код, спрятанный от поиска повторов.
+    dataLogic: r.crap.entries.filter((e) => isData(e.key.split('#')[0]) && e.complexity > 1).map((e) => e.key),
     eslint: r.eslint,
     tscErrors: r.tsc.total,
     tsCheckModules: r.tsc.checked.modules.length,
@@ -123,6 +130,7 @@ function compare(now, base) {
     else if (cur < was) better.push(`${name}: ${was} → ${cur}`);
   };
   if (!(now.tests.fail === 0)) bad.push(`тесты: упало ${now.tests.fail}`);
+  for (const key of now.dataLogic) bad.push(`${key}: ветвления в модуле-данных — повторы в нём не ищут, логике там не место`);
   if (now.tests.total < base.tests.total) bad.push(`тестов стало меньше: ${base.tests.total} → ${now.tests.total}`);
   else if (now.tests.total > base.tests.total) better.push(`тестов: ${base.tests.total} → ${now.tests.total}`);
   for (const [key, e] of Object.entries(now.offenders)) {
@@ -158,7 +166,7 @@ async function main() {
     eslint: await eslint(),
     tsc: tsc(),
     deps: deps(CODE, TESTS),
-    clonesCode: clones(CODE, CLONE_WINDOW.code),
+    clonesCode: clones(CODE, CLONE_WINDOW.code, isData),
     clonesTests: clones(TESTS, CLONE_WINDOW.tests),
     sideEffects: sideEffects(),
   };

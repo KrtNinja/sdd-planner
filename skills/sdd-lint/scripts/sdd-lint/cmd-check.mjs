@@ -7,7 +7,7 @@ import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, featureFiles, runChecks } from './feature.mjs';
 import { hasErrors, item, report } from './findings.mjs';
 import { rel, approved } from './md.mjs';
-import { pickChoice, needDir } from './pick.mjs';
+import { choiceOf, needDir } from './pick.mjs';
 import { adrTopicStep, findingStep, reviewStep } from './gate-extra.mjs';
 import { chooseFeature, closedScreen, closedText, helloLine } from './guide.mjs';
 import { G, blocks, screen } from './screen.mjs';
@@ -73,13 +73,10 @@ export function gateClosed(m, stage, found) {
   return closed;
 }
 
-const GATES = ['spec', 'slices', 'adr', 'decide', 'review', 'build'];
-
 /** @param {Ctx} ctx */
 export function cmdGate(ctx) {
   const { pos } = ctx.args;
-  const stage = pos[0];
-  if (!GATES.includes(stage)) pickChoice(ctx, 'gate');
+  const stage = choiceOf(ctx, 'gate');
   let target = pos[1];
   let note = null;
   // Фичу не назвали — выбирает скрипт: одна подходит — она, несколько — вопрос человеку.

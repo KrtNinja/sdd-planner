@@ -7,7 +7,7 @@ import { report } from './findings.mjs';
 import { stageName } from './guide.mjs';
 import { REPO, inventory } from './input.mjs';
 import { header, rel } from './md.mjs';
-import { needDir, pickChoice } from './pick.mjs';
+import { choiceOf, needDir } from './pick.mjs';
 import { G, screen } from './screen.mjs';
 import { researchList, sourcesOf, taskOf } from './start-sources.mjs';
 import { acceptContext, addSources, renameFeature, startFrom } from './start.mjs';
@@ -46,8 +46,7 @@ function researchInput(m) {
 /** @param {Ctx} ctx */
 export function cmdResearch(ctx) {
   const { pos } = ctx.args;
-  const what = pos[0];
-  if (!['context', 'fact', 'check'].includes(what)) pickChoice(ctx, 'research');
+  const what = choiceOf(ctx, 'research');
   const m = loadFeature(needDir(ctx, pos[1], 1));
   const { task, list } = researchInput(m);
   const stage = stageName(m);

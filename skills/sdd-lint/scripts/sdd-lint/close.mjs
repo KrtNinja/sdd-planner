@@ -88,10 +88,13 @@ export function closeSummary(m) {
   /** @param {{ file: string }[]} rows */
   const lost = (rows) => (!dirty ? 'пропадут совсем: не git-репозиторий' : rows.some((x) => dirty.includes(x.file)) ? 'пропадут совсем: файл ревью не закоммичен' : null);
   const reviews = [...m.reviews.values()];
-  const blockers = reviews.flatMap((rv) => openBlockers(rv).map((r) => ({ id: `${r.id} (${rel(rv.file)})`, file: rel(rv.file) })));
+  // Находки ревью, которые подходят под pick: «R2 (путь ревью)» и файл ревью.
+  const rowsOf = (/** @type {(rv: import('./model.mjs').Review) => import('./model.mjs').ReviewRow[]} */ pick) =>
+    reviews.flatMap((rv) => pick(rv).map((r) => ({ id: `${r.id} (${rel(rv.file)})`, file: rel(rv.file) })));
+  const blockers = rowsOf(openBlockers);
   if (blockers.length)
     risks.push(`Блокеры ревью без решения: ${listed(blockers.map((x) => x.id))} — в FR и AC их нет, после удаления ${lost(blockers) || 'останутся только в истории git'}.`);
-  const notes = reviews.flatMap((rv) => rv.rows.filter((r) => !r.blocker && undecided(r)).map((r) => ({ id: `${r.id} (${rel(rv.file)})`, file: rel(rv.file) })));
+  const notes = rowsOf((rv) => rv.rows.filter((r) => !r.blocker && undecided(r)));
   if (notes.length) risks.push(`Замечания ревью без решения: ${listed(notes.map((x) => x.id))} — ${lost(notes) || 'уйдут в историю git'}.`);
   if (dirty === null && files.length) risks.push('Не git-репозиторий: удалённое не восстановить.');
   else if (dirty?.length) risks.push(`Не закоммичено: ${listed(dirty)} — удалится без следа, в истории git этого не будет.`);

@@ -9,7 +9,7 @@ import { skillCode, lintCode } from './config.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { adder, finding, report } from './findings.mjs';
 import { read, rel, approved, header, today } from './md.mjs';
-import { pickChoice, needDir } from './pick.mjs';
+import { choiceOf, needDir } from './pick.mjs';
 import { openBlockers, reviewKey } from './review.mjs';
 import { snapPath, protectedParts, diffParts } from './snapshot.mjs';
 import { printTip, stageOf, stageText } from './stage.mjs';
@@ -24,9 +24,8 @@ import { printTip, stageOf, stageText } from './stage.mjs';
 /** @param {Ctx} ctx */
 export function cmdApprove(ctx) {
   const { pos } = ctx.args;
-  // Не spec, slices или adr — pickChoice завершает вызов.
-  const what = /** @type {Kind} */ (pos[0]);
-  if (!['spec', 'slices', 'adr'].includes(what)) pickChoice(ctx, 'approve');
+  // Не spec, slices или adr — choiceOf завершает вызов подсказкой.
+  const what = /** @type {Kind} */ (choiceOf(ctx, 'approve'));
   const d = needDir(ctx, pos[1], 1);
   const m = loadFeature(d);
   const dir = rel(m.dir);

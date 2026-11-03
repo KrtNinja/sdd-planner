@@ -49,8 +49,9 @@ function merge(pairs, min) {
   return out;
 }
 
-export function clones(dir, min = 50) {
-  const toks = tokenStream(listMjs(dir));
+// skip(file) — модули, где повторы не ищут: данные одной формы (каталог правил, тексты), а не скопированный код.
+export function clones(dir, min = 50, skip = () => false) {
+  const toks = tokenStream(listMjs(dir).filter((f) => !skip(rel(f))));
   const merged = merge(windowPairs(toks, min), min);
   const dup = new Set();
   for (const m of merged) for (let i = m.bStart; i <= m.bEnd; i++) dup.add(i);

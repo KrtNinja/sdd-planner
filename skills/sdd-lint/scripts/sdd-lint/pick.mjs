@@ -61,6 +61,13 @@ export function pickChoice(ctx, name, n = 0) {
   ctx.io.error(`${bad}:\n\n${opts.map(([, d], i) => `- ${code(cmdsList[i])} — ${d}`).join('\n')}`);
   return ctx.io.exit(2);
 }
+// Вариант команды — первый аргумент, из CHOICES[name]: «approve spec», «gen links»; другого нет — подсказка вариантами.
+/** @param {Ctx} ctx @param {string} name @returns {string} */
+export function choiceOf(ctx, name) {
+  const what = ctx.args.pos[0];
+  if (!Object.hasOwn(CHOICES[name], what)) pickChoice(ctx, name);
+  return what;
+}
 /** @param {Ctx} ctx @param {string | undefined} d @returns {string} */
 export function needDir(ctx, d, n = 0) {
   if (!d) pickFeature(ctx, 'Укажи фичу', n);
