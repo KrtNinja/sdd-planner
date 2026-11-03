@@ -1,8 +1,8 @@
 // Короткие имена этапов и цели ревью: все ветки до упрощения выбора фичи.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { stageName, reviewTargets } from '../skills/sdd-lint/scripts/sdd-lint/guide.mjs';
-import { feature } from './helpers.mjs';
+import { stageName, reviewTargets, chooseFeature } from '../skills/sdd-lint/scripts/sdd-lint/guide.mjs';
+import { feature, repo, inDir, JSON_ENV } from './helpers.mjs';
 
 test('guide: stageName — приоритет spec, slices, существующего и требуемого ADR', () => {
   const rows = [
@@ -36,4 +36,15 @@ test('guide: reviewTargets — порядок и пустые статусы, п
   m.slicesStatus = 'одобрено';
   m.featureAdrs = [];
   assert.deepEqual(reviewTargets(m), []);
+});
+
+
+test('chooseFeature: неизвестный этап не выбирает существующую фичу', () => {
+  const cwd = repo({ 'docs/search/brainstorming.md': '# Протокол\nСтатус: готов' });
+  inDir(cwd, JSON_ENV, () => {
+    assert.deepEqual(chooseFeature('unknown', () => assert.fail('нет подходящей фичи — команда выбора не нужна')), {
+      text: 'Фич, где можно undefined, нет.\n\nФичи и этапы:\n- search — Протокол готов\n\n' +
+        'Новая фича начинается с `/sdd-grill`.\n\n⚙ sdd: стоп',
+    });
+  });
 });
