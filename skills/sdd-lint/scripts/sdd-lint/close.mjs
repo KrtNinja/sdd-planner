@@ -23,7 +23,7 @@ const MAX_LIST = 15;
 
 // Файлы, которые удалит close: протокол, всё в _work/, старые review/ и slices/plan.md.
 /** @param {Feature} m @returns {string[]} */
-export function doomedFiles(m) {
+function doomedFiles(m) {
   const old = legacyPaths(m);
   const legacyReview = fs.existsSync(old.review) ? workFiles({ workDir: old.review }) : [];
   return [m.protocol ? m.protocolFile : null, ...workFiles(m), ...legacyReview, fs.existsSync(old.plan) ? old.plan : null].filter((f) => f !== null);
