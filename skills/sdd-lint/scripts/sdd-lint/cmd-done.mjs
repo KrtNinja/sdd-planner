@@ -80,6 +80,7 @@ function promote(m) {
     fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^Статус:.*$/m, 'Статус: на ревью'));
     out.push(rel(file));
   };
+  // Статусы spec и README независимы: один done может перевести оба файла.
   if (m.slices.size && m.readme != null && /черновик/i.test(m.slicesStatus || '')) set(m.readmeFile);
   if (m.spec && /черновик/i.test(m.spec.status || '')) set(m.specFile);
   return out;
