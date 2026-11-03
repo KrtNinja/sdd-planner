@@ -28,11 +28,17 @@ const COMMANDS = {
   close: cmdClose, export: cmdExport, next: cmdNext, ask: cmdAsk, choose: cmdChoose, triage: cmdTriage, prompt: cmdPrompt,
 };
 
+// О какой команде справка: help <команда> или --help у команды; check — вызов без команды, ему общая.
+/** @param {string} cmd @param {string[]} pos */
+function helpName(cmd, pos) {
+  if (cmd === 'help') return pos[0];
+  return cmd === 'check' ? null : cmd;
+}
 // help и --help/-h у любой команды: справка по одной команде или общая.
 /** @param {Ctx} ctx */
 function help(ctx) {
   const { pos, cmd } = ctx.args;
-  const name = cmd === 'help' ? pos[0] : cmd !== 'check' ? cmd : null;
+  const name = helpName(cmd, pos);
   const one = name ? helpFor(name) : null;
   ctx.io.log(one ? `${one}\n\nВсе команды: ${lintCmd('help')}` : HELP);
 }

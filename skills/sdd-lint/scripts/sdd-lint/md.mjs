@@ -19,7 +19,13 @@ export const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export const uniq = (a) => [...new Set(a)];
 // 1 файл, 3 файла, 5 файлов
 /** @param {number} n @param {string} one @param {string} few @param {string} many */
-export const plural = (n, one, few, many) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many}`;
+export const plural = (n, one, few, many) => `${n} ${[one, few, many][pluralForm(n)]}`;
+// Форма слова при числе: 0 — «файл» (1, 21, 101), 1 — «файла» (2–4, 22–24), 2 — «файлов» (5–20, 11–14, 25…).
+/** @param {number} n */
+function pluralForm(n) {
+  if (n % 10 === 1 && n % 100 !== 11) return 0;
+  return n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 1 : 2;
+}
 /** @param {Text} s */
 export const isEmptyCell = (s) => !s || /^[—–\-?]*$/.test(s.trim());
 /** @param {Text} status */

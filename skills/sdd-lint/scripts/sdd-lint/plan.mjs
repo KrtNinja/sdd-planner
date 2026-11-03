@@ -99,6 +99,12 @@ export function sharedReqs(p) {
 /** @param {PlanSlice} s */
 export const nfrOnly = (s) => s.basis.size > 0 && [...s.basis].every((id) => id.startsWith('NFR'));
 
+// Порядок групп ID: FR первым, остальные (NFR…) — по алфавиту.
+/** @param {string} a @param {string} b */
+function frFirst(a, b) {
+  if (a === 'FR') return -1;
+  return b === 'FR' ? 1 : a.localeCompare(b);
+}
 // «FR-1, FR-2, FR-3, FR-7» → «FR-1…FR-3, FR-7»: план читают в терминале.
 /** @param {string[]} ids */
 export function compactIds(ids) {
@@ -109,7 +115,7 @@ export function compactIds(ids) {
     groups.set(pre, [...(groups.get(pre) || []), n]);
   }
   const out = [];
-  for (const [pre, ns] of [...groups].sort((a, b) => (a[0] === 'FR' ? -1 : b[0] === 'FR' ? 1 : a[0].localeCompare(b[0])))) {
+  for (const [pre, ns] of [...groups].sort((a, b) => frFirst(a[0], b[0]))) {
     const sorted = uniq(ns).sort((a, b) => a - b);
     for (let i = 0; i < sorted.length; ) {
       let j = i;

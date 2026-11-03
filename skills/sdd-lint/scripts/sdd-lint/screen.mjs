@@ -81,6 +81,14 @@ const cmdRe = () =>
 /** @param {string | null | undefined} s */
 export const cmdCode = (s) => outsideCode(s, (x) => x.replace(cmdRe(), '`$1`'));
 
+// Вид строки для mdProblems: пустая, пункт списка, строка таблицы, заголовок или текст абзаца.
+/** @param {string} l */
+function lineKind(l) {
+  if (!l.trim()) return 'blank';
+  if (/^\s*([-*+]|\d+\.)\s/.test(l)) return 'item';
+  if (/^\s*\|/.test(l)) return 'table';
+  return /^#{1,6}\s/.test(l) ? 'head' : 'text';
+}
 // Где markdown развалится: строка с отступом без маркера списка, абзац сразу после пункта списка
 // (ленивое продолжение приклеит его к пункту), строки абзаца подряд без пустой строки.
 // Таблицы и блоки кода не проверяются. Возвращает [номер строки, что не так].
@@ -98,15 +106,7 @@ export function mdProblems(text) {
       return;
     }
     if (fence) return;
-    const kind = !l.trim()
-      ? 'blank'
-      : /^\s*([-*+]|\d+\.)\s/.test(l)
-        ? 'item'
-        : /^\s*\|/.test(l)
-          ? 'table'
-          : /^#{1,6}\s/.test(l)
-            ? 'head'
-            : 'text';
+    const kind = lineKind(l);
     if (kind === 'item' && /^\s+/.test(l) && prev !== 'item') out.push([i + 1, 'вложенный пункт без родителя']);
     if (kind === 'text' && /^\s/.test(l)) out.push([i + 1, 'отступ без маркера списка']);
     else if (kind === 'text' && prev === 'item') out.push([i + 1, 'текст сразу после списка — приклеится к пункту']);

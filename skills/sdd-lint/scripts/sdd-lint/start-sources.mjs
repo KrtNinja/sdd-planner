@@ -52,7 +52,7 @@ export function taskOf(p) {
 export const projectSources = (src) => src.filter((x) => !SPECIAL.includes(x));
 // Что изучать: файл или ссылку задачи, затем источники проекта.
 /** @param {import('./input.mjs').Task} task @param {string[]} src @returns {string[]} */
-export const researchList = (task, src) => [...(task.file ? [task.file] : task.url ? [task.url] : []), ...projectSources(src)];
+export const researchList = (task, src) => [...[task.file || task.url].filter((x) => x !== undefined), ...projectSources(src)];
 /** @param {Feature} m @param {string[]} list */
 export const writeSources = (m, list) =>
   fs.writeFileSync(m.protocolFile, setHeader(/** @type {Protocol} */ (m.protocol).md, 'Источники', list.join('; '), ['Запрос', 'Статус']));
@@ -68,7 +68,7 @@ function sourcesQuestion(m) {
   /** @type {Option} */
   const fresh = { id: 'src:new', label: 'Нет, это новый проект', description: 'изучать нечего: спрошу, как должно быть', action: { lint: ['start', d, '--sources', NEW_PROJECT] } };
   // Есть код или несколько документов — изучить их и не мучить человека; почти пусто — попросить источники.
-  const options = inv.empty ? [give, fresh] : inv.code > 0 || inv.docs >= 2 ? [repo, give, fresh] : [give, repo, fresh];
+  const options = sourceOptions(inv, { repo, give, fresh });
   options[0].recommended = true;
   const seen = inv.empty ? 'В этой папке, кроме фичи, ничего нет.' : `В этой папке уже вижу:\n${list(inv.items.map(codePaths))}`;
   return {
@@ -77,6 +77,13 @@ function sourcesQuestion(m) {
     preview: blocks(`Папка фичи: \`${d}\` (другое имя — напишите, какое).`, seen),
     options,
   };
+}
+// Порядок вариантов «Есть документация?»: рекомендованный — первым. Пусто — прислать источники; есть код или
+// несколько документов — изучить то, что здесь; почти пусто — всё же попросить источники.
+/** @param {{ empty: boolean, code: number, docs: number }} inv @param {{ repo: Option, give: Option, fresh: Option }} o */
+function sourceOptions(inv, { repo, give, fresh }) {
+  if (inv.empty) return [give, fresh];
+  return inv.code > 0 || inv.docs >= 2 ? [repo, give, fresh] : [give, repo, fresh];
 }
 // После исследования: ничего не нашлось или не всё открылось — спросить, а не молча идти дальше.
 // Что изучено и что не открылось; /directory add — только для папок вне проекта, которые сабагент не открыл.

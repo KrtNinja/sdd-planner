@@ -34,11 +34,7 @@ export function cmdTrace(ctx) {
   /** @type {Map<string, string[]>} */
   const where = new Map();
   for (const src of s.sources) {
-    const label = !src.target
-      ? `? ${rel(s.file)}:${src.n}`
-      : src.target.kind === 'req'
-        ? src.target.ids.map((id) => `${id} ${rel(s.file)}:${/** @type {import('./model.mjs').Req} */ (s.reqs.get(id)).n}`).join(', ')
-        : `${src.target.kind} ${rel(s.file)}:${src.n}`;
+    const label = sourceLabel(s, src);
     for (const r of src.refs) where.set(r.id, [...(where.get(r.id) || []), label]);
   }
   const short = (/** @type {string} */ x) => (x.length > 60 ? `${x.slice(0, 57)}…` : x);
@@ -49,6 +45,14 @@ export function cmdTrace(ctx) {
     ctx.io.log(`- **#${r.id}** \`${rel(p.file)}:${r.n}\` ${short(r.dec || '—')} → ${to ? codePaths(uniq(to).join('; ')) : '**НИКУДА**'}`);
   }
   ctx.io.exit(lost ? 1 : 0);
+}
+
+// Куда ушла строка протокола: требования блока со своими строками, раздел или «?» — непонятно куда.
+/** @param {import('./model.mjs').Spec} s @param {import('./model.mjs').SourceLine} src */
+function sourceLabel(s, src) {
+  if (!src.target) return `? ${rel(s.file)}:${src.n}`;
+  if (src.target.kind !== 'req') return `${src.target.kind} ${rel(s.file)}:${src.n}`;
+  return src.target.ids.map((id) => `${id} ${rel(s.file)}:${/** @type {import('./model.mjs').Req} */ (s.reqs.get(id)).n}`).join(', ');
 }
 
 /** @param {Ctx} ctx */

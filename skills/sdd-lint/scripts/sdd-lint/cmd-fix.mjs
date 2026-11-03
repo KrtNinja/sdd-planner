@@ -128,8 +128,15 @@ export function fixFeature(ctx, dir, { snapshot = false } = {}) {
 
   const changed = files(m)
     .filter((f) => before.get(f) !== read(f))
-    .map((f) => `${rel(f)}${before.get(f) == null ? ' — создан' : read(f) == null ? ' — удалён' : ''}${detail.has(f) ? `: ${detailOf(f)}` : ''}`);
+    .map((f) => `${rel(f)}${fileChange(before.get(f), read(f))}${detail.has(f) ? `: ${detailOf(f)}` : ''}`);
   return { m, changed, notes, findings };
+}
+/** @param {string[]} changed */
+// Файл появился или пропал за fix; просто поправлен — пусто.
+/** @param {string | null | undefined} was @param {string | null} now */
+function fileChange(was, now) {
+  if (was == null) return ' — создан';
+  return now == null ? ' — удалён' : '';
 }
 /** @param {string[]} changed */
 export const fixedText = (changed) => (changed.length ? `Скрипт поправил:\n${changed.map((x) => `- ${x}`).join('\n')}` : 'Скрипту поправлять нечего.');

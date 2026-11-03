@@ -36,6 +36,13 @@ function runLint(ctx, args) {
     return { out: String(e instanceof Error ? e.stack : e), code: 1 };
   }
 }
+// Строка ⚙ после команды lint: упала — её строка или стоп; прошла — after, её строка или следующий вызов.
+/** @param {number} code @param {string | null} gear @param {Action} a @param {string[]} next */
+function gearAfter(code, gear, a, next) {
+  if (code) return gear || gearLine(G.stop);
+  if (a.after) return gearLine(a.after);
+  return gear || gearLine(G.call(next));
+}
 // Одно исполнение для всех действий: выбранного варианта и ответа человека на wait.
 // Человеку — карточка (что происходит), агенту — строка ⚙. id — вариант, asked — вопрос, на который
 // пришёл ответ: ответ не понят (код 2) — спросить ещё раз.
@@ -52,7 +59,7 @@ function act(ctx, m, a, { id, asked = null }) {
     }
     // Вывод команды уже карточка; её строка ⚙ главнее (close --json задаёт свой вопрос, start ведёт дальше).
     // after — что дальше, когда команда прошла (gen slices: продолжить скилл, а не новый вопрос).
-    const g = code ? gear || gearLine(G.stop) : a.after ? gearLine(a.after) : gear || gearLine(G.call(next));
+    const g = gearAfter(code, gear, a, next);
     ctx.io.log(blocks(card || 'Готово.', g));
     ctx.io.exit(code);
   }
