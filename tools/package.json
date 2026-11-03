@@ -16,7 +16,9 @@
     "ub:gate": "node metrics/ub-gate.mjs",
     "ub:baseline": "node metrics/ub-gate.mjs --baseline",
     "mutate:gate": "node metrics/mutate.mjs gate",
-    "mutate:pull": "node metrics/mutate.mjs pull"
+    "mutate:pull": "node metrics/mutate.mjs pull",
+    "mutate:survivors": "node metrics/mutate.mjs survivors",
+    "ub:baseline-mutate": "node metrics/ub-gate.mjs --baseline-mutate"
   },
   "devDependencies": {
     "@types/node": "26.1.2",
