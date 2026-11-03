@@ -291,29 +291,7 @@
  },
  "mutate": {
   "namespaces": 71,
-  "survivedForms": 21,
-  "survived": [
-   "skills.sdd-lint.scripts.sdd-lint.cli#defn/helpFor: 1",
-   "skills.sdd-lint.scripts.sdd-lint.cmd-prompt#defn/skillPrompt: 1",
-   "skills.sdd-lint.scripts.sdd-lint.cmd-prompt#defn/cmdPrompt: 3",
-   "skills.sdd-lint.scripts.sdd-lint.config#defn/skillPrefix: 1",
-   "skills.sdd-lint.scripts.sdd-lint.config#defn/lintBase: 1",
-   "skills.sdd-lint.scripts.sdd-lint.config#defn/tipOk: 2",
-   "skills.sdd-lint.scripts.sdd-lint.edit-marks#defn/editMarks: 1",
-   "skills.sdd-lint.scripts.sdd-lint.findings#defn/noStatus: 1",
-   "skills.sdd-lint.scripts.sdd-lint.findings#defn/report: 12",
-   "skills.sdd-lint.scripts.sdd-lint.io#defn/createIo: 2",
-   "skills.sdd-lint.scripts.sdd-lint.mcp-server#defn/lint: 1",
-   "skills.sdd-lint.scripts.sdd-lint.mcp-server#defn/withCode: 1",
-   "skills.sdd-lint.scripts.sdd-lint.mcp-server#defn/callTool: 3",
-   "skills.sdd-lint.scripts.sdd-lint.pick#defn/listFeatures: 1",
-   "skills.sdd-lint.scripts.sdd-lint.pick#defn/resolveFeature: 8",
-   "skills.sdd-lint.scripts.sdd-lint.pick#defn/pickChoice: 8",
-   "skills.sdd-lint.scripts.sdd-lint.pick#defn/needDir: 2",
-   "skills.sdd-lint.scripts.sdd-lint.read-size#defn/visibleLength: 1",
-   "skills.sdd-lint.scripts.sdd-lint.read-size#defn/readSize: 1",
-   "skills.sdd-lint.scripts.sdd-lint.work#defn/refsInto: 1",
-   "skills.sdd-lint.scripts.sdd-lint.work#defn/moveLegacy: 2"
-  ]
+  "survivedForms": 0,
+  "survived": []
  }
 }
