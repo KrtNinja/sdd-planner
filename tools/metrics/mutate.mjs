@@ -3,6 +3,7 @@
 //
 //   node metrics/mutate.mjs files --shard 3/12 [--base origin/main]
 //       файлы одной части прогона, части поровну по размеру; с --base — только добавленные и изменённые в PR
+//       (менялись тесты — и файлы, где в снимке есть выжившие)
 //   node metrics/mutate.mjs collect <dir>
 //       снимки из .metrics/mutate/, которые этот прогон записал заново, → в <dir> (артефакт части)
 //   node metrics/mutate.mjs gate [--base origin/main] [--from <dir>] [--fresh]
@@ -32,16 +33,28 @@ const lines = (text) => text.split('\n').filter(Boolean);
 const isCode = (f) => f.endsWith('.mjs') && fs.existsSync(path.join(REPO, f));
 const ednFiles = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.edn')).sort() : []);
 const readSnap = (dir, f) => readEdn(fs.readFileSync(path.join(dir, f), 'utf8'));
+const uniqSorted = (a) => [...new Set(a)].sort();
 
 function arg(name) {
   const i = process.argv.indexOf(name);
   return i < 0 ? null : process.argv[i + 1];
 }
 
+// Файлы, где в снимке есть выжившие мутанты: новые тесты могли их убить.
+function withSurvivors() {
+  return ednFiles(SNAPSHOT)
+    .map((f) => readSnap(SNAPSHOT, f))
+    .filter((s) => (s.forms ?? []).some((form) => form.survived > 0))
+    .map((s) => s.source);
+}
+
 // Файлы кода: все или добавленные и изменённые относительно base. Переименование — новый файл (--no-renames).
+// Менялись тесты — плюс файлы с выжившими: mutator перепроверит только выживших, убитые в снимке не повторяет.
 function sources(base) {
-  const list = base ? git('diff', '--name-only', '--no-renames', '--diff-filter=AM', `${base}...HEAD`, '--', CODE) : git('ls-files', '--', CODE);
-  return lines(list).filter(isCode).sort();
+  if (!base) return lines(git('ls-files', '--', CODE)).filter(isCode).sort();
+  const changed = (...paths) => lines(git('diff', '--name-only', '--no-renames', '--diff-filter=AM', `${base}...HEAD`, '--', ...paths));
+  const tests = changed('tests').length ? withSurvivors() : [];
+  return uniqSorted([...changed(CODE), ...tests].filter(isCode));
 }
 
 // Части поровну по размеру: самый большой файл — в самую лёгкую часть. Порядок детерминированный.
