@@ -47,6 +47,25 @@ const askName = (raw, why = null) =>
     nameArgs(raw, ANSWER),
   );
 
+/** @param {TaskInput} c @param {string} raw @param {string | null} fileSlug */
+function autoName(c, raw, fileSlug) {
+  if (fileSlug) return { slug: fileSlug, own: false };
+  return {
+    text: screen(
+      null,
+      `придумай имя папки фичи по задаче ${requestOf(c.task)}: 2–4 английских слова строчными через дефис, например user-settings-panel; ` +
+        `человека не спрашивай — он выбрал «Автоматически», имя увидит и сможет поменять`,
+      G.call(['start', raw, '--slug', '<имя>']),
+    ),
+  };
+}
+
+/** @param {string} answer */
+function ownName(answer) {
+  const own = slugFromAnswer(answer);
+  return { slug: own, own: true, from: own !== answer && !slugProblem(own) ? answer : null };
+}
+
 // Имя новой папки. slug — придумал агент после «Автоматически» или человек написал «/sdd-grill my-feature "…"»;
 // name — ответ на вопрос: id варианта или имя словами. { slug, own, from } — создавать (from — ответ человека,
 // если скрипт его поправил: человеку об этом скажут); { text } — сначала этот шаг.
@@ -61,18 +80,9 @@ export function folderName(c, raw, slug, name) {
   const answer = name.trim();
   if (answer === NAME_OWN) return { text: askName(raw) };
   if (answer === NAME_AUTO || AUTO_WORDS.test(answer)) {
-    if (fileSlug) return { slug: fileSlug, own: false };
-    return {
-      text: screen(
-        null,
-        `придумай имя папки фичи по задаче ${requestOf(c.task)}: 2–4 английских слова строчными через дефис, например user-settings-panel; ` +
-          `человека не спрашивай — он выбрал «Автоматически», имя увидит и сможет поменять`,
-        G.call(['start', raw, '--slug', '<имя>']),
-      ),
-    };
+    return autoName(c, raw, fileSlug);
   }
-  const own = slugFromAnswer(answer);
-  return { slug: own, own: true, from: own !== answer && !slugProblem(own) ? answer : null };
+  return ownName(answer);
 }
 
 // Имя не подходит или папка занята — что сказать; null — можно создавать.
@@ -91,6 +101,11 @@ export function nameTrouble(slug, raw, own) {
       : screen(null, `папка ${path.join(DOCS, twin)} уже есть и отличается только регистром — придумай другое имя → ${A(['start', raw, '--slug', '<имя>'])}`);
   }
   if (old == null && !fs.existsSync(path.join(dir, 'spec.md'))) return null;
+  return occupiedName({ slug, raw, own, dir, old });
+}
+
+/** @param {{ slug: string, raw: string, own: boolean, dir: string, old: string | null }} input */
+function occupiedName({ slug, raw, own, dir, old }) {
   const was = old ? ` (запрос ${header(old, 'Запрос') || '—'})` : '';
   if (own) return askName(raw, `Папка \`${dir}\` уже занята${was}. Продолжить ту фичу — ${skillCode('sdd-grill', slug)}; для этой задачи нужно другое имя.`);
   return screen(
