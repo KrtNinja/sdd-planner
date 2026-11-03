@@ -37,7 +37,7 @@ export function workFiles(m) {
 // Игнор git проверяем на файле внутри: «tmp/», «_*» в глобальном .gitignore молча прячут ревью от коммита,
 // а GigaCode по умолчанию не показывает агенту игнорируемые файлы.
 /** @param {Feature} m */
-export function workIgnored(m) {
+function workIgnored(m) {
   const g = gitInfo(m.dir);
   if (!g) return false;
   try {
