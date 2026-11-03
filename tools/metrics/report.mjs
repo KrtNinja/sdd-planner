@@ -22,10 +22,10 @@ const CRAP_MAX = 10;
 // Окно поиска повторов. В тестах однотипные проверки с разными данными (run → code → match) при окне 50
 // совпадают по токенам и считаются копиями; окно 75 оставляет только скопированные блоки.
 const CLONE_WINDOW = { code: 50, tests: 75 };
-// Модули-данные: строки одной формы («'SP-03': ['err', 'подсказка']», фразы человеку) совпадают по токенам,
+// Модули-данные: строки одной формы («'SP-03': ['err', 'подсказка']») совпадают по токенам,
 // но это не скопированный код — повторы в них не ищут (решение в чате, шаг 7.1). Чтобы сюда не прятали код,
 // функции в них — без ветвлений: сложность больше 1 — гейт падает. Путь — файл или папка с «/» на конце.
-const DATA_MODULES = ['skills/sdd-lint/scripts/sdd-lint/rules.mjs', 'skills/sdd-lint/scripts/sdd-lint/texts/'];
+const DATA_MODULES = ['skills/sdd-lint/scripts/sdd-lint/rules.mjs'];
 const isData = (f) => DATA_MODULES.some((d) => (d.endsWith('/') ? f.startsWith(d) : f === d));
 // Где можно печатать и завершать процесс: точка входа CLI и MCP-сервер.
 const IO_ALLOWED = new Set(['skills/sdd-lint/scripts/sdd-lint.mjs', 'skills/sdd-lint/scripts/mcp.mjs']);
