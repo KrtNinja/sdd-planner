@@ -14,16 +14,24 @@ import { stageOf } from './stage.mjs';
 // Тест ссылается на AC строкой <feature>/<AC-ID> — так AC-002-1 разных фич не смешиваются.
 const AC_ID = 'AC-\\d{3}-[BF]?\\d+';
 
+/** @type {Record<string, string>} */
+const HALF_OF_SIDE = { F: 'frontend', B: 'backend' };
+// Сервис AC: frontend-половина — frontend, серверная — из заголовка «<Сервис>-половина», общая — нет.
+/** @param {string} half @param {string | null} h2 */
+function serviceOf(half, h2) {
+  if (half === 'frontend') return 'frontend';
+  return half === 'backend' ? serviceOfHeading(h2) : null;
+}
 /** @param {string} feature @param {import('./model.mjs').Ac & { service?: string | null }} ac */
 function acOf(feature, ac) {
   const first = ac.text.split('\n').find((l) => l.includes(ac.id)) || '';
-  const half = ac.side === 'F' ? 'frontend' : ac.side === 'B' ? 'backend' : 'common';
+  const half = HALF_OF_SIDE[ac.side] ?? 'common';
   return {
     id: ac.id,
     ref: `${feature}/${ac.id}`,
     name: first.slice(first.indexOf(ac.id) + ac.id.length).replace(/\(удал[её]н[^)]*\)/i, '').trim(),
     half,
-    service: half === 'frontend' ? 'frontend' : half === 'backend' ? serviceOfHeading(ac.h2) : null,
+    service: serviceOf(half, ac.h2),
     checks: ac.refs,
     line: ac.n,
     deleted: ac.deleted,

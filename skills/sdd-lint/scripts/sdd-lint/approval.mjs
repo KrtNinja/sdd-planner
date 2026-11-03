@@ -33,12 +33,13 @@ export const fingerprint = (mds) => crypto.createHash('sha256').update(mds.map(a
 const sliceMds = (m) => [...m.slices.values()].sort((a, b) => a.num.localeCompare(b.num)).map((s) => s.md);
 // Тексты, от которых считается отметка: spec, README со всеми slices или один ADR (он есть — его одобряют).
 /** @param {Feature} m @param {Approval['kind']} kind @param {string} file @returns {(string | null)[]} */
-export const approvalMds = (m, kind, file) =>
-  kind === 'spec'
-    ? [/** @type {import('./model.mjs').Spec} */ (m.spec).md]
-    : kind === 'slices'
-      ? [m.readme, ...sliceMds(m)]
-      : [/** @type {import('./model.mjs').Adr} */ (m.adrs.find((a) => a.file === file)).md];
+export const approvalMds = (m, kind, file) => MDS_OF[kind](m, file);
+/** @type {Record<Approval['kind'], (m: Feature, file: string) => (string | null)[]>} */
+const MDS_OF = {
+  spec: (m) => [/** @type {import('./model.mjs').Spec} */ (m.spec).md],
+  slices: (m) => [m.readme, ...sliceMds(m)],
+  adr: (m, file) => [/** @type {import('./model.mjs').Adr} */ (m.adrs.find((a) => a.file === file)).md],
+};
 const NO_MARK = 'на ревью (статус ставил не approve)';
 const CHANGED = 'на ревью (файл менялся после approve)';
 // manual — «одобрено» без отметки, ok — отметка совпала с содержимым, changed — файл менялся после approve.

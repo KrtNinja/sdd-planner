@@ -17,6 +17,30 @@ import { printTip, stageOf, stageText } from './stage.mjs';
 /** @typedef {import('./io.mjs').Ctx} Ctx */
 /** @typedef {import('./model.mjs').Approval['kind']} Kind */
 /** @typedef {import('./model.mjs').Review} Review */
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./model.mjs').Adr} Adr */
+
+// ADR для «принято»: номер назван — он; не назван — единственный ждущий; иначе нет.
+/** @param {Feature} m @param {string | undefined} num @param {Adr[]} pending */
+function adrToApprove(m, num, pending) {
+  if (num) return m.featureAdrs.find((a) => a.num === num.padStart(4, '0'));
+  return pending.length === 1 ? pending[0] : null;
+}
+// Почему ADR не выбран — и как указать его.
+/** @param {Feature} m @param {string | undefined} num @param {Adr[]} pending */
+function noAdrText(m, num, pending) {
+  if (num) return `ADR ${num} не найден среди ADR фичи ${m.name}`;
+  if (!pending.length) return `у фичи ${m.name} нет ADR, ждущих «принято»`;
+  const list = pending.map((a) => lintCode('approve', 'adr', rel(m.dir), a.num));
+  return `у фичи ${pending.length} ADR без «принято» — укажите номер: ${list.join('; ')}`;
+}
+// Статус артефакта после проверки отпечатка; артефакт есть — его наличие проверено раньше.
+/** @type {Record<Kind, (m: Feature, file: string) => string | null>} */
+const STATUS_OF = {
+  spec: (m) => /** @type {import('./model.mjs').Spec} */ (m.spec).status,
+  slices: (m) => m.slicesStatus,
+  adr: (m, file) => /** @type {Adr} */ (m.adrs.find((a) => a.file === file)).status,
+};
 
 // Ставит «одобрено <дата>» / «принято <дата>», если артефакт чист: lint без ошибок
 // (с учётом нового статуса — например, SP-06 «одобрено с открытыми вопросами»)
@@ -51,18 +75,8 @@ export function cmdApprove(ctx) {
   } else {
     word = 'принято';
     const pending = pendingAdrs(m);
-    const adr = pos[2] ? m.featureAdrs.find((a) => a.num === pos[2].padStart(4, '0')) : pending.length === 1 ? pending[0] : null;
-    if (!adr) {
-      const list = pending.map((a) => lintCode('approve', 'adr', dir, a.num));
-      refuse(
-        pos[2]
-          ? `ADR ${pos[2]} не найден среди ADR фичи ${m.name}`
-          : pending.length
-            ? `у фичи ${pending.length} ADR без «принято» — укажите номер: ${list.join('; ')}`
-            : `у фичи ${m.name} нет ADR, ждущих «принято»`,
-        2,
-      );
-    }
+    const adr = adrToApprove(m, pos[2], pending);
+    if (!adr) refuse(noAdrText(m, pos[2], pending), 2);
     target = adr.file;
     scope = [adr.file];
   }
@@ -71,12 +85,7 @@ export function cmdApprove(ctx) {
   if (raw === null) refuse(`в ${rel(target)} нет строки «Статус:» — добавьте её по шаблону`);
   // Статус после проверки отпечатка: «одобрено» руками или после правки — не одобрено, approve ставит заново.
   // Артефакт есть — его наличие проверено выше.
-  const cur =
-    what === 'spec'
-      ? /** @type {import('./model.mjs').Spec} */ (m.spec).status
-      : what === 'slices'
-        ? m.slicesStatus
-        : /** @type {import('./model.mjs').Adr} */ (m.adrs.find((a) => a.file === target)).status;
+  const cur = STATUS_OF[what](m, target);
   if (approved(cur)) {
     ctx.io.log(`${rel(target)}: уже «${cur}».`);
     ctx.io.exit(0);

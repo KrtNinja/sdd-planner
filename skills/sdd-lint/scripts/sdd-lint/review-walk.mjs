@@ -46,20 +46,26 @@ export function decideAction(m, ref, decision, next, note = '') {
   return { subagent: [...args, '--sub', ...(note.trim() ? ['--note', note.trim()] : [])], here: args, next, say };
 }
 
+// Что у артефакта своё: что отдать humanizer и guard, что ревьюить, названия и статус. ADR и spec есть —
+// вопрос этапа задаётся только по ним.
+/** @typedef {Pick<Artifact, 'target' | 'files' | 'name' | 'of' | 'status'>} OwnParts */
+/** @type {Record<Artifact['what'], (m: Feature, dir: string, num?: string) => OwnParts>} */
+const OWN_OF = {
+  spec: (m) => ({ target: rel(m.specFile), files: rel(m.specFile), name: 'Dev Spec', of: 'спеки', status: /** @type {import('./model.mjs').Spec} */ (m.spec).status }),
+  slices: (m, dir) => ({ target: dir, files: `каждому файлу в ${dir}/slices/`, name: 'Slices', of: 'slices', status: m.slicesStatus }),
+  adr: (m, _dir, num) => {
+    const a = /** @type {import('./model.mjs').Adr} */ (m.featureAdrs.find((x) => x.num === num));
+    return { target: rel(a.file), files: rel(a.file), name: `ADR ${num}`, of: `ADR ${num}`, status: a.status };
+  },
+};
 /** @param {Feature} m @param {Artifact['what']} what @param {string} [num] @returns {Artifact} */
 function artifact(m, what, num) {
-  const a = what === 'adr' ? m.featureAdrs.find((x) => x.num === num) : null;
   const dir = rel(m.dir);
   return {
     what,
     key: reviewKey(what, num),
     dir,
-    target: what === 'spec' ? rel(m.specFile) : what === 'slices' ? dir : rel(/** @type {import('./model.mjs').Adr} */ (a).file),
-    files: what === 'spec' ? rel(m.specFile) : what === 'slices' ? `каждому файлу в ${dir}/slices/` : rel(/** @type {import('./model.mjs').Adr} */ (a).file),
-    name: what === 'spec' ? 'Dev Spec' : what === 'slices' ? 'Slices' : `ADR ${num}`,
-    of: what === 'spec' ? 'спеки' : what === 'slices' ? 'slices' : `ADR ${num}`,
-    status:
-      what === 'spec' ? /** @type {import('./model.mjs').Spec} */ (m.spec).status : what === 'slices' ? m.slicesStatus : /** @type {import('./model.mjs').Adr} */ (a).status,
+    ...OWN_OF[what](m, dir, num),
     rest: /** @type {string[]} */ ([what, num].filter(Boolean)),
     approve: what === 'adr' ? ['approve', 'adr', dir, /** @type {string} */ (num)] : ['approve', what, dir],
   };
