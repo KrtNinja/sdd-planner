@@ -17,6 +17,23 @@ import { saveSnapshot } from './snapshot.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
 
+// Ошибки не ушли: прогоны до MAX_RUNS — агент исправляет сам; после лимита — человеку, счётчик сброшен.
+// Одна форма для plan и done: агент не крутится в цикле правок.
+/**
+ * dir — папка фичи, kind — счётчик прогонов (plan или done), runs — номер этого прогона.
+ * @param {Ctx} ctx
+ * @param {{ dir: string, kind: string, runs: number, what: string, fix: string, then: string[], stuck: string, ask: string }} t
+ * @returns {never}
+ */
+function retryOrStop(ctx, t) {
+  if (t.runs < MAX_RUNS) ctx.io.log(`\n${screen(`${t.what}, исправляю — прогон ${t.runs} из ${MAX_RUNS}.`, t.fix, G.then(t.then))}`);
+  else {
+    reset(t.dir, t.kind);
+    ctx.io.log(`\n${screen(`${t.stuck} не ушли за ${MAX_RUNS} прогона — список выше. ${t.ask}`, 'коротко объясни человеку, что не вышло и почему', G.stop)}`);
+  }
+  return ctx.io.exit(1);
+}
+
 // План проверяет скрипт, а не модель: покрытие, причины, зависимости, сервисы.
 /** @param {Ctx} ctx */
 export function cmdPlan(ctx) {
@@ -35,14 +52,17 @@ export function cmdPlan(ctx) {
   }
   const c = report(ctx, all.filter((x) => x.rule.startsWith('PL')));
   const { runs } = bump(m.dir, 'plan');
-  if (c.err) {
-    if (runs < MAX_RUNS) ctx.io.log(`\n${screen(`План нарезки не готов: ошибок ${c.err}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, `исправь ${rel(m.planFile)}`, G.then(['plan', dir]))}`);
-    else {
-      reset(m.dir, 'plan');
-      ctx.io.log(`\n${screen(`Ошибки в плане нарезки не ушли за ${MAX_RUNS} прогона — список выше. Как быть: поправить план вместе или вы поправите сами?`, 'коротко объясни человеку, что не вышло и почему', G.stop)}`);
-    }
-    ctx.io.exit(1);
-  }
+  if (c.err)
+    retryOrStop(ctx, {
+      dir: m.dir,
+      kind: 'plan',
+      runs,
+      what: `План нарезки не готов: ошибок ${c.err}`,
+      fix: `исправь ${rel(m.planFile)}`,
+      then: ['plan', dir],
+      stuck: 'Ошибки в плане нарезки',
+      ask: 'Как быть: поправить план вместе или вы поправите сами?',
+    });
   reset(m.dir, 'plan');
   const warn = c.warn ? `предупреждений ${c.warn} — повод склеить slices: поправь план или оставь, человек увидит их рядом с планом` : null;
   ctx.io.log(`\n${screen(`План нарезки без ошибок: ${m.plan.slices.length} slices.`, warn, G.call(['ask', dir]))}`);
@@ -79,12 +99,7 @@ export function cmdDone(ctx) {
   if (errs.length) {
     ctx.io.log('');
     report(ctx, findings);
-    if (runs < MAX_RUNS) ctx.io.log(`\n${screen(`Этап не готов: ошибок ${errs.length}, исправляю — прогон ${runs} из ${MAX_RUNS}.`, 'исправь ошибки', G.then(['done', dir]))}`);
-    else {
-      reset(m.dir, 'done');
-      ctx.io.log(`\n${screen(`Ошибки не ушли за ${MAX_RUNS} прогона — список выше. Как быть?`, 'коротко объясни человеку, что не вышло и почему', G.stop)}`);
-    }
-    ctx.io.exit(1);
+    retryOrStop(ctx, { dir: m.dir, kind: 'done', runs, what: `Этап не готов: ошибок ${errs.length}`, fix: 'исправь ошибки', then: ['done', dir], stuck: 'Ошибки', ask: 'Как быть?' });
   }
   if (warns.length && !prev?.warnTried) {
     mark(m.dir, 'done', { warnTried: true });
