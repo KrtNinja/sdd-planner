@@ -12,7 +12,11 @@ export class Exit extends Error {
   }
 }
 
-/** @typedef {ReturnType<typeof createIo>} Io */
+/**
+ * Вывод команды. Тип — литералом, а не выведен из createIo и не через @property: только так tsc
+ * видит never у exit и сужает типы после «if (!x) ctx.io.exit(2)».
+ * @typedef {{ chunks: [1 | 2, string][], log: (...a: unknown[]) => void, error: (...a: unknown[]) => void, exit: (code?: number) => never }} Io
+ */
 /**
  * Аргументы вызова, вывод и вложенный вызов lint; первым параметром у команд и помощников вывода.
  * @typedef {{ args: import('./args.mjs').Args, io: Io, lint: (argv: string[]) => { code: number, chunks: [1 | 2, string][] } }} Ctx
@@ -20,7 +24,7 @@ export class Exit extends Error {
 
 // write(fd, text) — куда идёт вывод (1 — stdout, 2 — stderr). Без него — в буфер chunks: [[fd, text], …]
 // в порядке записи, чтобы вызывающий восстановил вывод как в терминале.
-/** @param {(fd: 1 | 2, text: string) => void} [write] */
+/** @param {(fd: 1 | 2, text: string) => void} [write] @returns {Io} */
 export function createIo(write) {
   /** @type {[1 | 2, string][]} */
   const chunks = [];

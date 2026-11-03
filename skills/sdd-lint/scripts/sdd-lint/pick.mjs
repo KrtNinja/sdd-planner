@@ -48,13 +48,13 @@ export function pickFeature(ctx, why, n) {
   return ctx.io.exit(2);
 }
 // Нет варианта (approve без spec|slices|adr) — показать варианты готовыми командами.
-/** @param {Ctx} ctx @param {keyof typeof CHOICES} name @returns {never} */
+/** @param {Ctx} ctx @param {string} name @returns {never} */
 export function pickChoice(ctx, name, n = 0) {
   const { pos } = ctx.args;
   const ex = pos[n + 1] && resolveFeature(pos[n + 1]) ? pos[n + 1] : listFeatures()[0] || '<feature>';
   const opts = Object.entries(CHOICES[name]);
   // completion запускают в терминале, у остальных после варианта идёт фича.
-  const withFeature = SLOTS[/** @type {keyof typeof SLOTS} */ (name)].includes('feature');
+  const withFeature = SLOTS[name].includes('feature');
   const line = (/** @type {string} */ k) => (name === 'completion' ? `sdd-lint completion ${k}` : withFeature ? lintCmd(name, k, ex) : lintCmd(name, k));
   const cmdsList = opts.map(([k]) => line(k));
   const bad = pos[n] ? `Нет варианта «${pos[n]}» у ${name}` : `${name} — выбери вариант`;

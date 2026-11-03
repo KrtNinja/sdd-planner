@@ -1,4 +1,5 @@
 // Команды ask и choose.
+// @ts-check
 import { askOf, askView } from './ask.mjs';
 import { closeOptions } from './close.mjs';
 import { targetFiles } from './cmd-guard.mjs';
@@ -13,6 +14,8 @@ import { tempArtifacts } from './stage.mjs';
 import { startQuestion } from './start-sources.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
+/** @typedef {import('./model.mjs').Feature} Feature */
+/** @typedef {import('./question.mjs').Action} Action */
 
 /** @param {Ctx} ctx */
 export function cmdAsk(ctx) {
@@ -36,7 +39,7 @@ function runLint(ctx, args) {
 // Одно исполнение для всех действий: выбранного варианта и ответа человека на wait.
 // Человеку — карточка (что происходит), агенту — строка ⚙. id — вариант, asked — вопрос, на который
 // пришёл ответ: ответ не понят (код 2) — спросить ещё раз.
-/** @param {Ctx} ctx */
+/** @param {Ctx} ctx @param {Feature} m @param {Action} a @param {{ id: string, asked?: Action | null }} opts */
 function act(ctx, m, a, { id, asked = null }) {
   const d = rel(m.dir);
   const next = a.next || ['ask', d];
@@ -44,7 +47,7 @@ function act(ctx, m, a, { id, asked = null }) {
     const { out, code } = runLint(ctx, a.lint);
     const { card, gear } = splitGear(out);
     if (code === 2 && a.retry && asked) {
-      ctx.io.log(waitText(blocks(card, asked.wait), asked.then));
+      ctx.io.log(waitText(blocks(card, asked.wait), /** @type {string[]} */ (asked.then)));
       ctx.io.exit(0);
     }
     // Вывод команды уже карточка; её строка ⚙ главнее (close --json задаёт свой вопрос, start ведёт дальше).
@@ -64,7 +67,7 @@ function act(ctx, m, a, { id, asked = null }) {
     ctx.io.log(screen(a.say, G.sub(a.subagent), a.quiet ? G.quiet : G.report, G.then(next), none));
   } else if (a.here) ctx.io.log(screen(skillPrompt(ctx, a.here[1], a.here.slice(2)), G.skill));
   else if (a.show) ctx.io.log(screen(a.show, G.stop));
-  else if (a.wait) ctx.io.log(waitText(a.wait, a.then));
+  else if (a.wait) ctx.io.log(waitText(a.wait, /** @type {string[]} */ (a.then)));
   else ctx.io.log(screen('Хорошо, ничего не делаю.', G.stop));
   ctx.io.exit(0);
 }
@@ -83,11 +86,12 @@ export function cmdChoose(ctx) {
     ctx.io.error(screen(id ? `Варианта «${id}» сейчас нет — этап изменился. Задам вопрос заново.` : 'Вариант не указан.', G.call(['ask', d])));
     ctx.io.exit(2);
   }
-  const a = opt.action;
+  // Варианты вопросов этапа, close и старта — все с действием.
+  const a = /** @type {Action} */ (opt.action);
   // Ответ человека на wait: answer превращает его в действие (decide в сабагенте, triage).
   if (answer !== undefined && a.answer) {
     if (!answer.trim() || answer === ANSWER) {
-      ctx.io.log(waitText(blocks('Ответа нет.', a.wait), a.then));
+      ctx.io.log(waitText(blocks('Ответа нет.', a.wait), /** @type {string[]} */ (a.then)));
       ctx.io.exit(0);
     }
     act(ctx, m, a.answer(answer), { id, asked: a });
