@@ -22,16 +22,8 @@ import { legacyPaths } from './work.mjs';
 // в FR и AC, история — в git. Ссылки spec на протокол убирает genLinks.
 /** @param {Ctx} ctx */
 export function cmdClose(ctx) {
-  const { flags, pos } = ctx.args;
-  let target = pos[0];
-  if (!target) {
-    const c = chooseFeature('close', (f) => ['close', f, ...(flags.json ? ['--json'] : [])]);
-    if (!c.dir) {
-      ctx.io.log(c.text);
-      ctx.io.exit(2);
-    }
-    target = c.dir;
-  }
+  const { flags } = ctx.args;
+  const target = closeTarget(ctx);
   const m = loadFeature(needDir(ctx, target));
   const dir = rel(m.dir);
   if (!tempArtifacts(m).length) {
@@ -46,12 +38,7 @@ export function cmdClose(ctx) {
   }
 
   const gone = tempArtifacts(m);
-  const old = legacyPaths(m);
-  if (m.protocol) fs.rmSync(m.protocolFile);
-  for (const d of [m.workDir, old.review]) fs.rmSync(d, { recursive: true, force: true });
-  fs.rmSync(old.plan, { force: true });
-  // Без spec ссылок на протокол нет — чинить нечего (genLinks без spec останавливается).
-  if (m.spec) genLinks(ctx, loadFeature(m.dir));
+  removeArtifacts(ctx, m);
   const findings = runChecks(loadFeature(m.dir));
   const c = report(ctx, findings);
   ctx.io.log(
@@ -63,4 +50,31 @@ export function cmdClose(ctx) {
     ),
   );
   ctx.io.exit(c.err ? 1 : 0);
+}
+
+// Выбор фичи до показа последствий и подтверждения удаления.
+/** @param {Ctx} ctx */
+function closeTarget(ctx) {
+  const { flags, pos } = ctx.args;
+  let target = pos[0];
+  if (!target) {
+    const c = chooseFeature('close', (f) => ['close', f, ...(flags.json ? ['--json'] : [])]);
+    if (!c.dir) {
+      ctx.io.log(c.text);
+      ctx.io.exit(2);
+    }
+    target = c.dir;
+  }
+  return target;
+}
+
+// Удаление временных файлов и восстановление ссылок после подтверждения.
+/** @param {Ctx} ctx @param {import('./model.mjs').Feature} m */
+function removeArtifacts(ctx, m) {
+  const old = legacyPaths(m);
+  if (m.protocol) fs.rmSync(m.protocolFile);
+  for (const d of [m.workDir, old.review]) fs.rmSync(d, { recursive: true, force: true });
+  fs.rmSync(old.plan, { force: true });
+  // Без spec ссылок на протокол нет — чинить нечего (genLinks без spec останавливается).
+  if (m.spec) genLinks(ctx, loadFeature(m.dir));
 }
