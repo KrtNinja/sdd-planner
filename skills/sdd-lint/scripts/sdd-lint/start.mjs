@@ -184,10 +184,7 @@ export function startFrom(raw, slug = null, name = null) {
       'start',
       '<прежний текст, путь — из ответа человека>',
     ]);
-  if (c.kind === 'feature') {
-    if (c.sources.length) return addSources(c.dir, c.sources.join(' '));
-    return resume(c.dir);
-  }
+  if (c.kind === 'feature') return resumeSources(c.dir, c.sources);
   if (c.kind !== 'task') return askTask(c, slug || c.slug);
   const n = folderName(c, raw, slug, name);
   if (n.text) return n.text;
@@ -266,4 +263,11 @@ export function renameFeature(dir, slug) {
     return waitText(`\`${rel(to)}\` уже есть. Какое имя взять?`, ['start', d, '--rename', ANSWER]);
   fs.renameSync(m.dir, to);
   return blocks(`Папка \`${d}\` теперь \`${rel(to)}\`.`, resume(to));
+}
+
+// Для существующей фичи новые источники добавляются до продолжения.
+/** @param {string} dir @param {string[]} sources */
+function resumeSources(dir, sources) {
+  if (sources.length) return addSources(dir, sources.join(' '));
+  return resume(dir);
 }
