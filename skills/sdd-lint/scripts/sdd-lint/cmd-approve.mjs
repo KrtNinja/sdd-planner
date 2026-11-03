@@ -58,28 +58,7 @@ export function cmdApprove(ctx) {
     ctx.io.log(`НЕ ОДОБРЕНО: ${msg}`);
     return ctx.io.exit(code);
   };
-  /** @type {string} */
-  let target;
-  /** @type {string[]} */
-  let scope;
-  let word = 'одобрено';
-  if (what === 'spec') {
-    if (!m.spec) refuse(`нет spec.md. Сначала: ${skillCode('sdd-spec', m.name)}`);
-    target = m.specFile;
-    scope = [m.protocolFile, m.specFile];
-  } else if (what === 'slices') {
-    if (!m.slices.size || m.readme == null) refuse(`нет slices или slices/README.md. Сначала: ${skillCode('sdd-slices', m.name)}`);
-    if (!m.spec || !approved(m.spec.status)) refuse(`Dev Spec не одобрен — slices опираются на него. Сначала: ${lintCode('approve', 'spec', dir)}`);
-    target = m.readmeFile;
-    scope = [m.protocolFile, m.specFile, m.readmeFile, ...[...m.slices.values()].map((x) => x.file)];
-  } else {
-    word = 'принято';
-    const pending = pendingAdrs(m);
-    const adr = adrToApprove(m, pos[2], pending);
-    if (!adr) refuse(noAdrText(m, pos[2], pending), 2);
-    target = adr.file;
-    scope = [adr.file];
-  }
+  const { target, scope, word } = approvalTarget(m, what, { num: pos[2], refuse });
   const md = fs.readFileSync(target, 'utf8');
   const raw = header(md, 'Статус');
   if (raw === null) refuse(`в ${rel(target)} нет строки «Статус:» — добавьте её по шаблону`);
@@ -98,19 +77,10 @@ export function cmdApprove(ctx) {
   const inScope = new Set(scope.map(rel));
   const after = loadFeature(d, (f) => (path.resolve(f) === path.resolve(target) ? next : read(f)));
   const findings = runChecks(after).filter((x) => x.level === 'err' && inScope.has(x.file));
-  const add = adder(findings);
 
-  // блокеры последнего ревью этого артефакта
-  const rv = m.reviews.get(reviewKey(what, what === 'adr' ? path.basename(target).slice(0, 4) : null));
-  // В общем lint RV-01 — предупреждение; одобрение он блокирует — здесь это ошибка.
-  // Блокеры есть только у найденного ревью.
-  for (const r of openBlockers(rv)) findings.push({ ...finding('RV-01', /** @type {Review} */ (rv).file, r.n, `${r.id}: блокер без решения`), level: 'err' });
+  findings.push(...approvalBlockers(m, what, target));
 
-  // guard: защищённые части против снимка, если он снят
-  for (const f of scope.filter((x) => fs.existsSync(x) && fs.existsSync(snapPath(x)))) {
-    const before = JSON.parse(fs.readFileSync(snapPath(f), 'utf8')).parts;
-    for (const x of diffParts(before, protectedParts(fs.readFileSync(f, 'utf8')))) add('HG-01', f, null, `(против: снимок) ${x}`);
-  }
+  guardFindings(scope, findings);
   if (findings.length) {
     report(ctx, findings);
     const hg = findings.some((x) => x.rule === 'HG-01');
@@ -128,4 +98,56 @@ export function cmdApprove(ctx) {
   ctx.io.log(`\n${stageText(st)}`);
   printTip(ctx, st);
   ctx.io.exit(0);
+}
+
+/** @param {Feature} m @param {Kind} what
+ * @param {{num: string | undefined, refuse: (msg: string, code?: number) => never}} input */
+function approvalTarget(m, what, { num, refuse }) {
+  const dir = rel(m.dir);
+  /** @type {string} */
+  let target;
+  /** @type {string[]} */
+  let scope;
+  let word = 'одобрено';
+  if (what === 'spec') {
+    if (!m.spec) refuse(`нет spec.md. Сначала: ${skillCode('sdd-spec', m.name)}`);
+    target = m.specFile;
+    scope = [m.protocolFile, m.specFile];
+  } else if (what === 'slices') {
+    if (!m.slices.size || m.readme == null) refuse(`нет slices или slices/README.md. Сначала: ${skillCode('sdd-slices', m.name)}`);
+    if (!m.spec || !approved(m.spec.status)) refuse(`Dev Spec не одобрен — slices опираются на него. Сначала: ${lintCode('approve', 'spec', dir)}`);
+    target = m.readmeFile;
+    scope = [m.protocolFile, m.specFile, m.readmeFile, ...[...m.slices.values()].map((x) => x.file)];
+  } else {
+    word = 'принято';
+    const pending = pendingAdrs(m);
+    const adr = adrToApprove(m, num, pending);
+    if (!adr) return refuse(noAdrText(m, num, pending), 2);
+    target = adr.file;
+    scope = [adr.file];
+  }
+  return { target, scope, word };
+}
+
+/** @param {string[]} scope @param {import('./model.mjs').Finding[]} findings */
+function guardFindings(scope, findings) {
+  const add = adder(findings);
+  // guard: защищённые части против снимка, если он снят
+  for (const f of scope.filter((x) => fs.existsSync(x) && fs.existsSync(snapPath(x)))) {
+    const before = JSON.parse(fs.readFileSync(snapPath(f), 'utf8')).parts;
+    for (const x of diffParts(before, protectedParts(fs.readFileSync(f, 'utf8')))) add('HG-01', f, null, `(против: снимок) ${x}`);
+  }
+}
+
+/** @param {Feature} m @param {Kind} what @param {string} target */
+function approvalBlockers(m, what, target) {
+  /** @type {import('./model.mjs').Finding[]} */
+  const findings = [];
+  // блокеры последнего ревью этого артефакта
+  const rv = m.reviews.get(reviewKey(what, what === 'adr' ? path.basename(target).slice(0, 4) : null));
+  // В общем lint RV-01 — предупреждение; одобрение он блокирует — здесь это ошибка.
+  // Блокеры есть только у найденного ревью.
+  for (const r of openBlockers(rv)) findings.push({ ...finding('RV-01', /** @type {Review} */ (rv).file, r.n, `${r.id}: блокер без решения`), level: 'err' });
+
+  return findings;
 }
