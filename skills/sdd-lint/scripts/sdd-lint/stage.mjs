@@ -89,44 +89,65 @@ function newAdrSteps(m) {
 // next — все шаги для чтения; tip — одна рекомендуемая команда для строки Tip (подсказка в строке ввода).
 /** @param {string} cmd @returns {Steps} */
 const one = (cmd, label = '') => ({ steps: [label ? `${label}: ${code(cmd)}` : code(cmd)], tip: cmd });
+/** @param {Feature} m @param {string} now @param {Steps} [main] @returns {Stage} */
+function stageWithAdrs(m, now, main = { steps: [], tip: null }) {
+  const parts = [main, newAdrSteps(m), adrSteps(m)];
+  return { now, next: parts.flatMap((p) => p.steps), tip: parts.find((p) => p.tip)?.tip ?? null };
+}
+
 /** @param {Feature} m @returns {Stage} */
-export function stageOf(m) {
-  /** @param {string} now @param {Steps} [main] @returns {Stage} */
-  const st = (now, main = { steps: [], tip: null }) => {
-    const parts = [main, newAdrSteps(m), adrSteps(m)];
-    return { now, next: parts.flatMap((p) => p.steps), tip: parts.find((p) => p.tip)?.tip ?? null };
-  };
+function completedStage(m) {
+  const pending = pendingAdrs(m);
+  if (pending.length) {
+    const a = adrSteps(m);
+    return { now: `Slices одобрены. Перед реализацией примите ADR: ${pending.map((x) => x.num).join(', ')}`, next: a.steps, tip: a.tip };
+  }
+  if (tempArtifacts(m).length) {
+    const c = one(skill('sdd-close', m.name), `перед merge убрать временные артефакты (${tempArtifacts(m).map(code).join(', ')})`);
+    return { now: 'Slices одобрены, ADR приняты', next: c.steps, tip: c.tip };
+  }
+  return { now: 'Планирование завершено: slices одобрены, ADR приняты, временные артефакты убраны', next: [], tip: null };
+}
+
+/** @param {Feature} m @returns {Stage} */
+function slicesStage(m) {
   // Неодобренный spec важнее всего ниже: после /sdd-decide он возвращается «на ревью»,
   // и одобрение slices относилось к другой его версии.
-  if (m.slices.size && m.spec && !approved(m.spec.status))
-    return st(
+  if (m.spec && !approved(m.spec.status))
+    return stageWithAdrs(
+      m,
       approved(m.slicesStatus)
         ? `Dev Spec «${m.spec.status || '—'}», а slices уже есть — после одобрения spec проверьте и одобрите slices заново`
         : `Dev Spec «${m.spec.status || '—'}» — slices ждут его одобрения`,
       handoff(m, 'spec'),
     );
-  if (m.slices.size && approved(m.slicesStatus)) {
-    const pending = pendingAdrs(m);
-    if (pending.length) {
-      const a = adrSteps(m);
-      return { now: `Slices одобрены. Перед реализацией примите ADR: ${pending.map((x) => x.num).join(', ')}`, next: a.steps, tip: a.tip };
-    }
-    if (tempArtifacts(m).length) {
-      const c = one(skill('sdd-close', m.name), `перед merge убрать временные артефакты (${tempArtifacts(m).map(code).join(', ')})`);
-      return { now: 'Slices одобрены, ADR приняты', next: c.steps, tip: c.tip };
-    }
-    return { now: 'Планирование завершено: slices одобрены, ADR приняты, временные артефакты убраны', next: [], tip: null };
-  }
-  const stubs = m.slices.size ? stubCount(m) : 0;
-  if (stubs) return st(`Slices созданы по плану, заготовок «<…>» не заполнено: ${stubs}`, one(skill('sdd-slices', m.name), 'заполнить заготовки'));
-  if (m.slices.size) return st('Slices на ревью', handoff(m, 'slices'));
+  if (approved(m.slicesStatus)) return completedStage(m);
+  const stubs = stubCount(m);
+  if (stubs) return stageWithAdrs(
+    m, `Slices созданы по плану, заготовок «<…>» не заполнено: ${stubs}`, one(skill('sdd-slices', m.name), 'заполнить заготовки'),
+  );
+  return stageWithAdrs(m, 'Slices на ревью', handoff(m, 'slices'));
+}
+
+/** @param {Feature} m @returns {Stage} */
+function specStage(m) {
   if (m.plan && m.spec && approved(m.spec.status))
-    return st(`План нарезки ждёт согласия (${rel(m.planFile)})`, one(skill('sdd-slices', m.name), 'согласовать нарезку'));
-  if (m.spec && approved(m.spec.status)) return st('Dev Spec одобрен', one(skill('sdd-slices', m.name)));
-  if (m.spec) return st(`Dev Spec «${m.spec.status || '—'}»`, handoff(m, 'spec'));
-  if (m.protocol && /готов/i.test(m.protocol.status || '')) return st('Протокол готов', one(skill('sdd-spec', m.name)));
-  if (m.protocol) return st('Brainstorming идёт', one(skill('sdd-grill', m.name), 'продолжить'));
-  return st('Brainstorming не начат', one(skill('sdd-grill', m.name)));
+    return stageWithAdrs(m, `План нарезки ждёт согласия (${rel(m.planFile)})`, one(skill('sdd-slices', m.name), 'согласовать нарезку'));
+  if (m.spec && approved(m.spec.status)) return stageWithAdrs(m, 'Dev Spec одобрен', one(skill('sdd-slices', m.name)));
+  if (m.spec) return stageWithAdrs(m, `Dev Spec «${m.spec.status || '—'}»`, handoff(m, 'spec'));
+  return protocolStage(m);
+}
+
+/** @param {Feature} m @returns {Stage} */
+function protocolStage(m) {
+  if (m.protocol && /готов/i.test(m.protocol.status || '')) return stageWithAdrs(m, 'Протокол готов', one(skill('sdd-spec', m.name)));
+  if (m.protocol) return stageWithAdrs(m, 'Brainstorming идёт', one(skill('sdd-grill', m.name), 'продолжить'));
+  return stageWithAdrs(m, 'Brainstorming не начат', one(skill('sdd-grill', m.name)));
+}
+
+/** @param {Feature} m @returns {Stage} */
+export function stageOf(m) {
+  return m.slices.size ? slicesStage(m) : specStage(m);
 }
 /** @param {Pick<Stage, 'now' | 'next'>} st */
 export function stageText({ now, next }) {

@@ -78,24 +78,34 @@ function readyText(m, st, created, warn) {
 /** @param {string} dir @param {{ created?: boolean }} [opts] */
 function resume(dir, { created = false } = {}) {
   const m = loadFeature(dir);
+  if (!m.protocol) return resumeWithoutProtocol(m);
+  if (/готов/i.test(m.protocol.status || '')) return resumeReadyProtocol(m);
+  return resumeResearch(m, created);
+}
+/** @param {Feature} m */
+function resumeWithoutProtocol(m) {
   const d = rel(m.dir);
-  if (!m.protocol) {
-    if (m.spec)
-      return screen(
-        `Brainstorming \`${d}\` пройден и закрыт: есть spec.md. Поменять поведение — ${skillCode('sdd-decide', m.name, '"<вопрос>"', '"<решение>"')}; ` +
-          `что дальше по фиче — ${lintCode(m.name)}.`,
-        G.stop,
-      );
-    return askTask({}, m.name);
-  }
-  if (/готов/i.test(m.protocol.status || '')) {
-    const { stage, questions } = askOf(m);
-    return viewText(
-      questionsView(d, stage, questions, {
-        lead: `Протокол \`${d}\` готов: brainstorming закончен, новое решение — через ${skillCode('sdd-decide', m.name)}.`,
-      }),
+  if (m.spec)
+    return screen(
+      `Brainstorming \`${d}\` пройден и закрыт: есть spec.md. Поменять поведение — ${skillCode('sdd-decide', m.name, '"<вопрос>"', '"<решение>"')}; ` +
+        `что дальше по фиче — ${lintCode(m.name)}.`,
+      G.stop,
     );
-  }
+  return askTask({}, m.name);
+}
+/** @param {Feature} m */
+function resumeReadyProtocol(m) {
+  const d = rel(m.dir);
+  const { stage, questions } = askOf(m);
+  return viewText(
+    questionsView(d, stage, questions, {
+      lead: `Протокол \`${d}\` готов: brainstorming закончен, новое решение — через ${skillCode('sdd-decide', m.name)}.`,
+    }),
+  );
+}
+/** @param {Feature} m @param {boolean} created */
+function resumeResearch(m, created) {
+  const d = rel(m.dir);
   let st = startState(m);
   if (st.step === 'sources') return questionText(m, st.question, created ? [`Создан \`${d}/brainstorming.md\`.`] : []);
   if (st.step === 'research') return researchText(m, created);
@@ -210,20 +220,24 @@ export function addSources(dir, answer) {
     if (ctx) fs.writeFileSync(ctx.file, dropHeader(dropHeader(setHeader(ctx.md, 'Источники', '—'), 'Проверено'), 'Принято'));
     return resume(dir);
   }
-  if (a.none) {
-    if (cur.length) {
-      if (ctx) markContext(ctx, 'Принято');
-    } else writeSources(m, [inventory(m.name).empty ? NONE : REPO]);
-    return resume(dir);
-  }
-  const fresh = a.entries.filter((x) => !SPECIAL.includes(x));
+  if (a.none) acceptSources(m, cur, ctx);
+  else mergeSources(m, cur, a.entries);
+  return resume(dir);
+}
+/** @param {Feature} m @param {string[]} cur @param {ReturnType<typeof loadContext>} ctx */
+function acceptSources(m, cur, ctx) {
+  if (!cur.length) writeSources(m, [inventory(m.name).empty ? NONE : REPO]);
+  else if (ctx) markContext(ctx, 'Принято');
+}
+/** @param {Feature} m @param {string[]} cur @param {string[]} entries */
+function mergeSources(m, cur, entries) {
+  const fresh = entries.filter((x) => !SPECIAL.includes(x));
   if (!fresh.length) writeSources(m, projectSources(cur).length ? projectSources(cur) : [NEW_PROJECT]);
   else {
     // «Да, вот …» на первый вопрос — это дополнительная документация: то, что уже в папке, изучаем тоже.
     const base = cur.length ? projectSources(cur) : inventoryRepo(m);
     writeSources(m, uniq([...base, ...fresh]));
   }
-  return resume(dir);
 }
 /** @param {string} dir */
 export function acceptContext(dir) {

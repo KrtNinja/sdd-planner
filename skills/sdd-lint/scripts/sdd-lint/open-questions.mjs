@@ -37,20 +37,25 @@ export function openQuestions(m, what) {
   return [];
 }
 
+/** @param {Feature} m @param {{ where: string, what: string }} r @returns {OpenTarget | null} */
+function sliceTarget(m, r) {
+  const text = `${r.where} ${r.what}`;
+  /** @type {string | null | undefined} */
+  let num = text.match(/(?:^|[\s/])(\d{3})-[\w-]+\.md/)?.[1] || text.match(/\bAC-(\d{3})-/)?.[1];
+  if (!num) {
+    const fr = reqIds(r.where)[0];
+    num = fr ? [...m.slices.values()].find((s) => s.basis.has(fr))?.num : null;
+  }
+  const sl = num ? m.slices.get(num) : null;
+  return sl ? { file: sl.file, re: SPEC_RE, title: 'Открытые вопросы к Dev Spec' } : null;
+}
+
 // Куда пишется открытый вопрос из находки: spec; slice из «Где» (файл, AC-NNN-…, FR из «Основание»); ADR — «Не выяснено».
 /** @param {Feature} m @param {string} key @param {{ where: string, what: string }} r @returns {OpenTarget | null} */
 export function openTarget(m, key, r) {
   if (key === 'spec') return m.spec ? { file: m.specFile, re: SPEC_RE, title: 'Открытые вопросы' } : null;
   if (key === 'slices') {
-    const text = `${r.where} ${r.what}`;
-    /** @type {string | null | undefined} */
-    let num = text.match(/(?:^|[\s/])(\d{3})-[\w-]+\.md/)?.[1] || text.match(/\bAC-(\d{3})-/)?.[1];
-    if (!num) {
-      const fr = reqIds(r.where)[0];
-      num = fr ? [...m.slices.values()].find((s) => s.basis.has(fr))?.num : null;
-    }
-    const sl = num ? m.slices.get(num) : null;
-    return sl ? { file: sl.file, re: SPEC_RE, title: 'Открытые вопросы к Dev Spec' } : null;
+    return sliceTarget(m, r);
   }
   const a = m.featureAdrs.find((x) => `adr-${x.num}` === key);
   return a ? { file: a.file, re: ADR_RE, title: 'Не выяснено', adr: true } : null;

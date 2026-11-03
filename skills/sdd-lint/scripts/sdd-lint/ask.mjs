@@ -116,42 +116,60 @@ function newAdrQuestions(m) {
     ],
   }));
 }
+/** @param {Feature} m @returns {Question[]} */
+const adrQuestions = (m) => [...newAdrQuestions(m), ...pendingAdrs(m).map((a) => artifactQuestion(m, 'adr', a.num))];
+
+/** @param {Feature} m @param {string} now @returns {Question[]} */
+function completedQuestions(m, now) {
+  const qs = adrQuestions(m);
+  if (qs.length || !tempArtifacts(m).length) return qs;
+  return [
+    {
+      header: 'Перед merge',
+      question: `${now}. Убрать временные артефакты этапа: ${tempArtifacts(m).join(', ')}?`,
+      options: [
+        {
+          id: 'close',
+          label: 'Убрать временные артефакты',
+          description: skill('sdd-close', m.name),
+          recommended: true,
+          // close без --yes ничего не удаляет: показывает, что уйдёт и чем это грозит, и задаёт второй вопрос.
+          action: { lint: ['close', rel(m.dir), '--json'] },
+        },
+        { id: 'later', label: 'Позже', description: 'ничего не делать', action: { none: true } },
+      ],
+    },
+  ];
+}
+
+/** @param {Feature} m @param {string} now @returns {Question[]} */
+function slicesQuestions(m, now) {
+  if (m.spec && !approved(m.spec.status)) return [artifactQuestion(m, 'spec'), ...adrQuestions(m)];
+  if (approved(m.slicesStatus)) return completedQuestions(m, now);
+  if (stubCount(m)) return [nextSkillQuestion(m, now, 'sdd-slices', 'Продолжить заполнение', true)];
+  return [artifactQuestion(m, 'slices'), ...adrQuestions(m)];
+}
+
+/** @param {Feature} m @param {string} now @returns {Question[]} */
+function specQuestions(m, now) {
+  if (!m.spec) return protocolQuestions(m, now);
+  if (!approved(m.spec.status)) return [artifactQuestion(m, 'spec'), ...adrQuestions(m)];
+  if (m.plan) return [planQuestion(/** @type {Feature & { plan: import('./model.mjs').Plan }} */ (m))];
+  return [nextSkillQuestion(m, now, 'sdd-slices', 'Резать slices'), ...adrQuestions(m)];
+}
+
+/** @param {Feature} m @param {string} now @returns {Question[]} */
+function protocolQuestions(m, now) {
+  if (m.protocol && /готов/i.test(m.protocol.status || '')) return [nextSkillQuestion(m, now, 'sdd-spec', 'Писать Dev Spec')];
+  if (m.protocol) return [nextSkillQuestion(m, now, 'sdd-grill', 'Продолжить brainstorming', true)];
+  return [nextSkillQuestion(m, now, 'sdd-grill', 'Начать brainstorming')];
+}
+
 // Пока план не согласован или заготовки не заполнены — один вопрос: решение о нарезке важнее ADR, их черёд после.
 /** @param {Feature} m @returns {{ stage: string, questions: Question[] }} */
 export function askOf(m) {
   const st = stageOf(m);
-  const adrQs = () => [...newAdrQuestions(m), ...pendingAdrs(m).map((a) => artifactQuestion(m, 'adr', a.num))];
-  /** @type {Question[]} */
-  let qs = [];
-  if (m.slices.size && m.spec && !approved(m.spec.status)) qs = [artifactQuestion(m, 'spec'), ...adrQs()];
-  else if (m.slices.size && approved(m.slicesStatus)) {
-    qs = adrQs();
-    if (!qs.length && tempArtifacts(m).length)
-      qs = [
-        {
-          header: 'Перед merge',
-          question: `${st.now}. Убрать временные артефакты этапа: ${tempArtifacts(m).join(', ')}?`,
-          options: [
-            {
-              id: 'close',
-              label: 'Убрать временные артефакты',
-              description: skill('sdd-close', m.name),
-              recommended: true,
-              // close без --yes ничего не удаляет: показывает, что уйдёт и чем это грозит, и задаёт второй вопрос.
-              action: { lint: ['close', rel(m.dir), '--json'] },
-            },
-            { id: 'later', label: 'Позже', description: 'ничего не делать', action: { none: true } },
-          ],
-        },
-      ];
-  } else if (m.slices.size && stubCount(m)) qs = [nextSkillQuestion(m, st.now, 'sdd-slices', 'Продолжить заполнение', true)];
-  else if (m.slices.size) qs = [artifactQuestion(m, 'slices'), ...adrQs()];
-  else if (m.plan && m.spec && approved(m.spec.status)) qs = [planQuestion(/** @type {Feature & { plan: import('./model.mjs').Plan }} */ (m))];
-  else if (m.spec && approved(m.spec.status)) qs = [nextSkillQuestion(m, st.now, 'sdd-slices', 'Резать slices'), ...adrQs()];
-  else if (m.spec) qs = [artifactQuestion(m, 'spec'), ...adrQs()];
-  else if (m.protocol && /готов/i.test(m.protocol.status || '')) qs = [nextSkillQuestion(m, st.now, 'sdd-spec', 'Писать Dev Spec')];
-  else if (m.protocol) qs = [nextSkillQuestion(m, st.now, 'sdd-grill', 'Продолжить brainstorming', true)];
-  else qs = [nextSkillQuestion(m, st.now, 'sdd-grill', 'Начать brainstorming')];
+  let qs = m.slices.size ? slicesQuestions(m, st.now) : specQuestions(m, st.now);
   // Разбор находок и открытых вопросов идёт по одному пункту: соседние вопросы этапа — после него.
   const walk = qs.find((q) => q.walk);
   if (walk) qs = [walk];

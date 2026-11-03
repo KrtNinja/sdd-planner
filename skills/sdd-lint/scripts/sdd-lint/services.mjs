@@ -38,21 +38,23 @@ export function parseHalves(raw) {
   const bad = tokens.filter((s) => !NAME.test(s));
   return { services: uniq(tokens.filter((s) => NAME.test(s))), bad, ok: tokens.length > 0 && !bad.length };
 }
+/** @param {string} t @param {Registry | null} reg */
+function serviceHint(t, reg) {
+  const parts = t.split(/\s+и\s+|\s+/).filter(Boolean);
+  const known = reg ? parts.filter((x) => reg.list.includes(x)) : [];
+  const near = reg ? unknownService(t.replace(/\s+/g, '-'), reg) : null;
+  if (known.length > 1) return `разделяй сервисы «+»: «${known.join(' + ')}»`;
+  if (reg?.list.includes(t.replace(/\s+/g, '-'))) return `верно «${t.replace(/\s+/g, '-')}»`;
+  return near && /похоже на/.test(near) ? near.slice(near.indexOf('похоже на')) : 'сервисы — через «+», имена латиницей как в «Сервисы:»';
+}
+
 // Что не так со строкой «Половины:» — одной фразой с подсказкой, как надо.
 /** @param {Text} raw @param {Registry | null} reg */
 export function halvesProblem(raw, reg) {
   const h = parseHalves(raw);
   if (!h.ok) {
     if (!h.bad.length) return `«Половины: ${raw}» — нет ни одного сервиса`;
-    const hint = (/** @type {string} */ t) => {
-      const parts = t.split(/\s+и\s+|\s+/).filter(Boolean);
-      const known = reg ? parts.filter((x) => reg.list.includes(x)) : [];
-      const near = reg ? unknownService(t.replace(/\s+/g, '-'), reg) : null;
-      if (known.length > 1) return `разделяй сервисы «+»: «${known.join(' + ')}»`;
-      if (reg?.list.includes(t.replace(/\s+/g, '-'))) return `верно «${t.replace(/\s+/g, '-')}»`;
-      return near && /похоже на/.test(near) ? near.slice(near.indexOf('похоже на')) : 'сервисы — через «+», имена латиницей как в «Сервисы:»';
-    };
-    return h.bad.map((t) => `«${t}» — не имя сервиса: ${hint(t)}`).join('; ');
+    return h.bad.map((t) => `«${t}» — не имя сервиса: ${serviceHint(t, reg)}`).join('; ');
   }
   const unknown = h.services.map((s) => unknownService(s, reg)).filter(Boolean);
   return unknown.length ? unknown.join('; ') : null;

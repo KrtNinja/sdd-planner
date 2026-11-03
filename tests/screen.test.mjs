@@ -115,3 +115,8 @@ test('codePaths и cmdCode: пути и команды — кодом, уже з
   assert.equal(cmdCode('через /sdd-decide'), 'через `/sdd-decide`');
   assert.equal(cmdCode('/sdd-review comments slices — запускаете сами'), '`/sdd-review comments slices` — запускаете сами');
 });
+
+test('mdProblems: ограждения сбрасывают предыдущую строку; вложенный пункт требует родителя', () => {
+  assert.deepEqual(mdProblems('  - сирота\n- родитель\n  + ребёнок\n```js\n  текст\n```\nпосле\n| таблица |\nпосле'),
+    [[1, 'вложенный пункт без родителя']]);
+});

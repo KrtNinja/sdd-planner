@@ -22,7 +22,6 @@ const adrLine = (a) => `\`${rel(a.file)}\` «${a.status || '—'}» — ${(a.md.
 // Человеку и агенту — одна карточка (требования, сервисы, ADR); с какого шага продолжать — в строку ⚙.
 /** @param {Feature & { spec: import('./model.mjs').Spec }} m */
 export function slicesBrief(m) {
-  const dir = rel(m.dir);
   const reqs = [...m.spec.reqs.values()].filter((r) => !r.deleted);
   const reg = registry(m);
   const card = blocks(
@@ -32,6 +31,13 @@ export function slicesBrief(m) {
       ? `ADR фичи:\n${list(m.featureAdrs.map(adrLine))}`
       : 'ADR фичи: нет. Часть, которая ждёт ещё не принятого решения, пойдёт в план как «Р1 — ADR: <тема>».',
   );
+  const parts = continuation(m);
+  return { card, parts };
+}
+
+/** @param {Feature} m */
+function continuation(m) {
+  const dir = rel(m.dir);
   const parts = [m.featureAdrs.length ? 'прочитай ADR фичи' : null];
   if (m.slices.size) {
     const stubs = stubCount(m);
@@ -42,5 +48,5 @@ export function slicesBrief(m) {
     );
   } else if (m.plan) parts.push(`план ${rel(m.planFile)} есть — продолжай с проверки: ${G.call(['plan', dir])}`);
   else parts.push(`плана нет — начни с него: ${rel(m.planFile)}`);
-  return { card, parts };
+  return parts;
 }

@@ -60,6 +60,50 @@ function uncommitted(m, files) {
 /** @param {string[]} xs */
 const listed = (xs) => (xs.length > MAX_LIST ? `${xs.slice(0, MAX_LIST).join(', ')} и ещё ${xs.length - MAX_LIST}` : xs.join(', '));
 
+/** @param {Feature} m */
+function unfinishedPlanning(m) {
+  /** @type {string[]} */
+  const unfinished = [];
+  if (!m.spec) unfinished.push('нет spec.md');
+  else if (!approved(m.spec.status)) unfinished.push(`Dev Spec «${m.spec.status || '—'}»`);
+  if (!m.slices.size) unfinished.push('slices нет');
+  else if (!approved(m.slicesStatus)) unfinished.push('slices не одобрены');
+  const pending = pendingAdrs(m);
+  if (pending.length) unfinished.push(`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`);
+  return unfinished;
+}
+
+/** @param {string[] | null} dirty @param {{ file: string }[]} rows */
+function lostReview(dirty, rows) {
+  if (!dirty) return 'пропадут совсем: не git-репозиторий';
+  return rows.some((x) => dirty.includes(x.file)) ? 'пропадут совсем: файл ревью не закоммичен' : null;
+}
+/** @param {Feature} m @param {(rv: import('./model.mjs').Review) => import('./model.mjs').ReviewRow[]} pick */
+function reviewRows(m, pick) {
+  return [...m.reviews.values()].flatMap((rv) => pick(rv).map((r) => ({ id: `${r.id} (${rel(rv.file)})`, file: rel(rv.file) })));
+}
+/** @param {Feature} m @param {string[] | null} dirty */
+function reviewRisks(m, dirty) {
+  const risks = [];
+  // Куда денутся находки: закоммиченный файл ревью останется в истории git, незакоммиченный — нет.
+  const blockers = reviewRows(m, openBlockers);
+  if (blockers.length) {
+    const after = lostReview(dirty, blockers) || 'останутся только в истории git';
+    risks.push(`Блокеры ревью без решения: ${listed(blockers.map((x) => x.id))} — в FR и AC их нет, после удаления ${after}.`);
+  }
+  const notes = reviewRows(m, (rv) => rv.rows.filter((r) => !r.blocker && undecided(r)));
+  if (notes.length) risks.push(`Замечания ревью без решения: ${listed(notes.map((x) => x.id))} — ${lostReview(dirty, notes) || 'уйдут в историю git'}.`);
+  return risks;
+}
+
+/** @param {string[] | null} dirty @param {string[]} files */
+function uncommittedRisks(dirty, files) {
+  const risks = [];
+  if (dirty === null && files.length) risks.push('Не git-репозиторий: удалённое не восстановить.');
+  else if (dirty?.length) risks.push(`Не закоммичено: ${listed(dirty)} — удалится без следа, в истории git этого не будет.`);
+  return risks;
+}
+
 // Сводка для подтверждения. Риски — только то, что будет потеряно или останется сломанным;
 // пустой список — подтверждение без последствий.
 /** @param {Feature} m @returns {CloseSummary} */
@@ -71,39 +115,12 @@ export function closeSummary(m) {
   const effects = files.map(rel);
   if (m.spec && hasProtocolTraces(m.spec.md)) effects.push(`${rel(m.specFile)}: уберутся ссылки на протокол («Из протокола: П<n>»)`);
 
-  /** @type {string[]} */
+  const unfinished = unfinishedPlanning(m);
   const risks = [];
-  /** @type {string[]} */
-  const unfinished = [];
-  if (!m.spec) unfinished.push('нет spec.md');
-  else if (!approved(m.spec.status)) unfinished.push(`Dev Spec «${m.spec.status || '—'}»`);
-  if (!m.slices.size) unfinished.push('slices нет');
-  else if (!approved(m.slicesStatus)) unfinished.push('slices не одобрены');
-  const pending = pendingAdrs(m);
-  if (pending.length) unfinished.push(`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`);
   if (unfinished.length)
     risks.push(`Планирование не закончено (${unfinished.join('; ')}): протокол и ревью — основа для доработки, после удаления они будут только в истории git.`);
-
   const dirty = uncommitted(m, files);
-  // Куда денутся находки: закоммиченный файл ревью останется в истории git, незакоммиченный — нет.
-  /** @param {{ file: string }[]} rows */
-  const lost = (rows) => {
-    if (!dirty) return 'пропадут совсем: не git-репозиторий';
-    return rows.some((x) => dirty.includes(x.file)) ? 'пропадут совсем: файл ревью не закоммичен' : null;
-  };
-  const reviews = [...m.reviews.values()];
-  // Находки ревью, которые подходят под pick: «R2 (путь ревью)» и файл ревью.
-  const rowsOf = (/** @type {(rv: import('./model.mjs').Review) => import('./model.mjs').ReviewRow[]} */ pick) =>
-    reviews.flatMap((rv) => pick(rv).map((r) => ({ id: `${r.id} (${rel(rv.file)})`, file: rel(rv.file) })));
-  const blockers = rowsOf(openBlockers);
-  if (blockers.length) {
-    const after = lost(blockers) || 'останутся только в истории git';
-    risks.push(`Блокеры ревью без решения: ${listed(blockers.map((x) => x.id))} — в FR и AC их нет, после удаления ${after}.`);
-  }
-  const notes = rowsOf((rv) => rv.rows.filter((r) => !r.blocker && undecided(r)));
-  if (notes.length) risks.push(`Замечания ревью без решения: ${listed(notes.map((x) => x.id))} — ${lost(notes) || 'уйдут в историю git'}.`);
-  if (dirty === null && files.length) risks.push('Не git-репозиторий: удалённое не восстановить.');
-  else if (dirty?.length) risks.push(`Не закоммичено: ${listed(dirty)} — удалится без следа, в истории git этого не будет.`);
+  risks.push(...reviewRisks(m, dirty), ...uncommittedRisks(dirty, files));
 
   const errs = findings.filter((x) => x.level === 'err' && !doomed(path.resolve(x.file)));
   if (errs.length) risks.push(`Ошибок lint в постоянных документах: ${errs.length} — close их не исправит. Список: ${lintCode(dir)}.`);
