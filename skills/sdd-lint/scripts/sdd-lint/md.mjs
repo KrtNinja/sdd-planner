@@ -160,26 +160,28 @@ export const placeholders = (text) =>
 /** @param {string} w */
 export const stem = (w) => (w.length <= 4 ? w.slice(0, 3) : w.slice(0, -1));
 
-/** @param {string} md @param {RegExp} titleRe @param {string} title @param {string} body */
-export function replaceSection(md, titleRe, title, body) {
+// Раздел ## по заголовку: строки файла, сам заголовок, следующий ## и последняя строка раздела (end — до next).
+/** @param {string} md @param {RegExp} titleRe */
+function sectionAt(md, titleRe) {
   const ls = md.split('\n');
   const sc = scan(md);
   const h = sc.lines.find((l) => isH2(l) && titleRe.test(l.h2));
+  const next = h && sc.lines.find((l) => isH2(l) && l.n > h.n);
+  return { ls, h, next, end: next ? next.n - 1 : ls.length };
+}
+
+/** @param {string} md @param {RegExp} titleRe @param {string} title @param {string} body */
+export function replaceSection(md, titleRe, title, body) {
+  const { ls, h, next, end } = sectionAt(md, titleRe);
   if (!h) return `${md.replace(/\s*$/, '')}\n\n## ${title}\n${body}\n`;
-  const next = sc.lines.find((l) => isH2(l) && l.n > h.n);
-  const end = next ? next.n - 1 : ls.length;
   return [...ls.slice(0, h.n), body, ...(next ? [''] : []), ...ls.slice(end)].join('\n').replace(/\n{3,}/g, '\n\n');
 }
 
 // Заменяет раздел целиком (с заголовком) или убирает его, если title пуст.
 /** @param {string} md @param {RegExp} titleRe @param {string | null} title @param {string} body */
 export function setSection(md, titleRe, title, body) {
-  const ls = md.split('\n');
-  const sc = scan(md);
-  const h = sc.lines.find((l) => isH2(l) && titleRe.test(l.h2));
+  const { ls, h, next, end } = sectionAt(md, titleRe);
   if (!h) return md;
-  const next = sc.lines.find((l) => isH2(l) && l.n > h.n);
-  const end = next ? next.n - 1 : ls.length;
   const mid = title ? [`## ${title}`, body, ...(next ? [''] : [])] : [];
   return `${[...ls.slice(0, h.n - 1), ...mid, ...ls.slice(end)].join('\n').replace(/\n{3,}/g, '\n\n').replace(/\s*$/, '')}\n`;
 }

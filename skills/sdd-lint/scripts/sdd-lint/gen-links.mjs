@@ -16,6 +16,14 @@ import { parseSpec } from './spec.mjs';
 /** @typedef {import('./model.mjs').Slice} Slice */
 /** Фича со spec: ссылки ставят только при нём. @typedef {Feature & { spec: Spec }} SpecFeature */
 
+// Индекс закрывающего ``` блока: ищем с from (индекс строки внутри блока); нет — длина файла.
+/** @param {string[]} ls @param {number} from */
+function closingFence(ls, from) {
+  let end = from;
+  while (end < ls.length && !/^\s*```/.test(ls[end])) end += 1;
+  return end;
+}
+
 // Старый раздел «Трассировка» → «Из протокола:» под требованиями и в разделах. Возвращает новый md.
 /** @param {Spec} s */
 function migrateTrace(s) {
@@ -47,9 +55,7 @@ function migrateTrace(s) {
     const ids = [...s.reqs.values()].filter((r) => r.block === b.idx).map((r) => r.id);
     const refs = uniq(ids.flatMap((id) => perReq.get(id) || []));
     if (!refs.length) continue;
-    let end = b.start;
-    while (end < ls.length && !/^\s*```/.test(ls[end])) end += 1; // ls[end] — закрывающий ```
-    ends.push([end + 1, `Из протокола: ${refs.join(', ')}`]);
+    ends.push([closingFence(ls, b.start) + 1, `Из протокола: ${refs.join(', ')}`]);
   }
   for (const [at, text] of ends.sort((a, b) => b[0] - a[0])) ls.splice(at, 0, text);
   let md = ls.join('\n');
@@ -117,9 +123,7 @@ export function linkSlice(sl, spec) {
     const i = ac.n - 1;
     ls[i] = ls[i].replace(/\s*\[[^\]]*\]/, '');
     if (ac.checks) continue;
-    let end = i + 1;
-    while (end < ls.length && !/^\s*```/.test(ls[end])) end += 1; // закрывающий ```
-    moved.push([end + 1, `Проверяет: ${ac.oldRefs.join(', ')}`]);
+    moved.push([closingFence(ls, i + 1) + 1, `Проверяет: ${ac.oldRefs.join(', ')}`]);
   }
   for (const [at, text] of moved.sort((a, b) => b[0] - a[0])) ls.splice(at, 0, text);
   const out = ls.map((t) => (/^Основание:/.test(t) ? linkBasis(t, sl.file, spec.file) : CHECKS_RE.test(t) ? linkReqs(t, sl.file, spec) : t)).join('\n');
