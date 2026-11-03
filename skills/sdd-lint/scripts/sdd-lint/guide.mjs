@@ -29,12 +29,19 @@ export function reviewTargets(m) {
   for (const a of pendingAdrs(m)) out.push({ mode: 'adr', num: a.num, label: `ADR ${a.num} «${a.status || '—'}»` });
   return out;
 }
+/** @param {Feature} m */
+const canWriteSpec = (m) => ready(m) && !(m.spec && approved(m.spec.status));
+/** @param {Feature} m */
+const canSlice = (m) => !!m.spec && approved(m.spec.status) && !(m.slices.size && approved(m.slicesStatus));
+/** @param {Feature} m */
+const canWriteAdr = (m) => !!m.spec && (neededAdrs(m).length > 0 || pendingAdrs(m).length > 0 || !approved(m.slicesStatus));
+
 // Фича подходит этапу: он у неё сейчас или ещё возможен.
 /** @param {Feature} m @param {string} stage */
 function eligible(m, stage) {
-  if (stage === 'spec') return ready(m) && !(m.spec && approved(m.spec.status));
-  if (stage === 'slices') return !!m.spec && approved(m.spec.status) && !(m.slices.size && approved(m.slicesStatus));
-  if (stage === 'adr') return !!m.spec && (neededAdrs(m).length > 0 || pendingAdrs(m).length > 0 || !approved(m.slicesStatus));
+  if (stage === 'spec') return canWriteSpec(m);
+  if (stage === 'slices') return canSlice(m);
+  if (stage === 'adr') return canWriteAdr(m);
   if (stage === 'decide') return !!m.spec;
   if (stage === 'review') return reviewTargets(m).length > 0;
   if (stage === 'close') return tempArtifacts(m).length > 0;
