@@ -1,5 +1,6 @@
 // Команды gen, next и trace.
 // @ts-check
+import { cmdFlowNext } from './cmd-flow.mjs';
 import { usage } from './cli.mjs';
 import { lintCode } from './config.mjs';
 import { impact } from './gate-extra.mjs';
@@ -54,6 +55,11 @@ export function cmdGen(ctx) {
 
 /** @param {Ctx} ctx */
 export function cmdNext(ctx) {
+  if (!cmdFlowNext(ctx)) legacyNext(ctx);
+}
+
+/** @param {Ctx} ctx */
+function legacyNext(ctx) {
   const { pos } = ctx.args;
   const kind = (pos[0] || '').toLowerCase();
   if (!['fr', 'nfr', 'ac', 'slice', 'adr'].includes(kind)) pickChoice(ctx, 'next');
