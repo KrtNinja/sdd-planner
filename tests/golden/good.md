@@ -248,7 +248,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 код 2
 
 ~~~~text
-Плана нарезки ещё нет: docs/comments/_work/plan.md.
+Плана разбиения работы ещё нет: docs/comments/_work/plan.md.
 
 ⚙ sdd: запиши docs/comments/_work/plan.md по шаблону assets/plan.md скилла sdd-slices · затем ["plan","docs/comments"]
 ~~~~

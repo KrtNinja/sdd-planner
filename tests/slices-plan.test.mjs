@@ -135,7 +135,7 @@ test('gate slices: ADR без названия и без статуса — в �
 test('plan: чистый план — без ошибок, латинская P в причине не ошибка', () => {
   const r = run(planWorkspace(), 'plan', 'docs/comments');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /План нарезки без ошибок: 3 slices\./);
+  assert.match(r.out, /План разбиения работы без ошибок\. Частей работы: 3\./);
   assert.match(r.out, /\n⚙ sdd: вызови \["ask","docs\/comments"\]\n$/);
 });
 test('plan: покрытие, причины, зависимости, сервисы — ошибки с номером строки; лимит прогонов', () => {
@@ -281,7 +281,7 @@ test('MCP: ответ сервера всегда с кодом выхода —
   const input = ['{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}', '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"sdd_lint","arguments":{"args":["plan","comments"]}}}'].join('\n');
   const out = execFileSync('node', [MCP], { cwd, input, encoding: 'utf8', env: { ...process.env, TMPDIR: path.join(cwd, '.tmp') } });
   const res = out.trim().split('\n').map((l) => JSON.parse(l)).find((x) => x.id === 2);
-  assert.match(res.result.content[0].text, /^Плана нарезки ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: запиши docs\/comments\/_work\/plan\.md по шаблону assets\/plan\.md скилла sdd-slices · затем \["plan","docs\/comments"\] · код 2$/);
+  assert.match(res.result.content[0].text, /^Плана разбиения работы ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: запиши docs\/comments\/_work\/plan\.md по шаблону assets\/plan\.md скилла sdd-slices · затем \["plan","docs\/comments"\] · код 2$/);
   // Команда без своей строки ⚙ (check) — сервер добавляет её с кодом.
   const chk = execFileSync('node', [MCP], {
     cwd,
@@ -320,7 +320,7 @@ test('MCP: вызов sdd_lint в процессе — вывод экрана �
   const before = process.env.SDD_VIEW;
   const call = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'sdd_lint', arguments: { args: ['plan', 'comments'] } } });
   const text = inDir(cwd, {}, () => JSON.parse(replyTo(call)).result.content[0].text);
-  assert.match(text, /^Плана нарезки ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: .* · код 2$/);
+  assert.match(text, /^Плана разбиения работы ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: .* · код 2$/);
   assert.equal(process.env.SDD_VIEW, before);
   // Без аргументов — список фич (args по умолчанию []).
   const all = inDir(cwd, {}, () => JSON.parse(replyTo(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'sdd_lint' } }))));
