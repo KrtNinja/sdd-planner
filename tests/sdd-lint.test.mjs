@@ -749,22 +749,22 @@ test('ask: после ревью — финал «Одобрить», «Убра
   assert.deepEqual(ids(a).slice(0, 2), ['approve:slices', 'humanize:slices']);
   assert.equal(a.questions[0].options[0].label, 'Одобрить');
   assert.equal(a.questions[0].options[0].recommended, true);
-  assert.equal(a.questions[0].options[1].label, 'Убрать AI стиль из slices');
-  assert.match(a.questions[0].question, /ревью разобрано/);
+  assert.equal(a.questions[0].options[1].label, 'Упростить формулировки частей работы');
+  assert.match(a.questions[0].question, /результаты проверки разобраны/);
   assert.ok(!ids(a).includes('review-here:slices'));
   fs.writeFileSync(path.join(rv, 'slices.md'), table('П2'));
   a = ask(cwd);
-  assert.equal(a.questions[0].options.find((o) => o.id === 'review-here:slices').label, 'Повторить ревью в сабагенте');
+  assert.equal(a.questions[0].options.find((o) => o.id === 'review-here:slices').label, 'Повторить проверку отдельным агентом');
 });
 test('ask: карточка — вопрос и варианты с номерами для человека, строка ⚙ — заголовок, куда выбор и id по номерам', () => {
   const a = ask(workspace());
   const opts = a.questions.flatMap((q) => q.options);
   assert.deepEqual(opts.map((o) => o.n), [1, 2, 3, 4]);
-  assert.equal(opts[0].label, 'Ревью в сабагенте');
+  assert.equal(opts[0].label, 'Проверить отдельным агентом');
   assert.equal(opts[0].recommended, true);
-  assert.match(a.card, /^\*\*Slices «на ревью»\. Что дальше\?\*\*\n\n1\. \*\*Ревью в сабагенте\*\* \(рекомендую\) — свежий контекст, находки — в `docs\/comments\/_work\/review\/slices\.md`\n/);
+  assert.match(a.card, /^\*\*Части работы «на ревью»\. Что дальше\?\*\*\n\n1\. \*\*Проверить отдельным агентом\*\* \(рекомендую\) — новая сессия, результаты — в `docs\/comments\/_work\/review\/slices\.md`\n/);
   assert.match(a.card, /\n4\. \*\*Одобрить\*\* — `node scripts\/sdd-lint\.mjs approve slices docs\/comments`$/);
-  assert.equal(a.gear, '⚙ sdd: вопрос «Slices» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices');
+  assert.equal(a.gear, '⚙ sdd: вопрос «Части работы» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices');
   // Без SDD_VIEW=json — то же карточкой и строкой ⚙, без JSON.
   const plain = spawnSync('node', [LINT, 'ask', 'docs/comments'], { cwd: workspace(), encoding: 'utf8', env: { ...process.env, ...JSON_ENV, SDD_VIEW: '' } }).stdout;
   assert.equal(plain, `${a.card}\n\n${a.gear}\n`);
@@ -772,10 +772,10 @@ test('ask: карточка — вопрос и варианты с номера
 test('choose: ревью — задача сабагенту без пересказа скилла, без сабагентов — команда человеку', () => {
   const r = run(workspace(), 'choose', 'docs/comments', 'review-here:slices');
   assert.equal(r.code, 0);
-  assert.match(r.out, /^Запускаю ревью slices в сабагенте/);
+  assert.match(r.out, /^Запускаю проверку частей работы отдельным агентом/);
   assert.match(r.out, /\n⚙ sdd: сабагент \["prompt","sdd-review","comments","slices"\] · отчёт сабагента — человеку · затем \["ask","docs\/comments"\] · без сабагентов — вызови \["choose","docs\/comments","review-here:slices","--fallback"\]\n$/);
   const f = run(workspace(), 'choose', 'docs/comments', 'review-here:slices', '--fallback');
-  assert.equal(f.out, 'Сабагентов нет — запустите ревью в новом окне: `/sdd-review comments slices`\n\nTip: Введите /sdd-review comments slices чтобы продолжить\n\n⚙ sdd: стоп\n');
+  assert.equal(f.out, 'Отдельный агент недоступен — запустите проверку в новой сессии: `/sdd-review comments slices`\n\nTip: Введите /sdd-review comments slices чтобы продолжить\n\n⚙ sdd: стоп\n');
 });
 test('choose: humanizer — снимок снимает скрипт, сабагенту остаются humanizer и guard', () => {
   const cwd = workspace();
@@ -784,7 +784,7 @@ test('choose: humanizer — снимок снимает скрипт, сабаг
   assert.doesNotMatch(r.out, /"snapshot"/);
   assert.match(r.out, /\n⚙ sdd: сабагент \["prompt","humanize","docs\/comments"\] · /);
   assert.match(run(cwd, 'prompt', 'humanize', 'docs/comments').out, /Загрузи скилл humanizer и примени его к каждому файлу в docs\/comments\/slices\/[\s\S]*sdd_lint с args \["guard","docs\/comments"\]/);
-  assert.match(run(cwd, 'choose', 'docs/comments', 'humanize:slices', '--fallback').out, /^Сабагентов нет — сделайте сами: `\/humanizer` по каждому файлу в `docs\/comments\/slices\/`, затем `node scripts\/sdd-lint\.mjs guard docs\/comments`\n\n⚙ sdd: стоп/);
+  assert.match(run(cwd, 'choose', 'docs/comments', 'humanize:slices', '--fallback').out, /^Отдельный агент недоступен — запустите сами: `\/humanizer` по каждому файлу в `docs\/comments\/slices\/`, затем `node scripts\/sdd-lint\.mjs guard docs\/comments`\n\n⚙ sdd: стоп/);
   assert.ok(fs.readdirSync(path.join(cwd, '.tmp/sdd-lint-snapshots')).length > 0, 'снимок не снят');
   edit(cwd, 'comments/slices/002-comments.md', 'AC-002-B2 Длина текста', 'AC-002-B2 Длина');
   const g = run(cwd, 'guard', 'docs/comments');

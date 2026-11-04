@@ -84,14 +84,14 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 
 Этап готов: ошибок 0, предупреждений 0.
 
-**Slices «на ревью». Что дальше?**
+**Части работы «на ревью». Что дальше?**
 
-1. **Ревью в сабагенте** (рекомендую) — свежий контекст, находки — в `docs/comments/_work/review/slices.md`
-2. **Ревью в новом контексте/окне** — вы запускаете команду сами
-3. **Убрать AI стиль из slices** — humanizer в сабагенте, затем guard
+1. **Проверить отдельным агентом** (рекомендую) — новая сессия, результаты — в `docs/comments/_work/review/slices.md`
+2. **Проверить в новой сессии** — вы запускаете команду сами
+3. **Упростить формулировки частей работы** — упростить текст и проверить сохранность структуры
 4. **Одобрить** — `/sdd-lint approve slices docs/comments`
 
-⚙ sdd: вопрос «Slices» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices
+⚙ sdd: вопрос «Части работы» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices
 ~~~~
 
 ### `sdd-lint approve`
@@ -375,14 +375,14 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 0
 
 ~~~~text
-**Slices «на ревью». Что дальше?**
+**Части работы «на ревью». Что дальше?**
 
-1. **Ревью в сабагенте** (рекомендую) — свежий контекст, находки — в `docs/comments/_work/review/slices.md`
-2. **Ревью в новом контексте/окне** — вы запускаете команду сами
-3. **Убрать AI стиль из slices** — humanizer в сабагенте, затем guard
+1. **Проверить отдельным агентом** (рекомендую) — новая сессия, результаты — в `docs/comments/_work/review/slices.md`
+2. **Проверить в новой сессии** — вы запускаете команду сами
+3. **Упростить формулировки частей работы** — упростить текст и проверить сохранность структуры
 4. **Одобрить** — `/sdd-lint approve slices docs/comments`
 
-⚙ sdd: вопрос «Slices» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices
+⚙ sdd: вопрос «Части работы» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices
 ~~~~
 
 ### `sdd-lint choose`
@@ -410,7 +410,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 0
 
 ~~~~text
-Запускаю ревью slices в сабагенте, в чистом контексте. Находки придут таблицей, затем разберём их по одной.
+Запускаю проверку частей работы отдельным агентом. Выявленные проблемы будут в таблице, затем разберём их по одной.
 
 ⚙ sdd: сабагент ["prompt","sdd-review","comments","slices"] · отчёт сабагента — человеку · затем ["ask","docs/comments"] · без сабагентов — вызови ["choose","docs/comments","review-here:slices","--fallback"]
 ~~~~
@@ -432,7 +432,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 код 0
 
 ~~~~text
-Убираю AI стиль из slices в сабагенте, затем проверю скриптом, что ID, таблицы и тексты на месте.
+Упрощаю формулировки частей работы отдельным агентом, затем проверю скриптом, что ID, таблицы и тексты на месте.
 
 ⚙ sdd: сабагент ["prompt","humanize","docs/comments"] · отчёт сабагента — человеку · затем ["ask","docs/comments"] · без сабагентов — вызови ["choose","docs/comments","humanize:slices","--fallback"]
 ~~~~

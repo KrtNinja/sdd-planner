@@ -25,14 +25,14 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 код 0
 
 ~~~~text
-**Slices «на ревью». Что дальше?**
+**Части работы «на ревью». Что дальше?**
 
-1. **Ревью в сабагенте** (рекомендую) — свежий контекст, находки — в `docs/comments/_work/review/slices.md`
-2. **Ревью в новом контексте/окне** — вы запускаете команду сами
-3. **Убрать AI стиль из slices** — humanizer в сабагенте, затем guard
+1. **Проверить отдельным агентом** (рекомендую) — новая сессия, результаты — в `docs/comments/_work/review/slices.md`
+2. **Проверить в новой сессии** — вы запускаете команду сами
+3. **Упростить формулировки частей работы** — упростить текст и проверить сохранность структуры
 4. **Одобрить** — `/sdd-lint approve slices docs/comments`
 
-⚙ sdd: вопрос «Slices» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices · код 0
+⚙ sdd: вопрос «Части работы» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices · код 0
 ~~~~
 
 ### `sdd_lint ["gate","slices","docs/comments"]`

@@ -19,11 +19,11 @@ test('разбор: блокер — блок находки и «Как реш�
   // Блок находки — списком: так его не склеит ни один markdown, модель его не перепечатывает.
   assert.equal(
     a.preview,
-    '**Блокер R2** · ревью slices · блокеров к разбору: 2\n\n- **Где:** `slices/003-mention-notifications.md`\n- **Что не так:** не решено, что с уведомлением, если комментарий удалили до доставки\n- **Предложение:** уведомление не приходит\n- **Пункт чек-листа:** 3',
+    '**Блокер R2** · проверка частей работы · блокеров к разбору: 2\n\n- **Где:** `slices/003-mention-notifications.md`\n- **Что не так:** не решено, что с уведомлением, если комментарий удалили до доставки\n- **Предложение:** уведомление не приходит\n- **Пункт чек-листа:** 3',
   );
   assert.deepEqual(
     q.options.map((o) => o.label),
-    ['Напишу решение', 'Принимаю рекомендации', 'Затрудняюсь, добавить в открытые вопросы', 'Игнорировать'],
+    ['Напишу решение', 'Принимаю рекомендации', 'Затрудняюсь, добавить в открытые вопросы', 'Отклонить блокер'],
   );
   assert.equal(q.options[0].recommended, true);
   assert.match(a.card, /\n\n\*\*Как решаем\?\*\*\n\n1\. \*\*Напишу решение\*\* \(рекомендую\) — следующим сообщением; проведу через `\/sdd-decide`\n2\. /);
@@ -37,7 +37,7 @@ test('разбор: «Напишу решение» ждёт ответ, отв�
   assert.match(w.out, /^Напишите решение по R2 одним сообщением — проведу его через `\/sdd-decide`\.\n\n⚙ sdd: жди ответ → \["choose","docs\/comments","rv:slices:R2:write","<ответ человека>"\]\n$/);
   const r = run(cwd, 'choose', 'docs/comments', 'rv:slices:R2:write', 'Уведомление не приходит');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /^Провожу решение по R2 через `\/sdd-decide` в сабагенте/);
+  assert.match(r.out, /^Обновляю документы по решению для R2 через `\/sdd-decide` отдельным агентом/);
   assert.match(
     r.out,
     /\n⚙ sdd: сабагент \["prompt","sdd-decide","comments","slices:R2","Уведомление не приходит","--sub"\] · отчёт сабагента — человеку · затем \["ask","docs\/comments"\] · без сабагентов — вызови \["prompt","sdd-decide","comments","slices:R2","Уведомление не приходит"\]\n$/,
@@ -95,14 +95,16 @@ test('разбор: блокеры решены — «Пройдёмся по з
   run(cwd, 'choose', 'docs/comments', 'rv:slices:R4:ignore');
   let a = ask(cwd);
   assert.equal(a.questions[0].question, 'Пройдёмся по замечаниям?');
+  assert.equal(a.questions[0].options[2].label, 'Отклонить все эти замечания');
   assert.deepEqual(ids(a), ['remarks:slices:all', 'remarks:slices:some', 'remarks:slices:none']);
-  assert.match(a.preview, /^\*\*Замечания ревью slices\*\* · 2\n\n- \*\*R1\*\* · `slices\/002-comments\.md`, AC-002-B4 · нет успешного удаления руководителем\n- \*\*R3\*\* · /);
+  assert.match(a.preview, /^\*\*Замечания проверки частей работы\*\* · 2\n\n- \*\*R1\*\* · `slices\/002-comments\.md`, AC-002-B4 · нет успешного удаления руководителем\n- \*\*R3\*\* · /);
   run(cwd, 'choose', 'docs/comments', 'remarks:slices:all');
   assert.equal(decision(cwd, 'R1'), 'к разбору');
   assert.equal(decision(cwd, 'R3'), 'к разбору');
   a = ask(cwd);
   assert.equal(a.questions[0].header, 'Замечание R1');
-  assert.match(a.preview, /^\*\*Замечание R1\*\* · ревью slices · замечаний к разбору: 2\n\n- \*\*Где:\*\* /);
+  assert.equal(a.questions[0].options.at(-1).label, 'Отклонить замечание');
+  assert.match(a.preview, /^\*\*Замечание R1\*\* · проверка частей работы · замечаний к разбору: 2\n\n- \*\*Где:\*\* /);
   run(cwd, 'triage', 'docs/comments', 'slices:R1', 'П2');
   assert.equal(ask(cwd).questions[0].header, 'Замечание R3');
 });
@@ -162,7 +164,7 @@ test('разбор spec: открытый вопрос заменяет «Нет
   const c = JSON.parse(run(cwd, 'check', 'docs/comments', '--json').out);
   assert.deepEqual(c.findings.filter((f) => f.level !== 'info').map((f) => f.rule), []);
   const q = ask(cwd).questions[0];
-  assert.equal(q.options[1].label, 'Убрать AI стиль из спеки');
+  assert.equal(q.options[1].label, 'Упростить формулировки требований');
 });
 
 test('triage: П<n> от decide, неизвестная находка — код 2 со списком', () => {
