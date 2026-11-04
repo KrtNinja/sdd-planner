@@ -67,15 +67,15 @@ test('gate adr без темы: slices ждут ADR (Р1 — ADR: …) — во�
   assert.equal(q.questions[0].options[0].label, 'хранение истории правок');
   assert.equal(q.questions[0].options[0].recommended, true);
   assert.match(q.card, /^1\. \*\*хранение истории правок\*\* \(рекомендую\) — /m);
-  assert.match(q.questions[0].options[0].description, /ждёт slice 002 \(Р1\)/);
+  assert.match(q.questions[0].options[0].description, /нужно частям работы 002 \(Р1\)/);
   assert.match(q.gear, /→ \["gate","adr","docs\/comments","<id>"\]/);
   const t = run(cwd, 'gate', 'adr', 'comments', 'хранение истории правок');
   assert.match(t.out, /^Архитектурное решение \(ADR\) по docs\/comments/);
-  assert.match(t.out, /\n\nТема ADR: «хранение истории правок» — её ждёт slice 002 \(Р1\)\./);
+  assert.match(t.out, /\n\nТема ADR: «хранение истории правок» — её ждут части работы 002 \(Р1\)\./);
 });
 test('gate adr без темы и без Р1 — кандидатов ищет сабагент, в окно — только они', () => {
   const r = run(workspace(), 'gate', 'adr', 'comments');
-  assert.match(r.out, /^Тема ADR не указана, и slices не ждут ADR\. Ищу в сабагенте/);
+  assert.match(r.out, /^Тема ADR не указана; части работы не требуют ADR\. Отдельный агент/);
   assert.match(r.out, /\n⚙ sdd: сабагент \["research","fact","docs\/comments","Какие технические решения нужны этой фиче/);
   assert.match(r.out, / · без сабагентов — то же здесь\s*$/);
   assert.doesNotMatch(r.out, /^Архитектурное решение \(ADR\) по docs\/comments/m);
@@ -87,7 +87,7 @@ test('gate decide R1: находку находит скрипт, с тем, ч�
   writeReview(cwd, ['| R1 | блокер | slices/002-comments.md, AC-002-B1, FR-2 | лимит не проверен | 3 | добавить AC на 5001 символ |  |'], 'slices');
   const r = run(cwd, 'gate', 'decide', 'comments', 'R1');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /^\*\*Находка R1\*\* · ревью slices · `docs\/comments\/_work\/review\/slices\.md:\d+`$/m);
+  assert.match(r.out, /^\*\*Выявленная проблема R1\*\* · проверка slices · `docs\/comments\/_work\/review\/slices\.md:\d+`$/m);
   assert.match(r.out, /^- \*\*Предложение:\*\* добавить AC на 5001 символ$/m);
   assert.match(r.out, /решение в ревью впишешь на шаге «Источник»/);
   assert.match(r.out, /^- \*\*FR-2\*\* `docs\/comments\/spec\.md:\d+`/m);
@@ -97,10 +97,10 @@ test('gate decide: нет находки — какие есть; одна и т
   const cwd = workspace();
   writeReview(cwd, ['| R1 | блокер | slices/002-comments.md | а | 1 | б |  |'], 'slices');
   writeReview(cwd, ['| R1 | замечание | spec.md, FR-1 | в | 1 | г |  |'], 'spec');
-  assert.match(run(cwd, 'gate', 'decide', 'comments', 'R9').out, /Находки R9 нет\. Есть: R1 \(slices\), R1 \(spec\)/);
+  assert.match(run(cwd, 'gate', 'decide', 'comments', 'R9').out, /Пункта R9 нет\. Есть: R1 \(slices\), R1 \(spec\)/);
   const r = run(cwd, 'gate', 'decide', 'comments', 'R1');
   assert.deepEqual(optionIds(r.out).sort(), ['slices:R1', 'spec:R1']);
-  assert.match(run(cwd, 'gate', 'decide', 'comments', 'spec:R1').out, /\*\*Находка R1\*\* · ревью spec/);
+  assert.match(run(cwd, 'gate', 'decide', 'comments', 'spec:R1').out, /\*\*Выявленная проблема R1\*\* · проверка spec/);
 });
 
 // ---------- review: режим ----------
@@ -114,7 +114,7 @@ test('gate review: режим не назван — ничего не ждёт /
   assert.match(run(cwd, 'gate', 'review', 'comments', 'adr').out, / · режим adr 0001 · /);
   cwd = workspace();
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
-  assert.match(run(cwd, 'gate', 'review', 'comments').out, /Ревью ничего не ждёт/);
+  assert.match(run(cwd, 'gate', 'review', 'comments').out, /Всё одобрено; обязательной проверки сейчас нет/);
 });
 
 // ---------- trace: что держится на требовании ----------
@@ -123,7 +123,7 @@ test('trace FR-n: строки протокола, slices из «Основан�
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /^- \*\*FR-9\*\* `docs\/comments\/spec\.md:\d+`/);
   assert.match(r.out, /^ {2}- протокол: #\d+$/m);
-  assert.match(r.out, /^ {2}- slices \(Основание\): 003$/m);
+  assert.match(r.out, /^ {2}- части работы \(Основание\): 003$/m);
   assert.match(r.out, /^ {2}- AC: AC-003-/m);
   assert.match(run(workspace(), 'trace', 'comments', 'FR-99').out, /\*\*FR-99\*\* — нет в spec\.md/);
 });

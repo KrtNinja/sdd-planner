@@ -82,7 +82,7 @@ test('разбор: «Игнорировать» — «отклонено», с�
   assert.equal((read(cwd, 'comments/brainstorming.md').match(/## Снято на ревью/g) || []).length, 1);
   assert.equal((read(cwd, 'comments/brainstorming.md').match(/\| slices R\d \|/g) || []).length, 2);
   const g = run(cwd, 'gate', 'review', 'docs/comments', 'slices');
-  assert.match(g.out, /Сняты на прошлых ревью — снова не поднимаются:\n- `slices\/003-mention-notifications\.md`: не решено, что с уведомлением, если комментарий удалили до доставки \(slices R2, /);
+  assert.match(g.out, /Отклонены при прошлых проверках — повторно не предлагаются:\n- `slices\/003-mention-notifications\.md`: не решено, что с уведомлением, если комментарий удалили до доставки \(slices R2, /);
   assert.doesNotMatch(run(cwd, 'gate', 'review', 'docs/comments', 'spec').out, /Сняты на прошлых ревью/);
   const c = run(cwd, 'check', 'docs/comments', '--json');
   assert.equal(JSON.parse(c.out).findings.filter((f) => f.level === 'err').length, 0, c.out);
