@@ -28,9 +28,14 @@ function story(name, complex = false) {
     if (r.code && args[0] !== 'approve') console.error(args.slice(0,3).join(' '),text.slice(0,700));
     return text;
   };
+  if (verify && name === 'validation') {
+    const start = call('start');
+    assert.match(start, /задач|начать|какую/i);
+  }
   if (verify) {
     const initial = call('gate', 'slices', dir);
     assert.match(initial, /spec|требован/i);
+    assert.equal(outputs.at(-1).code, 3);
   }
   call('prompt', 'sdd-grill', name);
   fs.writeFileSync(`${dir}/brainstorming.md`, '# Обсуждение\nСтатус: готов\n\n## Решения\n| # | Ветка | Вопрос | Рекомендация агента | Решение |\n|---|---|---|---|---|\n| 1 | Продукт | Поведение | — | Анна видит результат |\n');
@@ -70,12 +75,26 @@ function story(name, complex = false) {
     call('approve', 'spec', dir);
     call('questions', 'answer', dir, '{"key":"answer","id":"Q1","answer":"Повтор запускает новое задание","origin":"analyst"}');
     call('questions', 'resume', dir, '{"id":"Q1"}');
+    if (verify) {
+      const after = fs.readFileSync(`${dir}/questions.md`, 'utf8');
+      assert.match(after, /answered/);
+      assert.equal(call('approve', 'spec', dir).includes('НЕ ОДОБРЕНО'), true);
+      const scoped = call('gate', 'spec', dir, 'draft:FR-1');
+      assert.match(scoped, /черновик|вопрос|област|останов/i);
+    }
   }
   call('ask', dir);
   call('prompt', 'sdd-review', name, 'spec');
   if (simple) {
     call('approve', 'spec', dir);
     call('gate', 'slices', dir);
+    if (verify) {
+      const plan = call('gen', 'slices', dir);
+      assert.match(plan, /Нет .*plan|план/i);
+      assert.equal(outputs.at(-1).code, 1);
+      const done = call('done', dir);
+      assert.match(done, /Этап|ошиб|предупрежден|Готов|Исправ/i);
+    }
   }
   if (verify) {
     const find = (cmd) => outputs.find((o) => o.args.join(' ').startsWith(cmd));
@@ -90,18 +109,22 @@ function story(name, complex = false) {
         .replace(/^---\n[\s\S]*?\n---\n/, '').trim()));
     if (simple) {
       required('approve spec', 0);
-      required('gate slices', 3); // первый вызов: до создания spec
+      required('gate slices', 3); // до создания spec
+      assert.equal(outputs.filter((o) => o.args.join(' ').startsWith('gate slices')).at(-1).code, 0);
       assert.equal(fs.existsSync(`${dir}/scenarios.md`), false);
       assert.equal(fs.existsSync('docs/adr'), false);
     } else {
       required('approve spec', 3);
       required('questions answer', 0);
+      assert.match(required('ask docs/' + name, 0), /этап|вопрос|продолж/i);
       assert.match(required('questions resume', 0), /SC-1|Q1/);
       if (complex) {
         required('scenarios move', 0);
         required('approve adr', 0);
         assert.equal(fs.existsSync(`${dir}/scenarios.md`), true);
         assert.match(required('trace', 0), /SC-1/);
+        assert.match(fs.readFileSync(`${dir}/scenarios.md`, 'utf8'), /SC-1/);
+        assert.match(fs.readFileSync('docs/adr/0001-export.md', 'utf8'), /SC-1/);
       }
     }
     const registry = fs.readFileSync(`${root}/skills/sdd-grill/references/registry.md`, 'utf8').trim();

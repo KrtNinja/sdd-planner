@@ -40,6 +40,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '${{ matrix.node }}' }
       - run: node --test tests/*.test.mjs
+      - name: Проверка исходного поведения блока 1
+        run: node tools/acceptance/documentation-flow-06.mjs . --verify
 
   metrics:
     runs-on: ubuntu-latest
