@@ -53,3 +53,9 @@ test('схема не принимает поля другого вида и з�
   assert.equal(result.problems.length, 3);
   assert.match(result.problems[2].message, /недопустимо для scenario/);
 });
+
+test('неизвестный ID родителя даёт диагностируемую ошибку, а не исключение парсера', () => {
+  const result = parse(`${question}\nРодитель: UNKNOWN`);
+  assert.equal(result.problems.length, 1);
+  assert.match(result.problems[0].message, /Родитель должен быть Q<n>/);
+});

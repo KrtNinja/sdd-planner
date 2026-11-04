@@ -69,8 +69,13 @@ test('новая сессия: readFn читает выбранный снимо
   assert.deepEqual(old.flow.records, []);
   const damaged = loadFeature(m.dir, (file) => file.endsWith('.sdd-flow.json') ? '{}' : read(file));
   assert.match(issues(damaged).join(), /Неподдерживаемая версия/);
+  assert.equal(damaged.flow.problems[0].n, 1);
+  assert.equal(runChecks(damaged).find((f) => f.rule === 'FL-01').line, 1);
   fs.writeFileSync(path.join(m.dir, '.sdd-flow.json.pending'), '{');
-  assert.match(issues(loadFeature(m.dir)).join(), /Незавершённая запись/);
+  const interrupted = loadFeature(m.dir);
+  assert.match(issues(interrupted).join(), /Незавершённая запись/);
+  assert.equal(interrupted.flow.problems[0].n, 1);
+  assert.equal(runChecks(interrupted).find((f) => f.rule === 'FL-01').line, 1);
 });
 
 test('ID резервирует next; неизвестный родитель, ошибки формата и legacy не меняют счётчики', () => {
