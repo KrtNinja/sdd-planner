@@ -26,7 +26,7 @@ export function questionActions(q) {
 }
 
 /** @param {FlowQuestion[]} records @param {string} key @param {string} digest */
-export function previousAction(records, key, digest) {
+function previousAction(records, key, digest) {
   for (const q of records) {
     const actions = questionActions(q);
     if (!Object.hasOwn(actions, key)) continue;
@@ -56,4 +56,11 @@ export function replaceQuestion(md, q, before) {
   const body = lines.slice(before.n, end).filter((line) => !/^<a id=/.test(line) && ![...fields].some((k) => line.startsWith(`${k}:`)));
   lines.splice(before.n - 1, end - before.n + 1, renderQuestion(q).trimEnd(), ...body);
   return lines.join('\n');
+}
+
+/** @param {string} md @param {string} verb @param {{key: string}} input */
+export function questionRequest(md, verb, input) {
+  const digest = questionDigest(JSON.stringify([verb, Object.entries(input).sort(([a], [b]) => a.localeCompare(b))]));
+  const records = registryRecords(md);
+  return { digest, records, previous: previousAction(records, input.key, digest) };
 }

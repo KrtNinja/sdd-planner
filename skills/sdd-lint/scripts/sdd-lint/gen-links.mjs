@@ -51,8 +51,8 @@ function migrateTrace(s) {
 }
 
 // spec: «Из протокола:» → ссылки на строку протокола (или убрать, если протокола нет).
-/** @param {SpecFeature} m */
-export function linkSpec(m) {
+/** @param {SpecFeature} m @param {(file: string, md: string) => void} [writeFn] */
+export function linkSpec(m, writeFn = fs.writeFileSync) {
   const p = m.protocol;
   let md = m.spec.md;
   if (!p) return removeProtocolLinks(m.spec);
@@ -82,7 +82,7 @@ export function linkSpec(m) {
         }),
       );
   }
-  fs.writeFileSync(s.file, ls.join('\n'));
+  writeFn(s.file, ls.join('\n'));
   return (
     `${rel(s.file)}: ${migrated ? 'раздел «Трассировка» перенесён в «Из протокола:» под требованиями и в разделах. ' : ''}` +
     `Ссылок на строки протокола: ${links}.` +
@@ -98,8 +98,8 @@ function linkLine(t, file, spec) {
 }
 
 // slice: «[FR-n]» из строки AC → «Проверяет:» под блоком; FR в «Основание» и «Проверяет:» → ссылки на spec.
-/** @param {Slice} sl @param {Spec} spec */
-export function linkSlice(sl, spec) {
+/** @param {Slice} sl @param {Spec} spec @param {(file: string, md: string) => void} [writeFn] */
+export function linkSlice(sl, spec, writeFn = fs.writeFileSync) {
   const ls = sl.md.split('\n');
   /** @type {[number, string][]} */
   const moved = [];
@@ -112,7 +112,7 @@ export function linkSlice(sl, spec) {
   }
   for (const [at, text] of moved.sort((a, b) => b[0] - a[0])) ls.splice(at, 0, text);
   const out = ls.map((t) => linkLine(t, sl.file, spec)).join('\n');
-  if (out !== sl.md) fs.writeFileSync(sl.file, out);
+  if (out !== sl.md) writeFn(sl.file, out);
   return moved.length;
 }
 

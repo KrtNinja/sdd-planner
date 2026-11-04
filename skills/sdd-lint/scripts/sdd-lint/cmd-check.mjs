@@ -12,7 +12,7 @@ import { loadFeature, featureFiles, runChecks } from './feature.mjs';
 import { hasErrors, item, report } from './findings.mjs';
 import { rel, approved } from './md.mjs';
 import { choiceOf, needDir } from './pick.mjs';
-import { adrTopicStep, findingStep, reviewStep } from './gate-extra.mjs';
+import { adrTopicStep, findingStep, reviewStep, resumeGateStep } from './gate-extra.mjs';
 import { chooseFeature, closedScreen, closedText, helloLine } from './guide.mjs';
 import { G, blocks, screen } from './screen.mjs';
 import { saveSnapshot } from './snapshot.mjs';
@@ -116,6 +116,7 @@ export function cmdGate(ctx) {
   const stage = choiceOf(ctx, 'gate');
   const { target, note } = gateTarget(ctx, stage);
   const m = loadFeature(needDir(ctx, target, 1));
+  maybeResumeGate(ctx, m, stage);
   const found = runChecks(m);
   maybeDraftGate(ctx, m, stage);
   const closed = gateClosed(m, stage, found);
@@ -184,4 +185,13 @@ function draftGate(ctx, m, stage, scope) {
 function maybeDraftGate(ctx, m, stage) {
   const scope = ctx.args.pos[2];
   if (m.flow.state && scope?.startsWith('draft:')) draftGate(ctx, m, stage, scope.slice(6));
+}
+
+/** @param {Ctx} ctx @param {Feature} m @param {string} stage */
+function maybeResumeGate(ctx, m, stage) {
+  if (stage !== 'decide' || !m.flow.state) return;
+  const text = resumeGateStep(m, ctx.args.pos[2] || '');
+  if (text === null) return;
+  ctx.io.log(text);
+  ctx.io.exit(0);
 }

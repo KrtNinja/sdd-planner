@@ -35,10 +35,15 @@ export function writeRegistry(dir, change) {
 /** @param {string} file @param {{base: string, md: string, hash: string}} envelope */
 function publishRegistry(file, envelope) {
   if (questionDigest(content(file)) !== envelope.base) throw new Error('Реестр изменился во время записи; повторите после проверки');
-  const temp = `${file}.writing`;
+  publishQuestionDocument(file, envelope.md, '.writing');
+}
+
+/** @param {string} file @param {string} md @param {string} suffix */
+export function publishQuestionDocument(file, md, suffix) {
+  const temp = `${file}${suffix}`;
   const fd = fs.openSync(temp, 'wx', 0o600);
   try {
-    fs.writeFileSync(fd, envelope.md);
+    fs.writeFileSync(fd, md);
     fs.fsyncSync(fd);
     fs.renameSync(temp, file);
   } finally {
@@ -65,6 +70,7 @@ export function recoverRegistry(dir) {
   const current = questionDigest(content(file));
   if (![envelope.base, envelope.hash].includes(current)) throw new Error('Реестр изменился; проверьте Git и pending вручную');
   validateReserved(dir, envelope.md);
+  validateRecoveredClosures(dir, content(file), envelope.md);
   if (fs.existsSync(`${file}.writing`)) fs.unlinkSync(`${file}.writing`);
   if (current !== envelope.hash) publishRegistry(file, envelope);
   fs.unlinkSync(pending);
@@ -82,4 +88,18 @@ function validateReserved(dir, md) {
   if (!state) throw new Error('Восстановление требует признака нового процесса');
   if (fs.existsSync(path.join(dir, '.sdd-flow.json.pending'))) throw new Error('Сначала восстановите счётчики');
   for (const q of registryRecords(md)) if (!reservedId(q, state)) throw new Error(`${q.id}: номер не зарезервирован`);
+}
+
+// Pending с закрытым Q нельзя публиковать, если его документы уже изменились после проверки.
+/** @param {string} dir @param {string} current @param {string} candidate */
+function validateRecoveredClosures(dir, current, candidate) {
+  const old = new Map(registryRecords(current).map((q) => [q.id, q.fields.Статус]));
+  for (const q of registryRecords(candidate)) {
+    if (!q.fields.Пакет || old.get(q.id) === q.fields.Статус) continue;
+    if (!['resolved', 'excluded'].includes(q.fields.Статус)) continue;
+    const pack = JSON.parse(q.fields.Пакет);
+    for (const c of pack.changes) {
+      if (read(path.resolve(dir, c.file)) !== c.after) throw new Error(`Закрытие ${q.id} требует восстановления документа ${c.file}`);
+    }
+  }
 }
