@@ -66,7 +66,7 @@ function contextReqs(a, m) {
   const { spec } = m;
   if (!hasSection(a.sc, /^Контекст/)) return [];
   const ids = m.flow.state ? adrBasis(a) : reqIds(sectionText(a.sc, /^Контекст/));
-  const targets = m.flow.state ? m.flow.graph?.byId : spec?.reqs;
+  const targets = m.flow.state ? /** @type {import('./flow-graph.mjs').FlowGraph} */ (m.flow.graph).byId : spec?.reqs;
   return [
     ...(ids.length ? [] : [finding('AD-06', a.file, null, m.flow.state ? '«Контекст» без FR/NFR/SC' : '«Контекст» без FR/NFR')]),
     ...(targets ? ids.filter((id) => !targets.has(id))

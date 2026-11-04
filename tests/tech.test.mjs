@@ -172,3 +172,12 @@ test('T-02/размер: экспорт связан с поведением; te
     assert.equal(runChecks(loadFeature(dir)).filter((f) => f.rule === 'FL-02').length, Number(n > 10000));
   }
 });
+
+test('TECH в spec не заменяет обязательную структуру технического документа', () => {
+  const dir = setup();
+  write(dir, 'spec.md', '## TECH — Ошибочно в требованиях\n\n' + read(dir, 'spec.md'));
+  write(dir, 'tech.md', '# Обеспечение\n\nСуществующий сервис проверяет название до сохранения.\n');
+  const findings = checkTech(loadFeature(dir));
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].msg, /Нужен один заголовок TECH/);
+});
