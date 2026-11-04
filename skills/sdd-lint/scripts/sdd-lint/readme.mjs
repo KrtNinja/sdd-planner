@@ -57,18 +57,21 @@ export function genReadme(ctx, m, quiet = false) {
   const covered = coverage(m);
   const covTable = coverageTable(m, covered);
   const order = layers(m).map((l) => l.join(', ')).join(' → ');
-  const orderText = `${order}\n\nЧерез запятую — slices, которые можно делать параллельно.`;
+  // Сохраняем старую подпись: fix/close не должны менять отпечаток одобренного README.
+  const label = m.readme?.includes('Через запятую — slices,') ? 'slices' : 'части работы';
+  const orderText = `${order}\n\nЧерез запятую — ${label}, которые можно делать параллельно.`;
 
   let md = m.readme;
   if (md == null) {
     md = initialReadme(m, { table, covTable, orderText, covered });
   } else {
     md = replaceSliceTable(md, table);
-    md = replaceSection(md, /^Покрытие/, 'Покрытие Dev Spec', covTable);
+    md = replaceSection(md, /^Покрытие/, 'Покрытие требований', covTable);
     md = replaceSection(md, /^Порядок/, 'Порядок работ', orderText);
   }
   fs.writeFileSync(m.readmeFile, md.endsWith('\n') ? md : `${md}\n`);
-  if (!quiet) ctx.io.log(`${rel(m.readmeFile)}: таблица slices, «Покрытие Dev Spec», «Порядок работ» собраны из файлов slices. Порядок: ${order}`);
+  if (!quiet) ctx.io.log(`${rel(m.readmeFile)}: таблица частей работы, «Покрытие требований», «Порядок работ» ` +
+    `собраны из файлов частей работы. Порядок: ${order}`);
 }
 
 // Строка описи с прежними значениями для пустых полей.
@@ -97,20 +100,20 @@ function initialReadme(m, { table, covTable, orderText, covered }) {
   const shared = [...covered].map(([id, nums]) => /** @type {[string, string[]]} */ ([id, sharing(m, nums).sort()])).filter(([, nums]) => nums.length > 1);
   const behaviour = [...m.slices.values()].filter((s) => /поведение/i.test(s.type || '') && [...s.basis].some((id) => id.startsWith('FR')));
   return [
-    `# ${m.spec?.title || m.name} — slices`,
+    `# ${m.spec?.title || m.name} — части работы`,
     '',
     'Статус: черновик',
     '',
-    'Dev Spec: [../spec.md](../spec.md)',
+    'Требования: [../spec.md](../spec.md)',
     '',
     `ADR: ${adrs}`,
     '',
     ...(reg ? [`Сервисы: ${reg.list.join(', ')}`, ''] : []),
-    '<!-- Таблицу, «Покрытие Dev Spec» и «Порядок работ» собирает sdd-lint fix: руками не правь. -->',
+    '<!-- Таблицу, «Покрытие требований» и «Порядок работ» собирает sdd-lint fix: руками не правь. -->',
     '',
     table,
     '',
-    '## Покрытие Dev Spec',
+    '## Покрытие требований',
     covTable,
     '',
     '## Порядок работ',

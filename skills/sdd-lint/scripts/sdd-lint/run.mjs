@@ -17,6 +17,7 @@ import { cmdPrompt } from './cmd-prompt.mjs';
 import { cmdStart, cmdResearch } from './cmd-start.mjs';
 import { cmdTriage } from './cmd-triage.mjs';
 import { lintCmd } from './config.mjs';
+import { SectionConflict } from './md.mjs';
 import { createIo, Exit } from './io.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
@@ -69,6 +70,10 @@ export function run(argv, { write } = {}) {
     return { code: 0, chunks: ctx.io.chunks };
   } catch (e) {
     if (e instanceof Exit) return { code: e.code, chunks: ctx.io.chunks };
+    if (e instanceof SectionConflict) {
+      ctx.io.error(e.message);
+      return { code: 1, chunks: ctx.io.chunks };
+    }
     throw e;
   }
 }

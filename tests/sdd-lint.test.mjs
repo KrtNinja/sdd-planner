@@ -806,7 +806,7 @@ test('prompt: скилл, свой чеклист и шаблон одним т�
   const r = run(cwd, 'prompt', 'sdd-review', 'docs/comments', 'slices');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /^# Ревью SDD: comments slices/);
-  assert.match(r.out, /Файл скилла references\/slices\.md:\n\n# Чеклист: slices/);
+  assert.match(r.out, /Файл скилла references\/slices\.md:\n\n# Проверка: части работы/);
   assert.match(r.out, /Файл скилла assets\/review\.md:/);
   assert.doesNotMatch(r.out, /# Чеклист: spec/);
   assert.doesNotMatch(r.out, /^disable-model-invocation/m);

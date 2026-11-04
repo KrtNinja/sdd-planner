@@ -52,13 +52,13 @@ function sliceText(m, plan, s) {
     `- Вне slice: ${outside || 'нет'}.`,
     ...(prep ? [] : [`- Пересечения с соседями: ${shared.length ? `<что делит с ${shared.map((o) => o.num).join(', ')} и где граница>` : 'нет'}.`]),
     '',
-    '## Открытые вопросы к Dev Spec',
+    '## Открытые вопросы к требованиям',
     'Нет.',
     '',
     '## Definition of Done',
     ...(prep
       ? ['- Контракты из раздела «Контракты» опубликованы у владельцев, все стороны их приняли']
-      : [`- Все AC-${s.num}-* закрыты тестами: в названии теста — ссылка ${m.name}/AC-ID`, '- Все половины влиты, общая приёмка пройдена']),
+      : [`- Все AC-${s.num}-* закрыты тестами: в названии теста — ссылка ${m.name}/AC-ID`, '- Изменения во всех сервисах влиты, общая приёмка пройдена']),
     '',
   );
   return md.join('\n');
@@ -73,8 +73,8 @@ export function genSlices(ctx, m) {
     return ctx.io.exit(1);
   };
   const plan = m.plan;
-  if (!plan) stop(`Нет ${rel(m.planFile)} — сначала план нарезки (скилл sdd-slices).`);
-  if (m.slices.size) stop(`В ${dir}/slices/ уже есть файлы slices — по плану создаются только новые. Меняйте файлы; решения — через sdd-decide.`);
+  if (!plan) stop(`Нет ${rel(m.planFile)} — сначала план разбиения работы (скилл sdd-slices).`);
+  if (m.slices.size) stop(`В ${dir}/slices/ уже есть файлы частей работы — по плану создаются только новые. Меняйте файлы; решения — через sdd-decide.`);
   const findings = runChecks(m);
   const closed = gateClosed(m, 'slices', findings);
   if (closed) stop(`Файлы не созданы: ${closed[0]}. ${closed[1]}.`);

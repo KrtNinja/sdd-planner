@@ -60,6 +60,6 @@ export function parseSpec(file, md) {
     sources: parseSources(sc, reqs),
     oldTraceT: tables(inSection(sc, /^Трассировка/))[0] || null,
     oldTraceLine: traceH ? traceH.n : null,
-    title: ((md.match(/^#\s+(.*)$/m) || [])[1] || '').replace(/\s+—\s+Dev Spec\s*$/i, '').trim(),
+    title: ((md.match(/^#\s+(.*)$/m) || [])[1] || '').replace(/\s+—\s+(?:Dev Spec|Спецификация требований)\s*$/i, '').trim(),
   };
 }

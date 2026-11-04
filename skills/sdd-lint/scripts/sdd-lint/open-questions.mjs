@@ -29,7 +29,7 @@ function sectionItems(file, md, re) {
 }
 
 // Открытые вопросы, которые держат одобрение (SP-06, SL-10): spec — «Открытые вопросы»,
-// slices — «Открытые вопросы к Dev Spec» в каждом slice. «Не выяснено» в ADR принятие не держит.
+// slices — «Открытые вопросы к требованиям» в каждом slice. «Не выяснено» в ADR принятие не держит.
 /** @param {Feature} m @param {string} what */
 export function openQuestions(m, what) {
   if (what === 'spec') return m.spec ? sectionItems(m.specFile, m.spec.md, SPEC_RE) : [];
@@ -47,7 +47,7 @@ function sliceTarget(m, r) {
     num = fr ? [...m.slices.values()].find((s) => s.basis.has(fr))?.num : null;
   }
   const sl = num ? m.slices.get(num) : null;
-  return sl ? { file: sl.file, re: SPEC_RE, title: 'Открытые вопросы к Dev Spec' } : null;
+  return sl ? { file: sl.file, re: SPEC_RE, title: 'Открытые вопросы к требованиям' } : null;
 }
 
 // Куда пишется открытый вопрос из находки: spec; slice из «Где» (файл, AC-NNN-…, FR из «Основание»); ADR — «Не выяснено».

@@ -60,13 +60,41 @@ export function scan(md) {
       }
       return;
     }
-    if (!inCode && /^##\s/.test(text)) h2 = text.replace(/^##\s+/, '').trim();
+    if (!inCode && /^##\s/.test(text)) h2 = sectionName(text.replace(/^##\s+/, '').trim());
     /** @type {Line} */
     const l = { text, n, inCode, block: inCode ? block : null, h2 };
     lines.push(l);
     if (inCode) blocks[block].lines.push(l);
   });
+  checkSectionNames(lines);
   return { lines, blocks };
+}
+
+// Совместимость названий разделов: текст файла сохраняется, внутреннее имя прежнее.
+const SECTION_NAMES = new Map([
+  ['Не входит в задачу', 'Вне scope'],
+  ['Решения после обсуждения', 'Решения после brainstorming'],
+  ['Открытые вопросы к требованиям', 'Открытые вопросы к Dev Spec'],
+  ['Покрытие требований', 'Покрытие Dev Spec'],
+]);
+/** @param {string} title */
+const sectionName = (title) => SECTION_NAMES.get(title) || title;
+
+export class SectionConflict extends Error {}
+
+/** @param {Line[]} lines */
+function checkSectionNames(lines) {
+  /** @type {Map<string, string>} */
+  const seen = new Map();
+  for (const l of lines.filter(isH2)) {
+    const title = l.text.replace(/^##\s+/, '').trim();
+    const previous = seen.get(l.h2);
+    if (previous !== undefined && previous !== title) {
+      throw new SectionConflict(`Разделы «${previous}» и «${title}» обозначают одно и то же. ` +
+        'Объедините содержимое в одном разделе и повторите команду.');
+    }
+    seen.set(l.h2, title);
+  }
 }
 
 // Заголовок ## вне кода: у такой строки раздел h2 — она сама.
