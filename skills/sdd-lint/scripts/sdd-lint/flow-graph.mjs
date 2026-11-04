@@ -2,7 +2,6 @@
 // @ts-check
 import path from 'node:path';
 import { scan } from './md.mjs';
-import { flowRef } from './flow-format.mjs';
 
 /** @typedef {import('./flow-format.mjs').FlowRecord} FlowRecord */
 /** @typedef {{ id: string, file: string, n: number }} Address */
@@ -37,21 +36,22 @@ function recordEdges(r) {
   return links;
 }
 
-/** @param {string} start @param {Map<string, string>} parents */
+/** @param {string} start @param {Map<string, string | null>} parents */
 function hasParentCycle(start, parents) {
   const seen = new Set();
+  /** @type {string | null} */
   let id = start;
-  while (parents.has(id)) {
+  while (id !== null && parents.has(id)) {
     if (seen.has(id)) return true;
     seen.add(id);
-    id = /** @type {string} */ (parents.get(id));
+    id = /** @type {string | null} */ (parents.get(id));
   }
   return false;
 }
 
 /** @param {FlowRecord[]} records @param {FormatProblem[]} problems */
 function parentCycles(records, problems) {
-  const parents = new Map(records.filter((r) => r.kind === 'question' && r.parent).map((r) => [r.id, /** @type {string} */ (r.parent)]));
+  const parents = new Map(records.map((r) => [r.id, r.parent]));
   for (const r of records) {
     if (hasParentCycle(r.id, parents)) problems.push({ ...r, message: `Цикл родителей вопроса ${r.id}` });
   }
@@ -101,9 +101,8 @@ export function flowBacklinks(graph, id) {
 
 /** @param {FlowRecord} record @param {import('./flow-state.mjs').FlowState} state */
 export function reservedId(record, state) {
-  const ref = flowRef(record.id);
-  if (ref?.kind === 'question') return Number(record.id.slice(1)) < state.next.Q;
-  if (ref?.kind === 'scenario') return Number(record.id.slice(3)) < state.next.SC;
-  if (ref?.kind === 'step') return Number(record.id.split('-S')[1]) < state.next.STEP;
+  if (record.kind === 'question') return Number(record.id.slice(1)) < state.next.Q;
+  if (record.kind === 'scenario') return Number(record.id.slice(3)) < state.next.SC;
+  if (record.kind === 'step') return Number(record.id.split('-S')[1]) < state.next.STEP;
   return true;
 }

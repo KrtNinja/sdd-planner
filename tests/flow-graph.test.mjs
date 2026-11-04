@@ -59,7 +59,9 @@ test('tech: ADR остаётся общим для docs, контракт тре
   fs.mkdirSync(dir);
   initTestFlow(dir);
   fs.writeFileSync(path.join(dir, 'tech.md'), '## TECH — Решение\nСвязи: ADR-0001\n');
-  assert.deepEqual(issues(loadFeature(dir)), []);
+  const linked = loadFeature(dir);
+  assert.deepEqual(issues(linked), []);
+  assert.equal(flowAddress(linked.flow.graph, 'ADR-0001').n, 1);
 });
 
 test('новая сессия: readFn читает выбранный снимок, а не состояние с диска', () => {
@@ -120,4 +122,20 @@ test('ссылка на контракт не разрешается по яко
   const m = setup({ 'tech.md': '## TECH — Решение\nСвязи: contract:api.md#x',
     'api.md': '```html\n<a id="x"></a>\n```' });
   assert.match(issues(m).join(), /нет цели contract:api.md#x/);
+});
+
+
+test('граница резервирования: следующий номер ещё нельзя использовать ни для Q, ни для SC, ни для шага', () => {
+  const m = setup({ 'questions.md': q('Q5'), 'scenarios.md': '## SC-5 — Не выдан\n### SC-5-S4 — Не выдан\n' });
+  const messages = issues(m);
+  assert.equal(messages.filter((s) => s.includes('не зарезервирован')).length, 3);
+});
+
+test('обратные связи различают родителя вопроса и принадлежность шага сценарию', () => {
+  const m = setup({ 'spec.md': SPEC + sc, 'questions.md': q('Q1', 'Родитель: Q2') + q('Q2') });
+  assert.deepEqual(issues(m), []);
+  assert.deepEqual(flowBacklinks(m.flow.graph, 'Q2'), [{ from: 'Q1', to: 'Q2', kind: 'parent' }]);
+  assert.deepEqual(flowBacklinks(m.flow.graph, 'SC-1'), [
+    { from: 'SC-1-S1', to: 'SC-1', kind: 'scenario' }, { from: 'SC-1-S2', to: 'SC-1', kind: 'scenario' },
+  ]);
 });
