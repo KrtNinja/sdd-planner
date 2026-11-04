@@ -17,7 +17,7 @@ test('openTarget: цель целиком и приоритеты ссылок, 
     let expected = null;
     if (target === 'spec') expected = { file: m.specFile, re: /^Открытые вопросы/, title: 'Открытые вопросы' };
     else if (target === 'adr') expected = { file: 'adr/0003.md', re: /^Не выяснено/, title: 'Не выяснено', adr: true };
-    else if (target) expected = { file: m.slices.get(target).file, re: /^Открытые вопросы/, title: 'Открытые вопросы к Dev Spec' };
+    else if (target) expected = { file: m.slices.get(target).file, re: /^Открытые вопросы/, title: 'Открытые вопросы к требованиям' };
     assert.deepEqual(openTarget(m, key, { where, what }), expected, row);
   }
   assert.equal(openTarget(feature({}), 'spec', { where: '', what: '' }), null);
