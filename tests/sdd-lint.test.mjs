@@ -687,7 +687,7 @@ test('не хватает варианта или фичи: варианты г�
   let r = run(cwd, 'approve');
   assert.equal(r.code, 2);
   assert.match(r.out, /approve — выбери вариант/);
-  assert.match(r.out, /^- `node scripts\/sdd-lint\.mjs approve slices comments` — одобрить slices$/m);
+  assert.match(r.out, /^- `node scripts\/sdd-lint\.mjs approve slices comments` — одобрить части работы$/m);
   // gate без фичи выбирает сам (tests/guide.test.mjs); подходящих нет — этапы фич.
   r = run(cwd, 'gate', 'spec');
   assert.equal(r.code, 2);

@@ -55,11 +55,11 @@ research — выбери вариант:
 ~~~~text
 gate — выбери вариант:
 
-- `/sdd-lint gate spec <feature>` — можно ли писать Dev Spec
-- `/sdd-lint gate slices <feature>` — можно ли резать slices
-- `/sdd-lint gate adr <feature>` — можно ли писать ADR
-- `/sdd-lint gate decide <feature>` — можно ли проводить решение
-- `/sdd-lint gate review <feature>` — что ждёт ревью
+- `/sdd-lint gate spec <feature>` — можно ли подготовить требования
+- `/sdd-lint gate slices <feature>` — можно ли разбить работу на части
+- `/sdd-lint gate adr <feature>` — можно ли подготовить архитектурное решение (ADR)
+- `/sdd-lint gate decide <feature>` — можно ли обновить документы по решению
+- `/sdd-lint gate review <feature>` — что ждёт проверки ИИ
 - `/sdd-lint gate build <feature>` — можно ли начинать реализацию
 ~~~~
 
@@ -70,8 +70,8 @@ gate — выбери вариант:
 ~~~~text
 approve — выбери вариант:
 
-- `/sdd-lint approve spec <feature>` — одобрить Dev Spec
-- `/sdd-lint approve slices <feature>` — одобрить slices
+- `/sdd-lint approve spec <feature>` — одобрить требования
+- `/sdd-lint approve slices <feature>` — одобрить части работы
 - `/sdd-lint approve adr <feature>` — принять ADR
 ~~~~
 
@@ -84,7 +84,7 @@ gen — выбери вариант:
 
 - `/sdd-lint gen readme <feature>` — slices/README.md: таблица, покрытие, порядок
 - `/sdd-lint gen links <feature>` — ссылки на строки протокола и spec
-- `/sdd-lint gen slices <feature>` — файлы slices по согласованному плану
+- `/sdd-lint gen slices <feature>` — файлы частей работы по согласованному плану
 ~~~~
 
 ### `sdd-lint guard`
@@ -150,8 +150,8 @@ next — выбери вариант:
 
 - `/sdd-lint next FR <feature>` — номер нового FR
 - `/sdd-lint next NFR <feature>` — номер нового NFR
-- `/sdd-lint next AC <feature>` — номер нового AC в slice
-- `/sdd-lint next slice <feature>` — номер нового slice
+- `/sdd-lint next AC <feature>` — номер нового AC в части работы
+- `/sdd-lint next slice <feature>` — номер новой части работы
 - `/sdd-lint next adr <feature>` — номер нового ADR
 ~~~~
 
@@ -320,13 +320,13 @@ completion — выбери вариант:
 - `/sdd-lint <feature>` — все проверки и текущий этап
 - `/sdd-lint fix <feature>` — после правки: номера, ссылки, README — скриптом, затем проверки
 - `/sdd-lint done <feature>` — конец этапа: fix, снимок, «на ревью» и вопрос этапа
-- `/sdd-lint plan <feature>` — проверить план нарезки _work/plan.md
-- `/sdd-lint approve spec|slices|adr <feature>` — одобрить spec, slices или принять ADR
-- `/sdd-lint gate spec|slices|adr|decide|build <feature>` — ворота перед этапом
-- `/sdd-lint gen readme|links|slices <feature>` — собрать README, ссылки, файлы slices по плану
-- `/sdd-lint guard docs/<feature>/spec.md` — сверка после humanizer
+- `/sdd-lint plan <feature>` — проверить план разбиения работы _work/plan.md
+- `/sdd-lint approve spec|slices|adr <feature>` — одобрить требования, части работы или принять ADR
+- `/sdd-lint gate spec|slices|adr|decide|build <feature>` — проверить, можно ли начать этап
+- `/sdd-lint gen readme|links|slices <feature>` — собрать README, ссылки, файлы частей работы по плану
+- `/sdd-lint guard docs/<feature>/spec.md` — проверка сохранности структуры после humanizer
 - `/sdd-lint trace <feature>` — протокол → FR/NFR
-- `/sdd-lint diff <feature>` — изменения против git
+- `/sdd-lint diff <feature>` — изменения относительно версии в Git
 - `/sdd-lint next FR|NFR|AC|slice|adr <feature>` — следующий свободный номер
 - `/sdd-lint export <feature>` — требования в JSON для зоны реализации
 

@@ -120,11 +120,11 @@ R2 снят: «отклонено» в `docs/comments/_work/review/slices.md`, �
 ~~~~text
 gate — выбери вариант:
 
-- `/sdd-lint gate spec comments` — можно ли писать Dev Spec
-- `/sdd-lint gate slices comments` — можно ли резать slices
-- `/sdd-lint gate adr comments` — можно ли писать ADR
-- `/sdd-lint gate decide comments` — можно ли проводить решение
-- `/sdd-lint gate review comments` — что ждёт ревью
+- `/sdd-lint gate spec comments` — можно ли подготовить требования
+- `/sdd-lint gate slices comments` — можно ли разбить работу на части
+- `/sdd-lint gate adr comments` — можно ли подготовить архитектурное решение (ADR)
+- `/sdd-lint gate decide comments` — можно ли обновить документы по решению
+- `/sdd-lint gate review comments` — что ждёт проверки ИИ
 - `/sdd-lint gate build comments` — можно ли начинать реализацию
 ~~~~
 

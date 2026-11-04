@@ -260,11 +260,11 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~text
 gate — выбери вариант:
 
-- `/sdd-lint gate spec comments` — можно ли писать Dev Spec
-- `/sdd-lint gate slices comments` — можно ли резать slices
-- `/sdd-lint gate adr comments` — можно ли писать ADR
-- `/sdd-lint gate decide comments` — можно ли проводить решение
-- `/sdd-lint gate review comments` — что ждёт ревью
+- `/sdd-lint gate spec comments` — можно ли подготовить требования
+- `/sdd-lint gate slices comments` — можно ли разбить работу на части
+- `/sdd-lint gate adr comments` — можно ли подготовить архитектурное решение (ADR)
+- `/sdd-lint gate decide comments` — можно ли обновить документы по решению
+- `/sdd-lint gate review comments` — что ждёт проверки ИИ
 - `/sdd-lint gate build comments` — можно ли начинать реализацию
 ~~~~
 
@@ -444,8 +444,8 @@ ADR фичи:
 ~~~~text
 approve — выбери вариант:
 
-- `/sdd-lint approve spec comments` — одобрить Dev Spec
-- `/sdd-lint approve slices comments` — одобрить slices
+- `/sdd-lint approve spec comments` — одобрить требования
+- `/sdd-lint approve slices comments` — одобрить части работы
 - `/sdd-lint approve adr comments` — принять ADR
 ~~~~
 
@@ -524,7 +524,7 @@ gen — выбери вариант:
 
 - `/sdd-lint gen readme comments` — slices/README.md: таблица, покрытие, порядок
 - `/sdd-lint gen links comments` — ссылки на строки протокола и spec
-- `/sdd-lint gen slices comments` — файлы slices по согласованному плану
+- `/sdd-lint gen slices comments` — файлы частей работы по согласованному плану
 ~~~~
 
 ### `sdd-lint gen readme`
@@ -1092,8 +1092,8 @@ next — выбери вариант:
 
 - `/sdd-lint next FR comments` — номер нового FR
 - `/sdd-lint next NFR comments` — номер нового NFR
-- `/sdd-lint next AC comments` — номер нового AC в slice
-- `/sdd-lint next slice comments` — номер нового slice
+- `/sdd-lint next AC comments` — номер нового AC в части работы
+- `/sdd-lint next slice comments` — номер новой части работы
 - `/sdd-lint next adr comments` — номер нового ADR
 ~~~~
 
@@ -2553,13 +2553,13 @@ compdef _sdd_lint sdd-lint sdd-lint.mjs
 - `/sdd-lint comments` — все проверки и текущий этап
 - `/sdd-lint fix comments` — после правки: номера, ссылки, README — скриптом, затем проверки
 - `/sdd-lint done comments` — конец этапа: fix, снимок, «на ревью» и вопрос этапа
-- `/sdd-lint plan comments` — проверить план нарезки _work/plan.md
-- `/sdd-lint approve spec|slices|adr comments` — одобрить spec, slices или принять ADR
-- `/sdd-lint gate spec|slices|adr|decide|build comments` — ворота перед этапом
-- `/sdd-lint gen readme|links|slices comments` — собрать README, ссылки, файлы slices по плану
-- `/sdd-lint guard docs/comments/spec.md` — сверка после humanizer
+- `/sdd-lint plan comments` — проверить план разбиения работы _work/plan.md
+- `/sdd-lint approve spec|slices|adr comments` — одобрить требования, части работы или принять ADR
+- `/sdd-lint gate spec|slices|adr|decide|build comments` — проверить, можно ли начать этап
+- `/sdd-lint gen readme|links|slices comments` — собрать README, ссылки, файлы частей работы по плану
+- `/sdd-lint guard docs/comments/spec.md` — проверка сохранности структуры после humanizer
 - `/sdd-lint trace comments` — протокол → FR/NFR
-- `/sdd-lint diff comments` — изменения против git
+- `/sdd-lint diff comments` — изменения относительно версии в Git
 - `/sdd-lint next FR|NFR|AC|slice|adr comments` — следующий свободный номер
 - `/sdd-lint export comments` — требования в JSON для зоны реализации
 

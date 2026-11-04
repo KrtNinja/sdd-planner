@@ -101,8 +101,8 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~text
 approve — выбери вариант:
 
-- `/sdd-lint approve spec comments` — одобрить Dev Spec
-- `/sdd-lint approve slices comments` — одобрить slices
+- `/sdd-lint approve spec comments` — одобрить требования
+- `/sdd-lint approve slices comments` — одобрить части работы
 - `/sdd-lint approve adr comments` — принять ADR
 ~~~~
 

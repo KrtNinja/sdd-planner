@@ -32,7 +32,7 @@ gen — выбери вариант:
 
 - `/sdd-lint gen readme comments` — slices/README.md: таблица, покрытие, порядок
 - `/sdd-lint gen links comments` — ссылки на строки протокола и spec
-- `/sdd-lint gen slices comments` — файлы slices по согласованному плану
+- `/sdd-lint gen slices comments` — файлы частей работы по согласованному плану
 ~~~~
 
 ### `sdd-lint gen readme`
@@ -181,11 +181,11 @@ docs/comments/spec.md: Ссылок на строки протокола: 14.
 ~~~~text
 gate — выбери вариант:
 
-- `/sdd-lint gate spec comments` — можно ли писать Dev Spec
-- `/sdd-lint gate slices comments` — можно ли резать slices
-- `/sdd-lint gate adr comments` — можно ли писать ADR
-- `/sdd-lint gate decide comments` — можно ли проводить решение
-- `/sdd-lint gate review comments` — что ждёт ревью
+- `/sdd-lint gate spec comments` — можно ли подготовить требования
+- `/sdd-lint gate slices comments` — можно ли разбить работу на части
+- `/sdd-lint gate adr comments` — можно ли подготовить архитектурное решение (ADR)
+- `/sdd-lint gate decide comments` — можно ли обновить документы по решению
+- `/sdd-lint gate review comments` — что ждёт проверки ИИ
 - `/sdd-lint gate build comments` — можно ли начинать реализацию
 ~~~~
 
@@ -414,8 +414,8 @@ next — выбери вариант:
 
 - `/sdd-lint next FR comments` — номер нового FR
 - `/sdd-lint next NFR comments` — номер нового NFR
-- `/sdd-lint next AC comments` — номер нового AC в slice
-- `/sdd-lint next slice comments` — номер нового slice
+- `/sdd-lint next AC comments` — номер нового AC в части работы
+- `/sdd-lint next slice comments` — номер новой части работы
 - `/sdd-lint next adr comments` — номер нового ADR
 ~~~~
 

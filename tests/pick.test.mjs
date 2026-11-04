@@ -45,8 +45,8 @@ missing|NULL
   });
 });
 
-const choices = (feature) => `- \`node scripts/sdd-lint.mjs approve spec ${feature}\` — одобрить Dev Spec\n` +
-  `- \`node scripts/sdd-lint.mjs approve slices ${feature}\` — одобрить slices\n` +
+const choices = (feature) => `- \`node scripts/sdd-lint.mjs approve spec ${feature}\` — одобрить требования\n` +
+  `- \`node scripts/sdd-lint.mjs approve slices ${feature}\` — одобрить части работы\n` +
   `- \`node scripts/sdd-lint.mjs approve adr ${feature}\` — принять ADR\n`;
 
 test('pickChoice: default n, выбранная фича и запасная фича при пропущенном или неверном пути', () => {
