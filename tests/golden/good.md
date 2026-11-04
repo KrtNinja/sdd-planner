@@ -170,7 +170,7 @@ research — выбери вариант:
 2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
-Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14
+Ошибок: 0, предупреждений: 0. FR/NFR: 13, частей работы: 3, AC: 14
 
 Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~
@@ -432,7 +432,7 @@ ADR фичи:
 код 3
 
 ~~~~text
-Пока нельзя начать реализацию: slices не одобрены. Сначала одобрите slices: `/sdd-lint approve slices docs/comments`
+Пока нельзя начать реализацию: части работы не одобрены. Сначала одобрите части работы: `/sdd-lint approve slices docs/comments`
 
 ⚙ sdd: стоп
 ~~~~
@@ -820,8 +820,8 @@ diff работает только в git-репозитории
   "stage": "Части работы ожидают проверки",
   "gate": {
     "build": "closed",
-    "reason": "slices не одобрены",
-    "hint": "Сначала одобрите slices: `/sdd-lint approve slices docs/comments`"
+    "reason": "части работы не одобрены",
+    "hint": "Сначала одобрите части работы: `/sdd-lint approve slices docs/comments`"
   },
   "ref": {
     "format": "comments/<AC-ID>",
@@ -2582,7 +2582,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
-Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14
+Ошибок: 0, предупреждений: 0. FR/NFR: 13, частей работы: 3, AC: 14
 
 Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~
@@ -2622,7 +2622,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
-Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14
+Ошибок: 0, предупреждений: 0. FR/NFR: 13, частей работы: 3, AC: 14
 
 Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~

@@ -40,13 +40,13 @@ test('ворота закрыты: причина, строка человеку
   edit(cwd, 'comments/brainstorming.md', 'Статус: готов', 'Статус: идёт');
   const r = run(cwd, 'gate', 'spec', 'comments');
   assert.equal(r.code, 3);
-  assert.match(json(r.out).card, /^Пока нельзя подготовить требования: статус протокола «идёт»\. Сначала закончите brainstorming: `\/sdd-grill comments`\n\n\*\*/);
+  assert.match(json(r.out).card, /^Пока нельзя подготовить требования: статус протокола «идёт»\. Сначала закончите обсуждение задачи: `\/sdd-grill comments`\n\n\*\*/);
   assert.ok(optionIds(r.out).includes('here:sdd-grill'));
 });
 test('ворота build (зона реализации) — по-старому, без вопроса этапа', () => {
   const c = run(workspace(), 'gate', 'build', 'comments');
   assert.equal(c.code, 3);
-  assert.match(c.out, /^Пока нельзя начать реализацию: slices не одобрены\. Сначала одобрите slices/);
+  assert.match(c.out, /^Пока нельзя начать реализацию: части работы не одобрены\. Сначала одобрите части работы/);
   assert.match(c.out, /\n\n⚙ sdd: стоп\s*$/);
   assert.doesNotMatch(c.out, /"questions"/);
 });

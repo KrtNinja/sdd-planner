@@ -13,7 +13,7 @@
 2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
-Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14
+Ошибок: 0, предупреждений: 0. FR/NFR: 13, частей работы: 3, AC: 14
 
 Tip: Введите /sdd-review comments slices чтобы продолжить
 

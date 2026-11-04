@@ -342,5 +342,5 @@ test('Р1 — ADR: <тема>: вопрос «Нужен ADR», ворота bui
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   const g = run(cwd, 'gate', 'build', 'docs/comments');
   assert.equal(g.code, 3, g.out);
-  assert.match(g.out, /нет ADR: «дедупликация уведомлений» \(slice 003\)/);
+  assert.match(g.out, /нет ADR: «дедупликация уведомлений» \(часть работы 003\)/);
 });

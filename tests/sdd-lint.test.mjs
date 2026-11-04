@@ -531,7 +531,7 @@ const exported = (cwd) => {
 test('export: ворота build закрыты — код 3, причина и подсказка в JSON', () => {
   const e = exported(workspace());
   assert.equal(e.code, 3);
-  assert.deepEqual(e.gate, { build: 'closed', reason: 'slices не одобрены', hint: 'Сначала одобрите slices: `node scripts/sdd-lint.mjs approve slices docs/comments`' });
+  assert.deepEqual(e.gate, { build: 'closed', reason: 'части работы не одобрены', hint: 'Сначала одобрите части работы: `node scripts/sdd-lint.mjs approve slices docs/comments`' });
 });
 test('export: после одобрения — slices, слои, сервисы и ссылки на AC для тестов', () => {
   const cwd = workspace();

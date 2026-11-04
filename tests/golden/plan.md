@@ -353,7 +353,7 @@ ADR фичи:
 код 3
 
 ~~~~text
-Пока нельзя начать реализацию: slices не одобрены. Сначала одобрите slices: `/sdd-lint approve slices docs/comments`
+Пока нельзя начать реализацию: части работы не одобрены. Сначала одобрите части работы: `/sdd-lint approve slices docs/comments`
 
 ⚙ sdd: стоп
 ~~~~
