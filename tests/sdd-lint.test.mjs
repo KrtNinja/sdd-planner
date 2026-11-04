@@ -504,7 +504,7 @@ test('следующий шаг: slices одобрены, ADR фичи не пр
 test('нет папки фичи: короткое сообщение со списком фич', () => {
   const r = run(workspace(), 'docs/nope');
   assert.equal(r.code, 2);
-  assert.match(r.out, /Нет папки docs\/nope\. Фичи в docs\/: comments\. Новая фича начинается с `\/sdd-grill nope`\./);
+  assert.match(r.out, /Нет папки docs\/nope\. Задачи в docs\/: comments\. Новая задача начинается с `\/sdd-grill nope`\./);
   assert.doesNotMatch(r.out, /Коды выхода/);
 });
 test('guard без снимка и git: «не с чем сверить», а не «изменены»', () => {

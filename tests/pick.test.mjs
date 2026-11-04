@@ -67,9 +67,9 @@ test('pickChoice: default n, выбранная фича и запасная ф�
 test('needDir: подсказка без фичи сохраняет аргументы до неё; соседи исключают adr и файлы', () => {
   inDir(repo(files), JSON_ENV, () => {
     assert.deepEqual(output(['approve', 'spec'], (ctx) => needDir(ctx, undefined)), [[2,
-      'Укажи фичу. Фичи в `docs/`:\n\n- `node scripts/sdd-lint.mjs approve alpha`\n- `node scripts/sdd-lint.mjs approve beta`\n']]);
+      'Укажите задачу. Задачи в `docs/`:\n\n- `node scripts/sdd-lint.mjs approve alpha`\n- `node scripts/sdd-lint.mjs approve beta`\n']]);
     assert.deepEqual(output([], (ctx) => needDir(ctx, 'docs/missing')), [[2,
-      'Нет папки docs/missing. Фичи в docs/: alpha, beta. Новая фича начинается с `/sdd-grill missing`.\n']]);
+      'Нет папки docs/missing. Задачи в docs/: alpha, beta. Новая задача начинается с `/sdd-grill missing`.\n']]);
   });
 });
 

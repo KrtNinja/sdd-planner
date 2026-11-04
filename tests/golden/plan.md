@@ -7,7 +7,7 @@
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint plan comments`
 ~~~~
@@ -40,7 +40,7 @@ gen — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint gen readme comments`
 ~~~~
@@ -59,7 +59,7 @@ gen — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint gen links comments`
 ~~~~
@@ -77,7 +77,7 @@ docs/comments/spec.md: Ссылок на строки протокола: 14.
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint gen slices comments`
 ~~~~
@@ -97,7 +97,7 @@ docs/comments/spec.md: Ссылок на строки протокола: 14.
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint ask comments`
 ~~~~
@@ -137,7 +137,7 @@ docs/comments/spec.md: Ссылок на строки протокола: 14.
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint choose comments`
 ~~~~
@@ -343,7 +343,7 @@ gate — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint gate build comments`
 ~~~~
@@ -363,7 +363,7 @@ gate — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint done comments`
 ~~~~
@@ -424,7 +424,7 @@ next — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint next FR comments`
 ~~~~
@@ -442,7 +442,7 @@ FR-11
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint next NFR comments`
 ~~~~
@@ -460,7 +460,7 @@ NFR-4
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint next AC comments`
 ~~~~
@@ -479,7 +479,7 @@ next AC docs/<feature> <NNN> [B|F]
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint next slice comments`
 ~~~~
@@ -497,7 +497,7 @@ next AC docs/<feature> <NNN> [B|F]
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint next adr comments`
 ~~~~

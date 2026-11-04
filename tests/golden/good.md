@@ -46,7 +46,7 @@ research — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint research context comments`
 ~~~~
@@ -100,7 +100,7 @@ research — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint research fact comments`
 ~~~~
@@ -119,7 +119,7 @@ research — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint research check comments`
 ~~~~
@@ -140,7 +140,7 @@ research — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint fix comments`
 ~~~~
@@ -150,7 +150,7 @@ research — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint fix comments`
 ~~~~
@@ -207,7 +207,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint done comments`
 ~~~~
@@ -238,7 +238,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint plan comments`
 ~~~~
@@ -422,7 +422,7 @@ gate — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint gate build comments`
 ~~~~
@@ -454,7 +454,7 @@ approve — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint approve spec comments`
 ~~~~
@@ -472,7 +472,7 @@ docs/comments/spec.md: уже «одобрено <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint approve slices comments`
 ~~~~
@@ -494,7 +494,7 @@ Tip: Введите /sdd-close comments чтобы продолжить
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint approve adr comments`
 ~~~~
@@ -532,7 +532,7 @@ gen — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint gen readme comments`
 ~~~~
@@ -550,7 +550,7 @@ docs/comments/slices/README.md: таблица slices, «Покрытие Dev Sp
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint gen links comments`
 ~~~~
@@ -572,7 +572,7 @@ docs/comments/slices/README.md: таблицы собраны заново со 
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint gen slices comments`
 ~~~~
@@ -590,7 +590,7 @@ docs/comments/slices/README.md: таблицы собраны заново со 
 код 2
 
 ~~~~text
-Укажи файл или фичу. Фичи в `docs/`:
+Укажи файл или фичу. Задачи в `docs/`:
 
 - `/sdd-lint guard comments`
 ~~~~
@@ -600,7 +600,7 @@ docs/comments/slices/README.md: таблицы собраны заново со 
 код 2
 
 ~~~~text
-Укажи файл или фичу. Фичи в `docs/`:
+Укажи файл или фичу. Задачи в `docs/`:
 
 - `/sdd-lint guard comments`
 ~~~~
@@ -638,7 +638,7 @@ docs/comments/slices/README.md: таблицы собраны заново со 
 код 2
 
 ~~~~text
-Укажи файл или фичу. Фичи в `docs/`:
+Укажи файл или фичу. Задачи в `docs/`:
 
 - `/sdd-lint snapshot comments`
 ~~~~
@@ -656,7 +656,7 @@ docs/comments/slices/README.md: таблицы собраны заново со 
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint trace comments`
 ~~~~
@@ -684,7 +684,7 @@ docs/comments/slices/README.md: таблицы собраны заново со 
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint diff comments`
 ~~~~
@@ -694,7 +694,7 @@ docs/comments/slices/README.md: таблицы собраны заново со 
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint diff comments`
 ~~~~
@@ -804,7 +804,7 @@ diff работает только в git-репозитории
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint export comments`
 ~~~~
@@ -1102,7 +1102,7 @@ next — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint next FR comments`
 ~~~~
@@ -1120,7 +1120,7 @@ FR-11
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint next NFR comments`
 ~~~~
@@ -1138,7 +1138,7 @@ NFR-4
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint next AC comments`
 ~~~~
@@ -1181,7 +1181,7 @@ AC-003-2
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint next slice comments`
 ~~~~
@@ -1199,7 +1199,7 @@ AC-003-2
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint next adr comments`
 ~~~~
@@ -1217,7 +1217,7 @@ AC-003-2
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint ask comments`
 ~~~~
@@ -1242,7 +1242,7 @@ AC-003-2
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint choose comments`
 ~~~~
@@ -1308,7 +1308,7 @@ Tip: Введите /sdd-close comments чтобы продолжить
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint triage comments`
 ~~~~
@@ -1335,7 +1335,7 @@ Tip: Введите /sdd-close comments чтобы продолжить
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажи фичу. Задачи в `docs/`:
 
 - `/sdd-lint prompt sdd-adr comments`
 ~~~~
@@ -1449,7 +1449,7 @@ ADR фиксирует решение, которое иначе агент пр
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажи фичу. Задачи в `docs/`:
 
 - `/sdd-lint prompt sdd-close comments`
 ~~~~
@@ -1496,7 +1496,7 @@ Lint — инструмент MCP `sdd_lint`: `sdd_lint ["help","gen"]` — эт
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажи фичу. Задачи в `docs/`:
 
 - `/sdd-lint prompt sdd-decide comments`
 ~~~~
@@ -1786,7 +1786,7 @@ Lint — инструмент MCP `sdd_lint`: `sdd_lint ["help","gen"]` — эт
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажи фичу. Задачи в `docs/`:
 
 - `/sdd-lint prompt sdd-review comments`
 ~~~~
@@ -1804,7 +1804,7 @@ Lint — инструмент MCP `sdd_lint`: `sdd_lint ["help","gen"]` — эт
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажи фичу. Задачи в `docs/`:
 
 - `/sdd-lint prompt sdd-slices comments`
 ~~~~
@@ -1961,7 +1961,7 @@ Slice — единица приёмки: его вливают и проверя
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажи фичу. Задачи в `docs/`:
 
 - `/sdd-lint prompt sdd-spec comments`
 ~~~~

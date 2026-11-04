@@ -7,7 +7,7 @@
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint fix comments`
 ~~~~
@@ -17,7 +17,7 @@
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint fix comments`
 ~~~~
@@ -70,7 +70,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint done comments`
 ~~~~
@@ -111,7 +111,7 @@ approve — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint approve spec comments`
 ~~~~
@@ -129,7 +129,7 @@ docs/comments/spec.md: уже «одобрено <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint approve slices comments`
 ~~~~
@@ -151,7 +151,7 @@ Tip: Введите /sdd-close comments чтобы продолжить
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint approve adr comments`
 ~~~~
@@ -177,7 +177,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи файл или фичу. Фичи в `docs/`:
+Укажи файл или фичу. Задачи в `docs/`:
 
 - `/sdd-lint guard comments`
 ~~~~
@@ -187,7 +187,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи файл или фичу. Фичи в `docs/`:
+Укажи файл или фичу. Задачи в `docs/`:
 
 - `/sdd-lint guard comments`
 ~~~~
@@ -223,7 +223,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи файл или фичу. Фичи в `docs/`:
+Укажи файл или фичу. Задачи в `docs/`:
 
 - `/sdd-lint snapshot comments`
 ~~~~
@@ -241,7 +241,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint diff comments`
 ~~~~
@@ -251,7 +251,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint diff comments`
 ~~~~
@@ -365,7 +365,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint ask comments`
 ~~~~
@@ -390,7 +390,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint choose comments`
 ~~~~

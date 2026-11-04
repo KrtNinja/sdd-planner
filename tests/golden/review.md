@@ -7,7 +7,7 @@
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint ask comments`
 ~~~~
@@ -39,7 +39,7 @@
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint choose comments`
 ~~~~
@@ -99,7 +99,7 @@ R2 отклонён: «отклонено» в `docs/comments/_work/review/slice
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint triage comments`
 ~~~~
@@ -282,7 +282,7 @@ gate — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint gate build comments`
 ~~~~

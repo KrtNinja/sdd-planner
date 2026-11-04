@@ -44,7 +44,7 @@ test('cmdPrompt: пустая фича сохраняет имя скилла в
   inDir(repo({ 'docs/search/spec.md': '' }), JSON_ENV, () => {
     const ctx = context('sdd-review', '');
     assert.throws(() => cmdPrompt(ctx), (e) => e instanceof Exit && e.code === 2);
-    assert.deepEqual(ctx.io.chunks, [[2, 'Укажи фичу. Фичи в `docs/`:\n\n- `node scripts/sdd-lint.mjs prompt sdd-review search`\n']]);
+    assert.deepEqual(ctx.io.chunks, [[2, 'Укажите задачу. Задачи в `docs/`:\n\n- `node scripts/sdd-lint.mjs prompt sdd-review search`\n']]);
   });
 });
 
