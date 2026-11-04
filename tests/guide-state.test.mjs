@@ -29,7 +29,7 @@ test('guide: reviewTargets — порядок и пустые статусы, п
   m.slices.set('001', {});
   m.featureAdrs = [{ num: '0002', status: null }, { num: '0003', status: 'на ревью' }, { num: '0004', status: 'принято' }];
   assert.deepEqual(reviewTargets(m), [
-    { mode: 'spec', label: 'Dev Spec «—»' }, { mode: 'slices', label: 'slices «—»' },
+    { mode: 'spec', label: 'Требования «—»' }, { mode: 'slices', label: 'Части работы «—»' },
     { mode: 'adr', num: '0002', label: 'ADR 0002 «—»' }, { mode: 'adr', num: '0003', label: 'ADR 0003 «на ревью»' },
   ]);
   m.spec.status = 'одобрено';
@@ -43,8 +43,8 @@ test('chooseFeature: неизвестный этап не выбирает су�
   const cwd = repo({ 'docs/search/brainstorming.md': '# Протокол\nСтатус: готов' });
   inDir(cwd, JSON_ENV, () => {
     assert.deepEqual(chooseFeature('unknown', () => assert.fail('нет подходящей фичи — команда выбора не нужна')), {
-      text: 'Фич, где можно undefined, нет.\n\nФичи и этапы:\n- search — Протокол готов\n\n' +
-        'Новая фича начинается с `/sdd-grill`.\n\n⚙ sdd: стоп',
+      text: 'Задач, где можно undefined, нет.\n\nЗадачи и этапы:\n- search — Протокол готов\n\n' +
+        'Новая задача начинается с `/sdd-grill`.\n\n⚙ sdd: стоп',
     });
   });
 });

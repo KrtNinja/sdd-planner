@@ -24,8 +24,8 @@ const ready = (m) => !!m.protocol && /готов/i.test(m.protocol.status || '')
 export function reviewTargets(m) {
   /** @type {ReviewTarget[]} */
   const out = [];
-  if (m.spec && !approved(m.spec.status)) out.push({ mode: 'spec', label: `Dev Spec «${m.spec.status || '—'}»` });
-  if (m.slices.size && !approved(m.slicesStatus)) out.push({ mode: 'slices', label: `slices «${m.slicesStatus || '—'}»` });
+  if (m.spec && !approved(m.spec.status)) out.push({ mode: 'spec', label: `Требования «${m.spec.status || '—'}»` });
+  if (m.slices.size && !approved(m.slicesStatus)) out.push({ mode: 'slices', label: `Части работы «${m.slicesStatus || '—'}»` });
   for (const a of pendingAdrs(m)) out.push({ mode: 'adr', num: a.num, label: `ADR ${a.num} «${a.status || '—'}»` });
   return out;
 }
@@ -49,12 +49,12 @@ function eligible(m, stage) {
 }
 /** @type {Record<string, string>} */
 const WHAT = {
-  spec: 'писать Dev Spec',
-  slices: 'резать slices',
-  adr: 'писать ADR',
-  decide: 'проводить решение',
-  review: 'делать ревью',
-  close: 'закрывать перед merge',
+  spec: 'подготовить требования',
+  slices: 'разбить работу на части',
+  adr: 'подготовить архитектурное решение (ADR)',
+  decide: 'обновить документы по решению',
+  review: 'проверить документы',
+  close: 'завершить планирование перед слиянием ветки',
 };
 
 // Короткое имя текущего этапа — для заданий сабагенту.
@@ -77,14 +77,14 @@ export function stageName(m) {
 export function chooseFeature(stage, argsFor) {
   const all = listFeatures().map((f) => loadFeature(path.join(DOCS, f)));
   const ok = all.filter((m) => eligible(m, stage));
-  if (ok.length === 1) return { dir: ok[0].dir, note: `Фича не указана — беру единственную, где можно ${WHAT[stage]}: ${rel(ok[0].dir)}.` };
+  if (ok.length === 1) return { dir: ok[0].dir, note: `Задача не указана — беру единственную, где можно ${WHAT[stage]}: ${rel(ok[0].dir)}.` };
   if (!ok.length) {
     return {
       text: screen(
         blocks(
-          `Фич, где можно ${WHAT[stage]}, нет.`,
-          all.length ? `Фичи и этапы:\n${list(all.map((m) => `${m.name} — ${stageOf(m).now}`))}` : `В ${DOCS}/ пока нет фич.`,
-          `Новая фича начинается с ${skillCode('sdd-grill')}.`,
+          `Задач, где можно ${WHAT[stage]}, нет.`,
+          all.length ? `Задачи и этапы:\n${list(all.map((m) => `${m.name} — ${stageOf(m).now}`))}` : `В ${DOCS}/ пока нет задач.`,
+          `Новая задача начинается с ${skillCode('sdd-grill')}.`,
         ),
         G.stop,
       ),
@@ -92,23 +92,23 @@ export function chooseFeature(stage, argsFor) {
   }
   const more = ok.slice(4).map((m) => m.name);
   const q = {
-    header: 'Фича',
-    question: `Какую фичу берём — ${WHAT[stage]}?${more.length ? ` Другие: ${more.join(', ')} — напишите имя.` : ''}`,
+    header: 'Задача',
+    question: `Какую задачу берём — ${WHAT[stage]}?${more.length ? ` Другие: ${more.join(', ')} — напишите имя.` : ''}`,
     options: ok.slice(0, 4).map((m) => ({ id: m.name, label: m.name, description: stageOf(m).now })),
   };
-  return { text: pickText('Фича не указана.', q, argsFor('<id>')) };
+  return { text: pickText('Задача не указана.', q, argsFor('<id>')) };
 }
 
 // Строка человеку в начале этапа: что сейчас будет и где он решает.
 /** @type {Record<string, (dir: string, m: Feature) => string>} */
 const HELLO = {
-  spec: (d) => `Пишу Dev Spec по ${d}: только решения из протокола, ничего от себя. В конце — ревью и одобрение, решаете вы.`,
+  spec: (d) => `Готовлю требования по ${d}: только решения из протокола, ничего от себя. В конце — проверка ИИ и ваше одобрение.`,
   slices: (d, m) =>
     m.slices.size || m.plan
-      ? `Продолжаю slices по ${d} с того места, где остановились.`
-      : `Режу ${d} на slices: сначала покажу план нарезки, файлы появятся после вашего «да».`,
-  adr: (d) => `ADR по ${d}: сначала проверю, нужен ли он; нужен — дам 2–3 варианта, выбираете вы.`,
-  decide: (d) => `Провожу решение по ${d} сверху вниз: протокол → FR → AC; в конце покажу, что изменилось.`,
+      ? `Продолжаю разбиение работы по ${d} с того места, где остановились.`
+      : `Разбиваю работу по ${d} на законченные части с проверяемым результатом. Сначала покажу план; файлы появятся после вашего «да».`,
+  adr: (d) => `Архитектурное решение (ADR) по ${d}: сначала проверю, нужно ли оно; если нужно — дам 2–3 варианта, выбираете вы.`,
+  decide: (d) => `Обновляю протокол, требования и критерии приёмки по решению для ${d}; в конце покажу, что изменилось.`,
 };
 /** @param {Feature} m @param {string} stage */
 export const helloLine = (m, stage) => (HELLO[stage] ? HELLO[stage](rel(m.dir), m) : null);
@@ -116,9 +116,9 @@ export const helloLine = (m, stage) => (HELLO[stage] ? HELLO[stage](rel(m.dir), 
 // Ворота закрыты: не тупик, а вопрос этапа — что сделать сейчас (продолжить прошлый этап, одобрить, ревью).
 // Ворота закрыты, а вопроса этапа нет (build читает зона реализации): человеку — что сделать, агенту — стоп.
 /** @param {string} stage @param {[string, string]} closed что закрыло ворота и что сделать */
-export const closedScreen = (stage, closed) => screen(`Ворота ${stage} закрыты — ${closed[0]}. ${closed[1]}`, G.stop);
+export const closedScreen = (stage, closed) => screen(`Пока нельзя ${WHAT[stage] || 'начать реализацию'}: ${closed[0]}. ${closed[1]}`, G.stop);
 /** @param {Feature} m @param {string} stage @param {[string, string]} closed */
 export function closedText(m, stage, closed) {
   const { stage: now, questions } = askOf(m);
-  return viewText(questionsView(rel(m.dir), now, questions, { lead: `Ворота ${stage} закрыты — ${closed[0]}. ${closed[1]}` }));
+  return viewText(questionsView(rel(m.dir), now, questions, { lead: `Пока нельзя ${WHAT[stage] || 'начать реализацию'}: ${closed[0]}. ${closed[1]}` }));
 }
