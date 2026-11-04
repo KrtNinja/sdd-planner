@@ -34,6 +34,9 @@ export function loadDocumentationFlow(dir, readFn) {
   if (readFn(path.join(dir, 'questions.md.pending')) !== null)
     flow.problems.push({ file: path.join(dir, 'questions.md'), n: 1,
       message: 'Незавершённая запись реестра: остановите писателей и вызовите questions recover' });
+  if (readFn(path.join(dir, '.sdd-scenarios.pending')) !== null)
+    flow.problems.push({ file: path.join(dir, 'spec.md'), n: 1,
+      message: 'Перенос сценариев не завершён: остановите писателей и вызовите scenarios recover; не редактируйте копии' });
   for (const name of ['questions.md', 'spec.md', 'scenarios.md', 'tech.md']) {
     const file = path.join(dir, name);
     const md = readFn(file);

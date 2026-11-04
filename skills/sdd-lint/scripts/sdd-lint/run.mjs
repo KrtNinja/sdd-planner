@@ -1,5 +1,6 @@
 // Один вызов sdd-lint функцией: run(argv) → { code, chunks }. Точка входа CLI и тесты зовут его одинаково.
 // @ts-check
+import { cmdScenarios } from './cmd-scenarios.mjs';
 import { cmdQuestions } from './cmd-questions.mjs';
 import { parseArgs } from './args.mjs';
 import { HELP, helpFor } from './cli.mjs';
@@ -25,6 +26,7 @@ import { createIo, Exit } from './io.mjs';
 
 /** @type {Record<string, (ctx: Ctx) => void>} */
 const COMMANDS = {
+  scenarios: cmdScenarios,
   questions: cmdQuestions, start: cmdStart, research: cmdResearch, completion: cmdCompletion, check: cmdCheck, fix: cmdFix, done: cmdDone, plan: cmdPlan,
   gate: cmdGate, approve: cmdApprove, diff: cmdDiff, snapshot: cmdSnapshot, guard: cmdGuard, gen: cmdGen, trace: cmdTrace,
   close: cmdClose, export: cmdExport, next: cmdNext, ask: cmdAsk, choose: cmdChoose, triage: cmdTriage, prompt: cmdPrompt,

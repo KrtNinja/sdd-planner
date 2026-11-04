@@ -10,7 +10,7 @@ import { stripProtocol } from './sources.mjs';
 // адресов ссылок, HTML-комментариев и тегов, разметки (```, #, **, `, |, строки-разделители
 // таблиц) и следов протокола в spec. Текст внутри блоков кода (FR, AC) считается.
 // Протокол и ревью — временные артефакты этапа, их не меряем.
-const READ_LIMIT = 10000;
+export const READ_LIMIT = 10000;
 /** @param {string | null | undefined} md */
 export function visibleLength(md) {
   let inCode = false;

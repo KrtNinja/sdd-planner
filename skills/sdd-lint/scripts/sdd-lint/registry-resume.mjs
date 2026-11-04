@@ -31,7 +31,7 @@ export function resumeQuestion(m, input) {
     `Актуальные связанные элементы: ${JSON.stringify(context.current)}`,
     q.fields.Влияние === 'unknown' ? 'Область неизвестна: явно расширь контекст до выяснения влияния.' : '',
     q.fields.Пакет ? `Сохранённый пакет: ${q.fields.Пакет}\nНе создавай заново FR, строки протокола или Q; продолжи apply.` : '',
-    stageRules(q.fields.Этап), requiredRules('sdd-grill/references/resume.md')].join('\n\n');
+    requiredRules('sdd-spec/references/scenarios.md'), stageRules(q.fields.Этап), requiredRules('sdd-grill/references/resume.md')].join('\n\n');
 }
 
 /** @param {Feature} m @param {string[] | undefined} candidates */

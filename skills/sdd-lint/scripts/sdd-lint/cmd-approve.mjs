@@ -2,6 +2,8 @@
 // @ts-check
 import { fileQuestionBlockers, questionCard } from './registry-view.mjs';
 import fs from 'node:fs';
+import { checkDocumentationFlow } from './flow.mjs';
+import { scenarioFiles } from './scenario-section.mjs';
 import path from 'node:path';
 
 import { pendingAdrs } from './adr.mjs';
@@ -59,6 +61,7 @@ export function cmdApprove(ctx) {
     ctx.io.log(`НЕ ОДОБРЕНО: ${msg}`);
     return ctx.io.exit(code);
   };
+  checkFlowApproval(m, refuse);
   const { target, scope, word } = approvalTarget(m, what, { num: pos[2], refuse });
   const unresolved = fileQuestionBlockers(m, scope);
   if (unresolved.length) refuse(unresolved.map(questionCard).join('\n\n'));
@@ -115,7 +118,7 @@ function approvalTarget(m, what, { num, refuse }) {
   if (what === 'spec') {
     if (!m.spec) refuse(`нет spec.md. Сначала: ${skillCode('sdd-spec', m.name)}`);
     target = m.specFile;
-    scope = [m.protocolFile, m.specFile];
+    scope = [m.protocolFile, m.specFile, ...scenarioFiles(m).map((d) => d.file)];
   } else if (what === 'slices') {
     if (!m.slices.size || m.readme == null) refuse(`нет частей работы или slices/README.md. Сначала: ${skillCode('sdd-slices', m.name)}`);
     if (!m.spec || !approved(m.spec.status)) refuse(`Требования не одобрены — части работы опираются на них. Сначала: ${lintCode('approve', 'spec', dir)}`);
@@ -153,4 +156,10 @@ function approvalBlockers(m, what, target) {
   for (const r of openBlockers(rv)) findings.push({ ...finding('RV-01', /** @type {Review} */ (rv).file, r.n, `${r.id}: блокер без решения`), level: 'err' });
 
   return findings;
+}
+
+/** @param {Feature} m @param {(msg: string) => never} refuse */
+function checkFlowApproval(m, refuse) {
+  const errors = checkDocumentationFlow(m);
+  if (errors.length) refuse(errors.map((f) => f.msg).join('; '));
 }
