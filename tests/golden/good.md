@@ -1318,7 +1318,7 @@ Tip: Введите /sdd-close comments чтобы продолжить
 код 2
 
 ~~~~text
-Укажи находку и решение: triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>
+Укажите пункт проверки и решение: triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>
 Справка: `/sdd-lint help triage`
 ~~~~
 

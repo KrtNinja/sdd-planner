@@ -89,7 +89,7 @@ R2 → открытый вопрос: `docs/comments/slices/003-mention-notifica
 код 0
 
 ~~~~text
-R2 снят: «отклонено» в `docs/comments/_work/review/slices.md`, строка в «Снято на ревью» протокола — повторное ревью его не поднимет.
+R2 отклонён: «отклонено» в `docs/comments/_work/review/slices.md`, строка в «Снято на ревью» протокола — повторная проверка его не предложит.
 
 ⚙ sdd: вызови ["ask","docs/comments"]
 ~~~~
@@ -109,7 +109,7 @@ R2 снят: «отклонено» в `docs/comments/_work/review/slices.md`, �
 код 2
 
 ~~~~text
-Укажи находку и решение: triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>
+Укажите пункт проверки и решение: triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>
 Справка: `/sdd-lint help triage`
 ~~~~
 

@@ -174,7 +174,7 @@ test('triage: П<n> от decide, неизвестная находка — ко�
   assert.equal(decision(cwd, 'R2'), 'П3');
   const bad = run(cwd, 'triage', 'docs/comments', 'slices:R9', 'ignore');
   assert.equal(bad.code, 2);
-  assert.match(bad.out, /Находки R9 в `docs\/comments\/_work\/review\/slices\.md` нет\. Есть: R1, R2, R3, R4\./);
+  assert.match(bad.out, /Пункта R9 в `docs\/comments\/_work\/review\/slices\.md` нет\. Есть: R1, R2, R3, R4\./);
   assert.equal(run(cwd, 'triage', 'docs/comments', 'spec:R1', 'ignore').code, 2);
   assert.match(run(cwd, 'help', 'triage').out, /sdd-lint triage docs\/<feature> <ревью> remarks/);
 });

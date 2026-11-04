@@ -12,7 +12,7 @@ test('triage: неизвестное действие и неизвестная 
   const before = read(cwd, 'comments/_work/review/slices.md');
   for (const [verb, expected] of [
     ['unknown', 'Решение «unknown» не бывает: open, ignore, П<n> или «исправлено».\n'],
-    ['open', 'Не понял, в какой файл записать вопрос по R1: в «Где» нет slice, AC или FR. Куда его записать?\n'],
+    ['open', 'Не понял, в какой файл записать вопрос по R1: в «Где» нет части работы, AC или FR. Куда его записать?\n'],
   ]) {
     assert.deepEqual(run(cwd, 'triage', 'comments', 'slices:R1', verb), { code: 2, out: expected });
     assert.equal(read(cwd, 'comments/_work/review/slices.md'), before);
@@ -28,7 +28,7 @@ test('triage: ignore без протокола не создаёт его, open 
   fs.rmSync(file(cwd, 'comments/brainstorming.md'));
   writeReview(cwd, [row]);
   assert.deepEqual(run(cwd, 'triage', 'comments', 'slices:R1', 'ignore'), {
-    code: 0, out: 'R1 снят: «отклонено» в `docs/comments/_work/review/slices.md`.\n',
+    code: 0, out: 'R1 отклонён: «отклонено» в `docs/comments/_work/review/slices.md`.\n',
   });
   assert.equal(fs.existsSync(file(cwd, 'comments/brainstorming.md')), false);
   assert.ok(read(cwd, 'comments/_work/review/slices.md').includes('| отклонено: не исправлять |'));
