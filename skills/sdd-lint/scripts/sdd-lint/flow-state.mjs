@@ -41,7 +41,7 @@ function updateState(dir, change) {
     return state;
   } finally {
     fs.closeSync(fd);
-    if (!published) fs.rmSync(pending, { force: true });
+    if (!published) fs.unlinkSync(pending);
   }
 }
 
