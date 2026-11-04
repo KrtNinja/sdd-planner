@@ -87,7 +87,7 @@ function story(name, complex = false) {
     };
     assert.ok(required('prompt sdd-spec', 0).includes(
       fs.readFileSync(`${root}/skills/sdd-spec/SKILL.md`, 'utf8')
-        .replace(/^---\\n[\\s\\S]*?\\n---\\n/, '').trim()));
+        .replace(/^---\n[\s\S]*?\n---\n/, '').trim()));
     if (simple) {
       required('approve spec', 0);
       required('gate slices', 3); // первый вызов: до создания spec
