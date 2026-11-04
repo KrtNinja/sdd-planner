@@ -86,3 +86,16 @@ test('счётчик не переполняется, неверный kind/ро
   fs.writeFileSync(`${statePath(empty)}.pending`, JSON.stringify(state));
   assert.deepEqual(recoverFlowState(empty), state);
 });
+
+
+test('восстановление не удаляет неизвестную версию и не затирает повреждённое состояние', () => {
+  const dir = tmpDir();
+  initTestFlow(dir);
+  const pending = `${statePath(dir)}.pending`;
+  fs.writeFileSync(pending, '{"version":3}');
+  assert.throws(() => recoverFlowState(dir), /версия/);
+  assert.equal(fs.readFileSync(pending, 'utf8'), '{"version":3}');
+  fs.writeFileSync(statePath(dir), '{');
+  assert.throws(() => recoverFlowState(dir), SyntaxError);
+  assert.equal(fs.readFileSync(statePath(dir), 'utf8'), '{');
+});

@@ -80,11 +80,12 @@ export function recoverFlowState(dir) {
   if (!fs.existsSync(pending)) return current;
   let candidate;
   try { candidate = requiredState(readState(pending)); }
-  catch {
+  catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
     fs.unlinkSync(pending);
     return current;
   }
-  if (current && Object.keys(current.next).some((k) => candidate.next[k] < current.next[k]))
+  if (current && /** @type {IdKind[]} */ (['Q', 'SC', 'STEP']).some((k) => candidate.next[k] < current.next[k]))
     throw new Error('Счётчики pending меньше постоянных; восстановите файл из Git');
   fs.renameSync(pending, file);
   return candidate;
