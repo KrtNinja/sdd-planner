@@ -854,7 +854,7 @@ test('ask: новый этап — рекомендация «В новом ко
   let q = ask(cwd).questions[0];
   assert.deepEqual(q.options.map((o) => o.id), ['window:sdd-spec', 'here:sdd-spec']);
   assert.equal(q.options.find((o) => o.recommended).id, 'window:sdd-spec');
-  assert.equal(q.options[0].label, 'В новом контексте/окне');
+  assert.equal(q.options[0].label, 'В новой сессии');
   edit(cwd, 'comments/brainstorming.md', 'Статус: готов', 'Статус: идёт');
   q = ask(cwd).questions[0];
   assert.equal(q.options.find((o) => o.recommended).id, 'here:sdd-grill');
@@ -920,7 +920,7 @@ test('ask: перед merge — вопрос про временные арте�
   const cwd = workspace();
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   const q = ask(cwd).questions[0];
-  assert.match(q.question, /Убрать временные артефакты этапа: docs\/comments\/brainstorming\.md\?/);
+  assert.match(q.question, /Убрать временные файлы этапа: docs\/comments\/brainstorming\.md\?/);
   assert.equal(q.options[0].description, '/sdd-close comments');
   // Первый ответ — ещё не удаление: close показывает удаляемое и задаёт второй вопрос.
   const first = run(cwd, 'choose', 'docs/comments', 'close');

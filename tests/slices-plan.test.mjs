@@ -179,7 +179,7 @@ test('ask: план — человеку списком до вопроса, «�
   assert.match(a.preview, /Почему отдельно: Р1 — ждёт ADR-0001 \(ADR-0001 «предложено»\)/);
   assert.match(a.preview, /Покрыты все 13 требований/);
   assert.deepEqual(ids(a), ['plan:yes', 'plan:edit']);
-  assert.equal(a.questions[0].options[0].label, 'Да, создать файлы slices');
+  assert.equal(a.questions[0].options[0].label, 'Да, создать файлы частей работы');
   assert.equal(a.questions[0].options[0].recommended, true);
   assert.match(a.questions[0].options[0].description, /создаст 3 файла/);
 });

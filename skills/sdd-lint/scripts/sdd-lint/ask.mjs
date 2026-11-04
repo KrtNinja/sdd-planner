@@ -30,12 +30,12 @@ import { tempArtifacts, stageOf } from './stage.mjs';
 /** @param {Feature} m @param {string} now @param {string} name @param {string} label @returns {Question} */
 function nextSkillQuestion(m, now, name, label, cont = false) {
   /** @type {Option} */
-  const here = { id: `here:${name}`, label: 'Здесь, в этом окне', description: skill(name, m.name), action: { here: ['prompt', name, m.name] } };
+  const here = { id: `here:${name}`, label: 'В этой сессии', description: skill(name, m.name), action: { here: ['prompt', name, m.name] } };
   /** @type {Option} */
   const fresh = {
     id: `window:${name}`,
-    label: 'В новом контексте/окне',
-    description: `${skill(name, m.name)} — запускаете сами, чистый контекст`,
+    label: 'В новой сессии',
+    description: `${skill(name, m.name)} — запустите команду сами в новой сессии`,
     action: { show: showCmd(skill(name, m.name)) },
   };
   const options = cont ? [here, fresh] : [fresh, here];
@@ -47,9 +47,9 @@ function nextSkillQuestion(m, now, name, label, cont = false) {
 /** @type {Option} */
 const PLAN_EDIT = {
   id: 'plan:edit',
-  label: 'Поправить нарезку',
-  description: 'напишите, что склеить или разрезать',
-  action: { show: 'Что поправить в нарезке? Напишите, какие slices склеить или разрезать, — поправлю план и покажу снова.' },
+  label: 'Изменить план разбиения',
+  description: 'напишите, какие части работы объединить или разделить',
+  action: { show: 'Что изменить в плане? Напишите, какие части работы объединить или разделить, — поправлю план и покажу снова.' },
 };
 /** @param {Feature & { plan: import('./model.mjs').Plan }} m @returns {Question} */
 function planQuestion(m) {
@@ -59,8 +59,8 @@ function planQuestion(m) {
   const edit = PLAN_EDIT;
   if (errs) {
     return {
-      header: 'План нарезки',
-      question: `В плане нарезки ошибки lint: ${errs}. Исправить?`,
+      header: 'План разбиения работы',
+      question: `Автоматическая проверка нашла ошибки в плане: ${errs}. Исправить?`,
       options: [
         {
           id: 'plan:continue',
@@ -74,14 +74,14 @@ function planQuestion(m) {
     };
   }
   return {
-    header: 'План нарезки',
-    question: `Нарезка на ${n} slices (план выше). Подходит?`,
+    header: 'План разбиения работы',
+    question: `Частей работы: ${n} (план выше). Подходит?`,
     preview: planPreview(m),
     options: [
       {
         id: 'plan:yes',
-        label: 'Да, создать файлы slices',
-        description: `скрипт создаст ${plural(n, 'файл', 'файла', 'файлов')} по плану, затем агент заполнит AC`,
+        label: 'Да, создать файлы частей работы',
+        description: `скрипт создаст ${plural(n, 'файл', 'файла', 'файлов')} по плану, затем агент заполнит критерии приёмки (AC)`,
         recommended: true,
         action: {
           lint: ['gen', 'slices', dir],
@@ -97,7 +97,7 @@ function planQuestion(m) {
 function newAdrQuestions(m) {
   return neededAdrs(m).map((x) => ({
     header: 'Нужен ADR',
-    question: `Slice ${x.num} ждёт решения «${x.topic}», ADR ещё нет. Написать?`,
+    question: `Для части работы ${x.num} нужно архитектурное решение (ADR) «${x.topic}». Подготовить его?`,
     options: [
       {
         id: `adr-here:${x.num}`,
@@ -108,7 +108,7 @@ function newAdrQuestions(m) {
       },
       {
         id: `adr-window:${x.num}`,
-        label: 'В новом контексте/окне',
+        label: 'В новой сессии',
         description: 'вы запускаете команду сами',
         action: { show: showCmd(skill('sdd-adr', m.name, `"${x.topic}"`)) },
       },
@@ -125,12 +125,12 @@ function completedQuestions(m, now) {
   if (qs.length || !tempArtifacts(m).length) return qs;
   return [
     {
-      header: 'Перед merge',
-      question: `${now}. Убрать временные артефакты этапа: ${tempArtifacts(m).join(', ')}?`,
+      header: 'Перед слиянием ветки',
+      question: `${now}. Убрать временные файлы этапа: ${tempArtifacts(m).join(', ')}?`,
       options: [
         {
           id: 'close',
-          label: 'Убрать временные артефакты',
+          label: 'Убрать временные файлы',
           description: skill('sdd-close', m.name),
           recommended: true,
           // close без --yes ничего не удаляет: показывает, что уйдёт и чем это грозит, и задаёт второй вопрос.
@@ -155,14 +155,14 @@ function specQuestions(m, now) {
   if (!m.spec) return protocolQuestions(m, now);
   if (!approved(m.spec.status)) return [artifactQuestion(m, 'spec'), ...adrQuestions(m)];
   if (m.plan) return [planQuestion(/** @type {Feature & { plan: import('./model.mjs').Plan }} */ (m))];
-  return [nextSkillQuestion(m, now, 'sdd-slices', 'Резать slices'), ...adrQuestions(m)];
+  return [nextSkillQuestion(m, now, 'sdd-slices', 'Разбить работу на части'), ...adrQuestions(m)];
 }
 
 /** @param {Feature} m @param {string} now @returns {Question[]} */
 function protocolQuestions(m, now) {
-  if (m.protocol && /готов/i.test(m.protocol.status || '')) return [nextSkillQuestion(m, now, 'sdd-spec', 'Писать Dev Spec')];
-  if (m.protocol) return [nextSkillQuestion(m, now, 'sdd-grill', 'Продолжить brainstorming', true)];
-  return [nextSkillQuestion(m, now, 'sdd-grill', 'Начать brainstorming')];
+  if (m.protocol && /готов/i.test(m.protocol.status || '')) return [nextSkillQuestion(m, now, 'sdd-spec', 'Подготовить требования')];
+  if (m.protocol) return [nextSkillQuestion(m, now, 'sdd-grill', 'Продолжить обсуждение задачи', true)];
+  return [nextSkillQuestion(m, now, 'sdd-grill', 'Начать обсуждение задачи')];
 }
 
 // Пока план не согласован или заготовки не заполнены — один вопрос: решение о нарезке важнее ADR, их черёд после.
