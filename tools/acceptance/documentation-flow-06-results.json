@@ -1,0 +1,605 @@
+{
+  "baseline": "b7fcb83f5a8aa16bdab39678932529526e456d29",
+  "implementation": "9cca15e",
+  "kind": "scripted fixtures; no target model calls",
+  "before": [
+    {
+      "name": "validation",
+      "calls": [
+        {
+          "command": "prompt sdd-grill validation",
+          "code": 0,
+          "chars": 22516,
+          "ms": 4.22
+        },
+        {
+          "command": "ask docs/validation",
+          "code": 0,
+          "chars": 308,
+          "ms": 3.91
+        },
+        {
+          "command": "prompt sdd-spec validation",
+          "code": 0,
+          "chars": 21853,
+          "ms": 1.06
+        },
+        {
+          "command": "gen links docs/validation",
+          "code": 0,
+          "chars": 56,
+          "ms": 14.73
+        },
+        {
+          "command": "ask docs/validation",
+          "code": 0,
+          "chars": 523,
+          "ms": 8.29
+        },
+        {
+          "command": "prompt sdd-review validation",
+          "code": 0,
+          "chars": 22292,
+          "ms": 3.84
+        },
+        {
+          "command": "approve spec docs/validation",
+          "code": 0,
+          "chars": 178,
+          "ms": 57.54
+        },
+        {
+          "command": "gate slices docs/validation",
+          "code": 0,
+          "chars": 591,
+          "ms": 11.36
+        }
+      ],
+      "outputChars": 68317,
+      "explicitReads": [
+        {
+          "file": "brainstorming.md",
+          "chars": 171
+        },
+        {
+          "file": "spec.md",
+          "chars": 357
+        },
+        {
+          "file": "tech.md",
+          "chars": 118
+        }
+      ],
+      "repeatedExplicitReads": 0,
+      "timeMs": 104.95
+    },
+    {
+      "name": "export",
+      "calls": [
+        {
+          "command": "prompt sdd-grill export",
+          "code": 0,
+          "chars": 22508,
+          "ms": 2.31
+        },
+        {
+          "command": "ask docs/export",
+          "code": 0,
+          "chars": 296,
+          "ms": 1.03
+        },
+        {
+          "command": "prompt sdd-spec export",
+          "code": 0,
+          "chars": 21845,
+          "ms": 1.54
+        },
+        {
+          "command": "gen links docs/export",
+          "code": 0,
+          "chars": 52,
+          "ms": 3.93
+        },
+        {
+          "command": "questions add docs/export",
+          "code": 0,
+          "chars": 97,
+          "ms": 159.4
+        },
+        {
+          "command": "questions defer docs/export",
+          "code": 0,
+          "chars": 107,
+          "ms": 113.68
+        },
+        {
+          "command": "ask docs/export",
+          "code": 0,
+          "chars": 215,
+          "ms": 0.89
+        },
+        {
+          "command": "approve spec docs/export",
+          "code": 3,
+          "chars": 107,
+          "ms": 0.65
+        },
+        {
+          "command": "questions answer docs/export",
+          "code": 0,
+          "chars": 166,
+          "ms": 5.36
+        },
+        {
+          "command": "questions resume docs/export",
+          "code": 0,
+          "chars": 25066,
+          "ms": 2.1
+        },
+        {
+          "command": "ask docs/export",
+          "code": 0,
+          "chars": 284,
+          "ms": 0.92
+        },
+        {
+          "command": "prompt sdd-review export",
+          "code": 0,
+          "chars": 22280,
+          "ms": 1.08
+        }
+      ],
+      "outputChars": 93023,
+      "explicitReads": [
+        {
+          "file": "brainstorming.md",
+          "chars": 171
+        },
+        {
+          "file": "spec.md",
+          "chars": 357
+        },
+        {
+          "file": "tech.md",
+          "chars": 131
+        }
+      ],
+      "repeatedExplicitReads": 0,
+      "timeMs": 292.89
+    },
+    {
+      "name": "complex",
+      "calls": [
+        {
+          "command": "prompt sdd-grill complex",
+          "code": 0,
+          "chars": 22510,
+          "ms": 2.73
+        },
+        {
+          "command": "ask docs/complex",
+          "code": 0,
+          "chars": 299,
+          "ms": 0.46
+        },
+        {
+          "command": "prompt sdd-spec complex",
+          "code": 0,
+          "chars": 21847,
+          "ms": 0.84
+        },
+        {
+          "command": "gen links docs/complex",
+          "code": 0,
+          "chars": 53,
+          "ms": 1.85
+        },
+        {
+          "command": "approve adr docs/complex",
+          "code": 0,
+          "chars": 384,
+          "ms": 25.32
+        },
+        {
+          "command": "scenarios move docs/complex",
+          "code": 0,
+          "chars": 135,
+          "ms": 28.16
+        },
+        {
+          "command": "trace docs/complex SC-1",
+          "code": 0,
+          "chars": 166,
+          "ms": 1.73
+        },
+        {
+          "command": "questions add docs/complex",
+          "code": 0,
+          "chars": 97,
+          "ms": 9.07
+        },
+        {
+          "command": "questions defer docs/complex",
+          "code": 0,
+          "chars": 107,
+          "ms": 6.8
+        },
+        {
+          "command": "ask docs/complex",
+          "code": 0,
+          "chars": 216,
+          "ms": 1.07
+        },
+        {
+          "command": "approve spec docs/complex",
+          "code": 3,
+          "chars": 107,
+          "ms": 0.99
+        },
+        {
+          "command": "questions answer docs/complex",
+          "code": 0,
+          "chars": 167,
+          "ms": 13.56
+        },
+        {
+          "command": "questions resume docs/complex",
+          "code": 0,
+          "chars": 34854,
+          "ms": 1.34
+        },
+        {
+          "command": "ask docs/complex",
+          "code": 0,
+          "chars": 285,
+          "ms": 0.8
+        },
+        {
+          "command": "prompt sdd-review complex",
+          "code": 0,
+          "chars": 22283,
+          "ms": 0.94
+        }
+      ],
+      "outputChars": 103510,
+      "explicitReads": [
+        {
+          "file": "brainstorming.md",
+          "chars": 171
+        },
+        {
+          "file": "spec.md",
+          "chars": 225
+        },
+        {
+          "file": "tech.md",
+          "chars": 131
+        },
+        {
+          "file": "scenarios.md",
+          "chars": 9990
+        }
+      ],
+      "repeatedExplicitReads": 0,
+      "timeMs": 95.65999999999998
+    }
+  ],
+  "after": [
+    {
+      "name": "validation",
+      "calls": [
+        {
+          "command": "prompt sdd-grill validation",
+          "code": 0,
+          "chars": 12761,
+          "ms": 7.25
+        },
+        {
+          "command": "ask docs/validation",
+          "code": 0,
+          "chars": 409,
+          "ms": 3.62
+        },
+        {
+          "command": "prompt sdd-spec validation",
+          "code": 0,
+          "chars": 12098,
+          "ms": 0.93
+        },
+        {
+          "command": "prompt sdd-scenarios validation",
+          "code": 0,
+          "chars": 12885,
+          "ms": 3.18
+        },
+        {
+          "command": "prompt sdd-tech validation",
+          "code": 0,
+          "chars": 15997,
+          "ms": 1.16
+        },
+        {
+          "command": "gen links docs/validation",
+          "code": 0,
+          "chars": 56,
+          "ms": 2.42
+        },
+        {
+          "command": "ask docs/validation",
+          "code": 0,
+          "chars": 645,
+          "ms": 3.06
+        },
+        {
+          "command": "prompt sdd-review validation",
+          "code": 0,
+          "chars": 25425,
+          "ms": 1.22
+        },
+        {
+          "command": "approve spec docs/validation",
+          "code": 0,
+          "chars": 178,
+          "ms": 40.83
+        },
+        {
+          "command": "gate slices docs/validation",
+          "code": 0,
+          "chars": 591,
+          "ms": 5.7
+        }
+      ],
+      "outputChars": 81045,
+      "explicitReads": [
+        {
+          "file": "brainstorming.md",
+          "chars": 171
+        },
+        {
+          "file": "spec.md",
+          "chars": 357
+        },
+        {
+          "file": "tech.md",
+          "chars": 118
+        }
+      ],
+      "repeatedExplicitReads": 0,
+      "timeMs": 69.37
+    },
+    {
+      "name": "export",
+      "calls": [
+        {
+          "command": "prompt sdd-grill export",
+          "code": 0,
+          "chars": 12753,
+          "ms": 2.11
+        },
+        {
+          "command": "ask docs/export",
+          "code": 0,
+          "chars": 397,
+          "ms": 0.64
+        },
+        {
+          "command": "prompt sdd-spec export",
+          "code": 0,
+          "chars": 12090,
+          "ms": 0.8
+        },
+        {
+          "command": "prompt sdd-scenarios export",
+          "code": 0,
+          "chars": 12877,
+          "ms": 1.2
+        },
+        {
+          "command": "prompt sdd-tech export",
+          "code": 0,
+          "chars": 15989,
+          "ms": 0.98
+        },
+        {
+          "command": "gen links docs/export",
+          "code": 0,
+          "chars": 52,
+          "ms": 1.96
+        },
+        {
+          "command": "questions add docs/export",
+          "code": 0,
+          "chars": 97,
+          "ms": 17.86
+        },
+        {
+          "command": "questions defer docs/export",
+          "code": 0,
+          "chars": 107,
+          "ms": 4.38
+        },
+        {
+          "command": "ask docs/export",
+          "code": 0,
+          "chars": 340,
+          "ms": 0.95
+        },
+        {
+          "command": "approve spec docs/export",
+          "code": 3,
+          "chars": 107,
+          "ms": 0.47
+        },
+        {
+          "command": "questions answer docs/export",
+          "code": 0,
+          "chars": 166,
+          "ms": 3.8
+        },
+        {
+          "command": "questions resume docs/export",
+          "code": 0,
+          "chars": 14185,
+          "ms": 1.08
+        },
+        {
+          "command": "ask docs/export",
+          "code": 0,
+          "chars": 409,
+          "ms": 0.85
+        },
+        {
+          "command": "prompt sdd-review export",
+          "code": 0,
+          "chars": 25413,
+          "ms": 0.86
+        }
+      ],
+      "outputChars": 94982,
+      "explicitReads": [
+        {
+          "file": "brainstorming.md",
+          "chars": 171
+        },
+        {
+          "file": "spec.md",
+          "chars": 357
+        },
+        {
+          "file": "tech.md",
+          "chars": 131
+        }
+      ],
+      "repeatedExplicitReads": 0,
+      "timeMs": 37.94
+    },
+    {
+      "name": "complex",
+      "calls": [
+        {
+          "command": "prompt sdd-grill complex",
+          "code": 0,
+          "chars": 12755,
+          "ms": 1.62
+        },
+        {
+          "command": "ask docs/complex",
+          "code": 0,
+          "chars": 400,
+          "ms": 0.33
+        },
+        {
+          "command": "prompt sdd-spec complex",
+          "code": 0,
+          "chars": 12092,
+          "ms": 0.47
+        },
+        {
+          "command": "prompt sdd-scenarios complex",
+          "code": 0,
+          "chars": 12879,
+          "ms": 0.92
+        },
+        {
+          "command": "prompt sdd-tech complex",
+          "code": 0,
+          "chars": 15991,
+          "ms": 0.79
+        },
+        {
+          "command": "gen links docs/complex",
+          "code": 0,
+          "chars": 53,
+          "ms": 1.33
+        },
+        {
+          "command": "approve adr docs/complex",
+          "code": 0,
+          "chars": 384,
+          "ms": 15.94
+        },
+        {
+          "command": "scenarios move docs/complex",
+          "code": 0,
+          "chars": 135,
+          "ms": 25.58
+        },
+        {
+          "command": "trace docs/complex SC-1",
+          "code": 0,
+          "chars": 315,
+          "ms": 1.12
+        },
+        {
+          "command": "questions add docs/complex",
+          "code": 0,
+          "chars": 97,
+          "ms": 10.59
+        },
+        {
+          "command": "questions defer docs/complex",
+          "code": 0,
+          "chars": 107,
+          "ms": 9.21
+        },
+        {
+          "command": "ask docs/complex",
+          "code": 0,
+          "chars": 341,
+          "ms": 0.7
+        },
+        {
+          "command": "approve spec docs/complex",
+          "code": 3,
+          "chars": 107,
+          "ms": 0.66
+        },
+        {
+          "command": "questions answer docs/complex",
+          "code": 0,
+          "chars": 167,
+          "ms": 5.58
+        },
+        {
+          "command": "questions resume docs/complex",
+          "code": 0,
+          "chars": 23983,
+          "ms": 1.42
+        },
+        {
+          "command": "ask docs/complex",
+          "code": 0,
+          "chars": 410,
+          "ms": 1.24
+        },
+        {
+          "command": "prompt sdd-review complex",
+          "code": 0,
+          "chars": 25416,
+          "ms": 1.44
+        }
+      ],
+      "outputChars": 105632,
+      "explicitReads": [
+        {
+          "file": "brainstorming.md",
+          "chars": 171
+        },
+        {
+          "file": "spec.md",
+          "chars": 225
+        },
+        {
+          "file": "tech.md",
+          "chars": 131
+        },
+        {
+          "file": "scenarios.md",
+          "chars": 9990
+        }
+      ],
+      "repeatedExplicitReads": 0,
+      "timeMs": 78.94
+    }
+  ]
+}
