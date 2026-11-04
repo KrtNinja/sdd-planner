@@ -99,3 +99,33 @@ test('восстановление не удаляет неизвестную в
   assert.throws(() => recoverFlowState(dir), SyntaxError);
   assert.equal(fs.readFileSync(statePath(dir), 'utf8'), '{');
 });
+
+
+test('параллельная инициализация не сбрасывает уже выданные ID после проверки пустой папки', () => {
+  const dir = tmpDir();
+  const probe = mock.method(fs, 'readdirSync', () => {
+    probe.mock.restore();
+    initTestFlow(dir);
+    reserveFlowId(dir, 'Q');
+    return [];
+  });
+  try { assert.throws(() => initTestFlow(dir), /не сбрасываются/); }
+  finally { probe.mock.restore(); }
+  assert.equal(reserveFlowId(dir, 'Q'), 'Q2');
+});
+
+
+test('завершивший писатель не удаляет pending следующего писателя после rename', () => {
+  const dir = tmpDir();
+  initTestFlow(dir);
+  const rename = fs.renameSync;
+  const pending = `${statePath(dir)}.pending`;
+  const probe = mock.method(fs, 'renameSync', (from, to) => {
+    rename(from, to);
+    fs.writeFileSync(pending, 'next writer', { flag: 'wx' });
+  });
+  try { assert.equal(reserveFlowId(dir, 'Q'), 'Q1'); }
+  finally { probe.mock.restore(); }
+  assert.equal(fs.readFileSync(pending, 'utf8'), 'next writer');
+  assert.equal(load(dir).next.Q, 2);
+});

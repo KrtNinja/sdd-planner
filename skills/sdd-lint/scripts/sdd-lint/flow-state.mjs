@@ -31,15 +31,17 @@ function updateState(dir, change) {
   const file = path.join(dir, STATE);
   const pending = `${file}.pending`;
   const fd = fs.openSync(pending, 'wx', 0o600);
+  let published = false;
   try {
     const state = change(readState(file));
     fs.writeFileSync(fd, `${JSON.stringify(state)}\n`);
     fs.fsyncSync(fd);
     fs.renameSync(pending, file);
+    published = true;
     return state;
   } finally {
     fs.closeSync(fd);
-    fs.rmSync(pending, { force: true });
+    if (!published) fs.rmSync(pending, { force: true });
   }
 }
 
@@ -47,7 +49,10 @@ function updateState(dir, change) {
 /** @param {string} dir */
 export function initTestFlow(dir) {
   if (fs.readdirSync(dir).length) throw new Error('Новый формат разрешён только в пустой тестовой папке');
-  return updateState(dir, () => ({ version: 2, next: { Q: 1, SC: 1, STEP: 1 } }));
+  return updateState(dir, (current) => {
+    if (current) throw new Error('Фича уже инициализирована; счётчики не сбрасываются');
+    return { version: 2, next: { Q: 1, SC: 1, STEP: 1 } };
+  });
 }
 
 /** @param {FlowState | null} state @returns {FlowState} */
