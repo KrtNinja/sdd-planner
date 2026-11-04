@@ -134,7 +134,7 @@ function reviewArgs(ctx, m, args) {
 function registryPrompt(args) {
   const dir = path.join(DOCS, args[0] || '');
   if (!fs.existsSync(path.join(dir, '.sdd-flow.json'))) return null;
-  return ['sdd-grill/references/registry.md', 'sdd-spec/references/scenarios.md'].map((relative) => {
+  return ['sdd-grill/references/registry.md', 'sdd-spec/references/scenarios.md', 'sdd-spec/references/tech.md'].map((relative) => {
     const text = read(path.join(SKILLS_DIR, relative));
     if (text === null) throw new Error(`Не найдены правила ${relative}; переустановите расширение sdd-planner`);
     return text;
