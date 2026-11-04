@@ -1,5 +1,6 @@
 // Фича целиком: загрузка артефактов и запуск всех проверок.
 // @ts-check
+import { scenarioFiles } from './scenario-section.mjs';
 import { checkRegistry } from './registry-rules.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -102,7 +103,8 @@ export function loadFeature(dir, readFn = read, listFn = null) {
 
 /** @param {Feature} m */
 export const featureFiles = (m) =>
-  [m.protocolFile, m.specFile, m.readmeFile, ...[...m.slices.values()].map((s) => s.file), ...m.featureAdrs.map((a) => a.file)].filter((f) =>
+  [...new Set([...scenarioFiles(m).map((d) => d.file), m.protocolFile, m.specFile, m.readmeFile,
+    ...[...m.slices.values()].map((s) => s.file), ...m.featureAdrs.map((a) => a.file)])].filter((f) =>
     fs.existsSync(f),
   );
 

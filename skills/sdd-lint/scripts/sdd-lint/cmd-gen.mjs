@@ -1,5 +1,7 @@
 // Команды gen, next и trace.
 // @ts-check
+import { scenarioTrace } from './scenario-view.mjs';
+import { requireIdleMove } from './scenario-store.mjs';
 import { cmdFlowNext } from './cmd-flow.mjs';
 import { usage } from './cli.mjs';
 import { lintCode } from './config.mjs';
@@ -20,9 +22,10 @@ export function cmdTrace(ctx) {
   const { pos } = ctx.args;
   const m = loadFeature(needDir(ctx, pos[0]));
   // trace <фича> FR-3 AC-002-B1: что держится на требовании — без поиска моделью по файлам.
-  const ids = pos.slice(1).filter((x) => /^(N?FR-\d+|AC-\d{3}-[BF]?\d+)$/.test(x));
+  const ids = pos.slice(1).filter((x) => /^(N?FR-\d+|AC-\d{3}-[BF]?\d+|SC-\d+(?:-S\d+)?)$/.test(x));
   if (ids.length) {
-    ctx.io.log(impact(m, ids));
+    ctx.io.log(impact(m, ids.filter((id) => !id.startsWith('SC-'))));
+    if (m.flow.state) ctx.io.log(scenarioTrace(m, ids));
     ctx.io.exit(0);
   }
   const s = m.spec;
@@ -48,6 +51,7 @@ function sourceLabel(s, src) {
 export function cmdGen(ctx) {
   const what = choiceOf(ctx, 'gen');
   const m = loadFeature(needDir(ctx, ctx.args.pos[1], 1));
+  requireIdleMove(m.dir);
   if (what === 'slices') genSlices(ctx, m);
   else if (what === 'readme') genReadme(ctx, m);
   else genLinks(ctx, m);

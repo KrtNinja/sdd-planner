@@ -120,6 +120,7 @@ export function usage(ctx, msg) {
 // Справка по одной команде — её блок из HELP.
 /** @param {string} name */
 export function helpFor(name) {
+  if (name === 'scenarios') return 'scenarios <status|find|move|recover> <feature> [поиск] [--json]';
   if (name === 'questions') return 'questions <add|defer|answer|exclude|scope|list|work|recover> <feature> <JSON> [--json]\n' +
     'Реестр тестового нового процесса; действия с key сохраняются один раз. Контракт: tools/documentation-flow.md';
   const blocks = HELP.split('\n\n')[1].split(/\n(?=  sdd-lint)/);

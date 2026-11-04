@@ -1,6 +1,7 @@
 // Команда fix: номера вместо FR-? и AC-NNN-?, ссылки, README, затем проверки и diff.
 // @ts-check
 import fs from 'node:fs';
+import { requireIdleMove } from './scenario-store.mjs';
 import path from 'node:path';
 
 import { ownApprovals, approveCmd } from './approval.mjs';
@@ -67,6 +68,7 @@ function numberPlaceholders(m) {
 export function fixFeature(ctx, dir, { snapshot = false } = {}) {
   const files = (/** @type {Feature} */ m) => uniq([...featureFiles(m), m.readmeFile, m.planFile].map((f) => path.resolve(f)));
   let m = loadFeature(dir);
+  requireIdleMove(m.dir);
   /** @type {string[]} */
   const notes = [];
   // Старые review/ и slices/plan.md — в _work/ до всего остального: дальше fix работает уже с новыми путями.
