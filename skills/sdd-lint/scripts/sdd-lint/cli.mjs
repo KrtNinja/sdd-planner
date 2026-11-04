@@ -120,6 +120,8 @@ export function usage(ctx, msg) {
 // Справка по одной команде — её блок из HELP.
 /** @param {string} name */
 export function helpFor(name) {
+  if (name === 'questions') return 'questions <add|defer|answer|exclude|scope|list|work|recover> <feature> <JSON> [--json]\n' +
+    'Реестр тестового нового процесса; действия с key сохраняются один раз. Контракт: tools/documentation-flow.md';
   const blocks = HELP.split('\n\n')[1].split(/\n(?=  sdd-lint)/);
   // Каждый блок постоянного HELP начинается с sdd-lint и имени команды.
   const own = blocks.filter((b) => /** @type {RegExpMatchArray} */ (b.match(/^\s*sdd-lint\s+\[?(\S+?)\]?(\s|$)/))[1] === name);

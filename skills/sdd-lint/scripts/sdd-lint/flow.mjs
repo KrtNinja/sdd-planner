@@ -31,6 +31,9 @@ export function loadDocumentationFlow(dir, readFn) {
   /** @type {DocumentationFlow} */
   const flow = { state, problems, records: /** @type {FlowRecord[]} */ ([]), documents: [], graph: null };
   if (!state) return flow;
+  if (readFn(path.join(dir, 'questions.md.pending')) !== null)
+    flow.problems.push({ file: path.join(dir, 'questions.md'), n: 1,
+      message: 'Незавершённая запись реестра: остановите писателей и вызовите questions recover' });
   for (const name of ['questions.md', 'spec.md', 'scenarios.md', 'tech.md']) {
     const file = path.join(dir, name);
     const md = readFn(file);
@@ -58,4 +61,11 @@ export function checkDocumentationFlow(m) {
     }
   }
   return problems.map((p) => finding('FL-01', p.file, p.n, p.message));
+}
+
+/** @param {import('./model.mjs').Feature} m */
+export function requireDocumentationFlow(m) {
+  if (!m.flow.state) throw new Error('Действие доступно только в новом процессе; миграции нет');
+  const problems = checkDocumentationFlow(m);
+  if (problems.length) throw new Error(problems.map((p) => p.msg).join('; '));
 }

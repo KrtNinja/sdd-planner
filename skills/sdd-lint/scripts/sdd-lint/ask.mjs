@@ -1,5 +1,6 @@
 // Вопрос человеку на этапе: варианты с рекомендацией и задания для них (ask / choose).
 // @ts-check
+import { registryQuestions, questionPending, independentDrafts } from './registry-view.mjs';
 import { pendingAdrs } from './adr.mjs';
 import { showCmd, skill } from './config.mjs';
 import { neededAdrs, stubCount } from './cut.mjs';
@@ -169,6 +170,19 @@ function protocolQuestions(m, now) {
 /** @param {Feature} m @returns {{ stage: string, questions: Question[] }} */
 export function askOf(m) {
   const st = stageOf(m);
+  const pending = registryQuestions(m).filter(questionPending);
+  if (pending.length) return { stage: st.now, questions: [{
+    header: 'Работа продолжается', question: `Нерешённых вопросов: ${pending.length}. Что делаем дальше?`,
+    options: [
+      { id: 'questions:list', label: 'Посмотреть сводку', action: { lint: ['questions', 'list', rel(m.dir)] } },
+      ...independentDrafts(m).slice(0, 2).map((r) => ({
+        id: `questions:work:${r.id}`, label: `Продолжить черновик: ${r.title}`,
+        action: { here: ['prompt', 'sdd-spec', m.name, `draft:${r.id}`] },
+      })),
+      { id: 'questions:later', label: 'Вернуться позже', action: { none: true } },
+    ],
+  }] };
+
   let qs = m.slices.size ? slicesQuestions(m, st.now) : specQuestions(m, st.now);
   // Разбор находок и открытых вопросов идёт по одному пункту: соседние вопросы этапа — после него.
   const walk = qs.find((q) => q.walk);

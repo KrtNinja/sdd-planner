@@ -1,5 +1,6 @@
 // Правила SP-* по Dev Spec: spec целиком, каждое требование, связь с протоколом — списками { ids, check }.
 // @ts-check
+import { fileQuestionBlockers } from './registry-view.mjs';
 import { mentionsData, unknownNames } from './data.mjs';
 import { finding, noStatus } from './findings.mjs';
 import { uniq, approved, noneText, sectionText, headerLine, REQ_RE, numbers, word } from './md.mjs';
@@ -65,7 +66,12 @@ function stopWords({ s }) {
 }
 // SP-06 / SP-07: открытые вопросы — ошибка у одобренной spec, напоминание у остальных.
 /** @param {SpecContext} c */
-function openQuestions({ s }) {
+function openQuestions({ s, m }) {
+  if (m.flow.state) {
+    const pending = fileQuestionBlockers(m, [s.file]);
+    if (!pending.length) return [];
+    return [finding(approved(s.status) ? 'SP-06' : 'SP-07', s.file, null, `Нерешённые вопросы: ${pending.map((q) => q.id).join(', ')}`)];
+  }
   const open = sectionText(s.sc, /^Открытые вопросы/);
   if (!open || noneText(open)) return [];
   if (approved(s.status)) return [finding('SP-06', s.file, null, 'статус «одобрено», но есть открытые вопросы')];

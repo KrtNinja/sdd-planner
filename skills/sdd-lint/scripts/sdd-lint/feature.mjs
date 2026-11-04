@@ -1,5 +1,6 @@
 // Фича целиком: загрузка артефактов и запуск всех проверок.
 // @ts-check
+import { checkRegistry } from './registry-rules.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -110,6 +111,7 @@ export const featureFiles = (m) =>
 export function runChecks(m) {
   return [
     ...checkDocumentationFlow(m),
+    ...checkRegistry(m),
     ...checkProtocol(m),
     ...checkSpec(m),
     ...checkSlices(m),
