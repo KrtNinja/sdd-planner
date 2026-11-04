@@ -1,5 +1,6 @@
 // Детерминированные действия; содержательное проведение ответа — следующий блок.
 // @ts-check
+import { questionContext } from './registry-context.mjs';
 import { read } from './md.mjs';
 import { loadFeature } from './feature.mjs';
 import { requireDocumentationFlow } from './flow.mjs';
@@ -11,7 +12,7 @@ import { writeRegistry } from './registry-store.mjs';
 /** @typedef {import('./flow-format.mjs').FlowRecord} FlowQuestion */
 /** @typedef {{key: string, id?: string, title?: string, stage?: string, topic?: string, context?: string,
  * resume?: string, refs?: string[], impact?: string, parent?: string, followup?: string, colleagues?: string,
- * answer?: string, decision?: string, consequences?: string}} Input */
+ * answer?: string, origin?: string, decision?: string, consequences?: string}} Input */
 /** @type {Record<string, string>} */
 const FIELDS = { stage: 'Этап', topic: 'Тема', context: 'Контекст', resume: 'Продолжить', impact: 'Влияние',
   parent: 'Родитель', followup: 'Уточнения', colleagues: 'Коллеги', answer: 'Ответ', decision: 'Исключение', consequences: 'Последствия' };
@@ -64,7 +65,7 @@ function transition(q, verb, input) {
     if (input.colleagues) q.fields.Коллеги = input.colleagues;
   } else if (verb === 'answer') {
     requireFields(input, ['answer']);
-    q.fields.Ответ = /** @type {string} */ (input.answer);
+    recordAnswer(q, input);
     q.fields.Статус = 'answered';
   } else if (verb === 'exclude') {
     requireFields(input, ['decision', 'consequences']);
@@ -79,6 +80,14 @@ function transition(q, verb, input) {
   } else throw new Error('Действие: add, defer, answer, exclude или scope');
 }
 
+/** @param {FlowQuestion} q @param {Input} input */
+function recordAnswer(q, input) {
+  const answer = /** @type {string} */ (input.answer);
+  q.fields.ОтветJSON = JSON.stringify(answer);
+  q.fields.Ответ = /[\r\n]/.test(answer) ? 'Дословный ответ в ОтветJSON' : answer;
+  q.fields.Происхождение = input.origin || 'unconfirmed';
+}
+
 /** @param {string} dir @param {string} verb @param {Input} input */
 export function applyQuestion(dir, verb, input) {
   validateInput(input);
@@ -90,9 +99,14 @@ export function applyQuestion(dir, verb, input) {
     const previous = previousAction(records, input.key, digest);
     if (previous) return { md, result: previous };
     const before = records.find((r) => r.id === input.id) || null;
+    if (before?.fields.Пакет) throw new Error('Сначала завершите проведение сохранённого пакета');
     const q = changedQuestion(verb, input, before);
     q.fields.Действия = JSON.stringify({ ...questionActions(q), [input.key]: digest });
     validateChange(dir, q);
+    if (['add', 'scope'].includes(verb)) {
+      const m = loadFeature(dir);
+      q.fields.Снимок = JSON.stringify(questionContext(m, input.refs || []).map((c) => ({ id: c.id, file: c.file, hash: c.hash })));
+    }
     if (verb === 'add') q.id = reserveFlowId(dir, 'Q');
     return { md: replaceQuestion(md, q, before), result: q };
   });
@@ -121,9 +135,11 @@ function validateAction(verb, input) {
   /** @type {Record<string, string[]>} */
   const allowed = {
     add: ['title', 'stage', 'topic', 'context', 'resume', 'refs', 'impact', 'parent', 'followup', 'colleagues'],
-    defer: ['id', 'colleagues'], answer: ['id', 'answer'], exclude: ['id', 'decision', 'consequences'],
+    defer: ['id', 'colleagues'], answer: ['id', 'answer', 'origin'], exclude: ['id', 'decision', 'consequences'],
     scope: ['id', 'refs', 'impact'],
   };
+  if (input.origin && !['analyst', 'colleague', 'recommendation', 'unconfirmed'].includes(input.origin))
+    throw new Error('Неизвестное происхождение ответа');
   if (!allowed[verb]) throw new Error('Неизвестное действие реестра');
   for (const key of Object.keys(input)) {
     if (key !== 'key' && !allowed[verb].includes(key)) throw new Error(`Поле ${key} недопустимо для ${verb}`);
@@ -134,7 +150,14 @@ function validateAction(verb, input) {
 function validateValue(key, value) {
   if (key === 'refs') {
     if (!Array.isArray(value) || value.some((v) => typeof v !== 'string')) throw new Error('refs — массив ID');
+  } else if (key === 'answer') {
+    validateAnswer(value);
   } else if (typeof value !== 'string' || !value.trim() || /[\r\n]/.test(value)) {
     throw new Error(`${key}: нужен непустой текст одной строкой`);
   }
+}
+
+/** @param {unknown} value */
+function validateAnswer(value) {
+  if (typeof value !== 'string' || !value.trim()) throw new Error('answer: нужен непустой ответ');
 }

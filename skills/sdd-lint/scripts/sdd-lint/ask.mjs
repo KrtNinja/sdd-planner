@@ -174,6 +174,10 @@ export function askOf(m) {
   if (pending.length) return { stage: st.now, questions: [{
     header: 'Работа продолжается', question: `Нерешённых вопросов: ${pending.length}. Что делаем дальше?`,
     options: [
+      ...pending.filter((q) => q.fields.Статус === 'answered').slice(0, 1).map((q) => ({
+        id: `questions:resume:${q.id}`, label: `Обработать ответ: ${q.title}`,
+        action: { lint: ['questions', 'resume', rel(m.dir), JSON.stringify({ id: q.id })] },
+      })),
       { id: 'questions:list', label: 'Посмотреть сводку', action: { lint: ['questions', 'list', rel(m.dir)] } },
       ...independentDrafts(m).slice(0, 2).map((r) => ({
         id: `questions:work:${r.id}`, label: `Продолжить черновик: ${r.title}`,
