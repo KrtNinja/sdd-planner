@@ -50,6 +50,7 @@ function readSize(rule, file, md) {
 /** @param {Feature} m */
 export function checkReadSize(m) {
   return [
+    ...m.flow.documents.filter((d) => /(?:scenarios|tech)\.md$/.test(d.file)).flatMap((d) => readSize('FL-02', d.file, d.md)),
     ...(m.spec ? readSize('SP-23', m.spec.file, stripProtocol(m.spec.md)) : []),
     ...[...m.slices.values()].flatMap((sl) => readSize('SL-30', sl.file, sl.md)),
     ...(m.readme != null ? readSize('RM-05', m.readmeFile, m.readme) : []),
