@@ -55,6 +55,7 @@ const WHAT = {
   decide: 'обновить документы по решению',
   review: 'проверить документы',
   close: 'завершить планирование перед слиянием ветки',
+  build: 'начать реализацию',
 };
 
 // Короткое имя текущего этапа — для заданий сабагенту.
@@ -102,7 +103,8 @@ export function chooseFeature(stage, argsFor) {
 // Строка человеку в начале этапа: что сейчас будет и где он решает.
 /** @type {Record<string, (dir: string, m: Feature) => string>} */
 const HELLO = {
-  spec: (d) => `Готовлю требования по ${d}: только решения из протокола, ничего от себя. В конце — проверка ИИ и ваше одобрение.`,
+  spec: (d) => `Готовлю требования по ${d}: только решения из протокола, ничего от себя. В конце — проверка ИИ и ваше одобрение. ` +
+    'FR — функциональные требования, NFR — нефункциональные.',
   slices: (d, m) =>
     m.slices.size || m.plan
       ? `Продолжаю разбиение работы по ${d} с того места, где остановились.`
@@ -116,9 +118,9 @@ export const helloLine = (m, stage) => (HELLO[stage] ? HELLO[stage](rel(m.dir), 
 // Ворота закрыты: не тупик, а вопрос этапа — что сделать сейчас (продолжить прошлый этап, одобрить, ревью).
 // Ворота закрыты, а вопроса этапа нет (build читает зона реализации): человеку — что сделать, агенту — стоп.
 /** @param {string} stage @param {[string, string]} closed что закрыло ворота и что сделать */
-export const closedScreen = (stage, closed) => screen(`Пока нельзя ${WHAT[stage] || 'начать реализацию'}: ${closed[0]}. ${closed[1]}`, G.stop);
+export const closedScreen = (stage, closed) => screen(`Пока нельзя ${WHAT[stage]}: ${closed[0]}. ${closed[1]}`, G.stop);
 /** @param {Feature} m @param {string} stage @param {[string, string]} closed */
 export function closedText(m, stage, closed) {
   const { stage: now, questions } = askOf(m);
-  return viewText(questionsView(rel(m.dir), now, questions, { lead: `Пока нельзя ${WHAT[stage] || 'начать реализацию'}: ${closed[0]}. ${closed[1]}` }));
+  return viewText(questionsView(rel(m.dir), now, questions, { lead: `Пока нельзя ${WHAT[stage]}: ${closed[0]}. ${closed[1]}` }));
 }
