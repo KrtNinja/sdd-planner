@@ -6,7 +6,7 @@ import { scan, inSection, replaceSection, SectionConflict } from '../skills/sdd-
 import { parseProtocol } from '../skills/sdd-lint/scripts/sdd-lint/protocol.mjs';
 import { parseSpec } from '../skills/sdd-lint/scripts/sdd-lint/spec.mjs';
 import { addOpenQuestion } from '../skills/sdd-lint/scripts/sdd-lint/open-questions.mjs';
-import { feature, runner, JSON_ENV } from './helpers.mjs';
+import { feature, runner, JSON_ENV, workspace, commitAll } from './helpers.mjs';
 
 const NAMES = [
   ['Вне scope', 'Не входит в задачу'],
@@ -75,5 +75,57 @@ test('неоднозначный документ: команды отказыв
       assert.match(result.out, /Объедините содержимое/);
       assert.equal(fs.readFileSync(file, 'utf8'), md);
     }
+  } finally { fs.rmSync(m.dir, { recursive: true }); }
+});
+
+test('заголовок требований: старый и новый суффикс отделяются от названия задачи', () => {
+  for (const suffix of ['Dev Spec', 'Спецификация требований']) {
+    assert.equal(parseSpec('s.md', `# Поиск — ${suffix}  \n`).title, 'Поиск');
+  }
+  assert.equal(parseSpec('s.md', '# Спецификация требований внутри названия').title, 'Спецификация требований внутри названия');
+});
+
+test('старый, новый и смешанный набор: fix, done, approve и close сохраняют требования', () => {
+  for (const mode of ['old', 'new', 'mixed']) {
+    const cwd = workspace();
+    const dir = path.join(cwd, 'docs/comments');
+    const specFile = path.join(dir, 'spec.md');
+    const readme = path.join(dir, 'slices/README.md');
+    const proto = path.join(dir, 'brainstorming.md');
+    const run = runner(JSON_ENV);
+    try {
+      const files = [specFile, readme, proto, ...fs.readdirSync(path.join(dir, 'slices')).filter((f) => /^\d/.test(f)).map((f) => path.join(dir, 'slices', f))];
+      for (const [i, file] of files.entries()) {
+        if (mode === 'old' || (mode === 'mixed' && i % 2 === 0)) continue;
+        let text = fs.readFileSync(file, 'utf8');
+        for (const [old, next] of NAMES) text = text.replaceAll(`## ${old}`, `## ${next}`);
+        text = text.replace('— Dev Spec', '— Спецификация требований');
+        fs.writeFileSync(file, text);
+      }
+      commitAll(cwd);
+      const titles = fs.readFileSync(specFile, 'utf8').match(/^## .*/gm);
+      const before = parseSpec(specFile, fs.readFileSync(specFile, 'utf8'));
+      for (const args of [['fix'], ['done'], ['approve', 'spec'], ['snapshot'], ['approve', 'slices']]) {
+        const result = run(cwd, ...args, 'docs/comments');
+        assert.equal(result.code, 0, `${mode}: ${args}\n${result.out}`);
+      }
+      assert.deepEqual(fs.readFileSync(specFile, 'utf8').match(/^## .*/gm), titles);
+      const result = run(cwd, 'close', 'docs/comments', '--yes');
+      assert.equal(result.code, 0, result.out);
+      assert.equal(fs.existsSync(proto), false);
+      const after = parseSpec(specFile, fs.readFileSync(specFile, 'utf8'));
+      assert.deepEqual([...after.reqs].map(([id, r]) => [id, r.text]), [...before.reqs].map(([id, r]) => [id, r.text]));
+      assert.match(after.status, /^одобрено/);
+      assert.equal(run(cwd, 'check', 'docs/comments').code, 0);
+    } finally { fs.rmSync(cwd, { recursive: true }); }
+  }
+});
+
+test('исследование после закрытия берёт имя из нового заголовка требований', () => {
+  const m = feature({ 'spec.md': '# Поиск — Спецификация требований\n' });
+  try {
+    const result = runner(JSON_ENV)(m.dir, 'research', 'fact', m.dir, 'Как устроен поиск?');
+    assert.equal(result.code, 0, result.out);
+    assert.match(fs.readFileSync(path.join(m.dir, '_work/context.md'), 'utf8'), /^Задача: «Поиск»$/m);
   } finally { fs.rmSync(m.dir, { recursive: true }); }
 });
