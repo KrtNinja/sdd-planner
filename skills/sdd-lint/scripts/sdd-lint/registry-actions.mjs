@@ -1,0 +1,140 @@
+// Детерминированные действия; содержательное проведение ответа — следующий блок.
+// @ts-check
+import { read } from './md.mjs';
+import { loadFeature } from './feature.mjs';
+import { requireDocumentationFlow } from './flow.mjs';
+import { buildFlowGraph } from './flow-graph.mjs';
+import { reserveFlowId } from './flow-state.mjs';
+import { previousAction, questionActions, questionDigest, registryRecords, replaceQuestion } from './registry-format.mjs';
+import { writeRegistry } from './registry-store.mjs';
+
+/** @typedef {import('./flow-format.mjs').FlowRecord} FlowQuestion */
+/** @typedef {{key: string, id?: string, title?: string, stage?: string, topic?: string, context?: string,
+ * resume?: string, refs?: string[], impact?: string, parent?: string, followup?: string, colleagues?: string,
+ * answer?: string, decision?: string, consequences?: string}} Input */
+/** @type {Record<string, string>} */
+const FIELDS = { stage: 'Этап', topic: 'Тема', context: 'Контекст', resume: 'Продолжить', impact: 'Влияние',
+  parent: 'Родитель', followup: 'Уточнения', colleagues: 'Коллеги', answer: 'Ответ', decision: 'Исключение', consequences: 'Последствия' };
+
+/** @param {Input} input */
+function validateInput(input) {
+  if (!input || typeof input.key !== 'string' || !/^[\w.-]{1,120}$/.test(input.key)) throw new Error('Нужен постоянный ключ действия key');
+  for (const [key, value] of Object.entries(input)) {
+    validateValue(key, value);
+  }
+}
+
+/** @param {Input} input @param {(keyof Input)[]} keys */
+function requireFields(input, keys) {
+  for (const key of keys) if (!input[key]) throw new Error(`Нужно поле ${key}`);
+}
+
+/** @param {string} verb @param {Input} input @param {FlowQuestion | null} before @returns {FlowQuestion} */
+function changedQuestion(verb, input, before) {
+  if (verb === 'add') {
+    if (input.id) throw new Error('Для нового вопроса не задавайте id');
+    requireFields(input, ['title', 'stage', 'topic', 'context', 'resume', 'impact']);
+    return newQuestion(input);
+  }
+  if (!before) throw new Error('Вопрос не найден');
+  if (['resolved', 'excluded'].includes(before.fields.Статус)) throw new Error('Вопрос уже закрыт');
+  const q = { ...before, fields: { ...before.fields } };
+  transition(q, verb, input);
+  return q;
+}
+
+/** @param {Input} input @returns {FlowQuestion} */
+function newQuestion(input) {
+  /** @type {Record<string, string>} */
+  const fields = { Статус: 'open' };
+  for (const [key, label] of Object.entries(FIELDS)) {
+    const value = input[/** @type {keyof Input} */ (key)];
+    if (typeof value === 'string') fields[label] = value;
+  }
+  if (input.refs?.length) fields.Элементы = input.refs.join(', ');
+  return { id: 'Q1', kind: 'question', title: /** @type {string} */ (input.title), file: 'questions.md', n: 1,
+    fields, refs: [], parent: null };
+}
+
+/** @param {FlowQuestion} q @param {string} verb @param {Input} input */
+function transition(q, verb, input) {
+  if (verb === 'defer') {
+    if (q.fields.Статус === 'answered') throw new Error('Ответ требует обработки; откладывание не удаляет ответ');
+    q.fields.Статус = 'deferred';
+    if (input.colleagues) q.fields.Коллеги = input.colleagues;
+  } else if (verb === 'answer') {
+    requireFields(input, ['answer']);
+    q.fields.Ответ = /** @type {string} */ (input.answer);
+    q.fields.Статус = 'answered';
+  } else if (verb === 'exclude') {
+    requireFields(input, ['decision', 'consequences']);
+    q.fields.Исключение = /** @type {string} */ (input.decision);
+    q.fields.Последствия = /** @type {string} */ (input.consequences);
+    q.fields.Статус = 'answered';
+  } else if (verb === 'scope') {
+    requireFields(input, ['impact']);
+    q.fields.Влияние = /** @type {string} */ (input.impact);
+    delete q.fields.Элементы;
+    if (input.refs?.length) q.fields.Элементы = input.refs.join(', ');
+  } else throw new Error('Действие: add, defer, answer, exclude или scope');
+}
+
+/** @param {string} dir @param {string} verb @param {Input} input */
+export function applyQuestion(dir, verb, input) {
+  validateInput(input);
+  validateAction(verb, input);
+  if (!loadFeature(dir).flow.state) throw new Error('Реестр доступен только в новом процессе; миграции нет');
+  const digest = questionDigest(JSON.stringify([verb, Object.entries(input).sort(([a], [b]) => a.localeCompare(b))]));
+  return writeRegistry(dir, (md) => {
+    const records = registryRecords(md);
+    const previous = previousAction(records, input.key, digest);
+    if (previous) return { md, result: previous };
+    const before = records.find((r) => r.id === input.id) || null;
+    const q = changedQuestion(verb, input, before);
+    q.fields.Действия = JSON.stringify({ ...questionActions(q), [input.key]: digest });
+    validateChange(dir, q);
+    if (verb === 'add') q.id = reserveFlowId(dir, 'Q');
+    return { md: replaceQuestion(md, q, before), result: q };
+  });
+}
+
+/** @param {string} dir @param {FlowQuestion} q */
+function validateChange(dir, q) {
+  const m = loadFeature(dir, (file) => file.endsWith('questions.md.pending') ? null : read(file));
+  requireDocumentationFlow(m);
+  registryRecords(replaceQuestion('', q, null));
+  if (!['known', 'unknown'].includes(q.fields.Влияние)) throw new Error('Влияние: known или unknown');
+  if (q.fields.Влияние === 'known' && !q.fields.Элементы) throw new Error('Для известного влияния нужны связанные элементы');
+  validateTargets(m, q);
+}
+
+/** @param {import('./model.mjs').Feature} m @param {FlowQuestion} q */
+function validateTargets(m, q) {
+  const candidate = { ...q, id: `Q${/** @type {import('./flow-state.mjs').FlowState} */ (m.flow.state).next.Q}` };
+  const parsed = registryRecords(replaceQuestion('', candidate, null));
+  const graph = buildFlowGraph(m, [...m.flow.records, ...parsed], read);
+  if (graph.problems.length) throw new Error(graph.problems.map((p) => p.message).join('; '));
+}
+
+/** @param {string} verb @param {Input} input */
+function validateAction(verb, input) {
+  /** @type {Record<string, string[]>} */
+  const allowed = {
+    add: ['title', 'stage', 'topic', 'context', 'resume', 'refs', 'impact', 'parent', 'followup', 'colleagues'],
+    defer: ['id', 'colleagues'], answer: ['id', 'answer'], exclude: ['id', 'decision', 'consequences'],
+    scope: ['id', 'refs', 'impact'],
+  };
+  if (!allowed[verb]) throw new Error('Неизвестное действие реестра');
+  for (const key of Object.keys(input)) {
+    if (key !== 'key' && !allowed[verb].includes(key)) throw new Error(`Поле ${key} недопустимо для ${verb}`);
+  }
+}
+
+/** @param {string} key @param {unknown} value */
+function validateValue(key, value) {
+  if (key === 'refs') {
+    if (!Array.isArray(value) || value.some((v) => typeof v !== 'string')) throw new Error('refs — массив ID');
+  } else if (typeof value !== 'string' || !value.trim() || /[\r\n]/.test(value)) {
+    throw new Error(`${key}: нужен непустой текст одной строкой`);
+  }
+}

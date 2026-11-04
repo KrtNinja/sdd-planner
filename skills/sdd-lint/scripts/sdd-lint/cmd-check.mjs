@@ -1,5 +1,9 @@
 // Команды check и gate.
 // @ts-check
+import { draftWork } from './registry-view.mjs';
+import { checkDocumentationFlow } from './flow.mjs';
+import { checkRegistry } from './registry-rules.mjs';
+import { unresolvedRegistry } from './registry-rules.mjs';
 import { pendingAdrs } from './adr.mjs';
 import { slicesBrief } from './brief.mjs';
 import { neededAdrs } from './cut.mjs';
@@ -79,6 +83,7 @@ function slicesGate(m, found) {
 /** @param {Feature} m @param {Finding[]} found @returns {[string, string] | null} */
 function buildGate(m, found) {
   const dir = rel(m.dir);
+  if (unresolvedRegistry(m).length) return ['есть нерешённые вопросы', 'Завершите обработку вопросов до передачи в разработку'];
   const pending = pendingAdrs(m);
   const need = neededAdrs(m);
   if (!m.slices.size || !approved(m.slicesStatus)) return ['части работы не одобрены', `Сначала одобрите части работы: ${lintCode('approve', 'slices', dir)}`];
@@ -112,6 +117,7 @@ export function cmdGate(ctx) {
   const { target, note } = gateTarget(ctx, stage);
   const m = loadFeature(needDir(ctx, target, 1));
   const found = runChecks(m);
+  maybeDraftGate(ctx, m, stage);
   const closed = gateClosed(m, stage, found);
   if (closed) {
     blockedGate(ctx, { m, stage, found, closed });
@@ -157,4 +163,25 @@ function blockedGate(ctx, { m, stage, found, closed }) {
   // build читает зона реализации (export) — ей вопрос этапа не нужен.
   ctx.io.log(stage === 'build' ? closedScreen(stage, closed) : closedText(m, stage, closed));
   ctx.io.exit(3);
+}
+
+/** @param {Ctx} ctx @param {Feature} m @param {string} stage @param {string} scope */
+function draftGate(ctx, m, stage, scope) {
+  try {
+    if (!['spec', 'slices', 'adr'].includes(stage)) throw new Error('Этот этап не является независимым черновиком');
+    const structural = [...checkDocumentationFlow(m), ...checkRegistry(m)];
+    if (structural.length) throw new Error(structural.map((f) => f.msg).join('; '));
+    const text = draftWork(m, scope.split(',').filter(Boolean));
+    ctx.io.log(screen(text, `фича ${rel(m.dir)}`, `черновик ${stage}; область ${scope}; не меняй остальные области`, G.skill));
+  } catch (error) {
+    ctx.io.log(screen(String(error), G.stop));
+    ctx.io.exit(3);
+  }
+  ctx.io.exit(0);
+}
+
+/** @param {Ctx} ctx @param {Feature} m @param {string} stage */
+function maybeDraftGate(ctx, m, stage) {
+  const scope = ctx.args.pos[2];
+  if (m.flow.state && scope?.startsWith('draft:')) draftGate(ctx, m, stage, scope.slice(6));
 }

@@ -1,5 +1,6 @@
 // Правила SL-* по slices: шапка, AC, хвост slice, фича целиком — списками { ids, check }.
 // @ts-check
+import { fileQuestionBlockers } from './registry-view.mjs';
 import { finding } from './findings.mjs';
 import { dependencyCycles } from './graph.mjs';
 import { reqRefs, BASIS_LINK_RE, staleReqLinks } from './links.mjs';
@@ -117,7 +118,8 @@ const SLICE_TAIL = [
   {
     ids: ['SL-09', 'SL-10'],
     check: (sl, c) => {
-      const open = sectionText(sl.sc, /^Открытые вопросы/);
+      const open = c.m.flow.state ? fileQuestionBlockers(c.m, [sl.file]).map((q) => q.id).join(', ')
+        : sectionText(sl.sc, /^Открытые вопросы/);
       if (!open || noneText(open)) return [];
       if (approved(c.m.slicesStatus)) return [finding('SL-10', sl.file, null, 'части работы одобрены, но в одной из них есть открытые вопросы')];
       return [finding('SL-09', sl.file, null, 'есть открытые вопросы к требованиям')];

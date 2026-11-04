@@ -14,11 +14,13 @@ const IDS = [
   ['tech', /^TECH$/], ['fr', /^FR-[1-9]\d*$/], ['nfr', /^NFR-[1-9]\d*$/],
   ['ac', /^AC-\d{3}-[BF]?[1-9]\d*$/], ['adr', /^ADR-\d{4}$/], ['contract', /^contract:[^\s#]+#[^\s#]+$/],
 ];
-const FIELDS = ['Этап', 'Тема', 'Статус', 'Элементы', 'Родитель', 'Требования', 'Связи'];
+const QUESTION_FIELDS = ['Этап', 'Тема', 'Статус', 'Элементы', 'Родитель', 'Контекст', 'Продолжить',
+  'Уточнения', 'Коллеги', 'Влияние', 'Ответ', 'Исключение', 'Последствия', 'Действия'];
+const FIELDS = [...QUESTION_FIELDS, 'Требования', 'Связи'];
 const STAGES = ['grill', 'spec', 'scenarios', 'tech', 'slices', 'adr', 'review', 'decide'];
 /** @type {Record<string, string[]>} */
 const RECORD_FIELDS = {
-  question: ['Этап', 'Тема', 'Статус', 'Элементы', 'Родитель'],
+  question: QUESTION_FIELDS,
   scenario: ['Требования'], step: ['Требования'], tech: ['Связи'],
 };
 const STATUSES = ['open', 'deferred', 'answered', 'resolved', 'excluded'];

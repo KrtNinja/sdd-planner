@@ -79,6 +79,7 @@ export function skillPrompt(ctx, name, args) {
     '---',
     '',
     body,
+    registryPrompt(args),
     ...links.flatMap((f) => {
       const t = read(path.join(dir, f));
       return t == null ? [] : ['', '---', '', `Файл скилла ${f}:`, '', t.trim()];
@@ -127,4 +128,11 @@ function reviewArgs(ctx, m, args) {
     }
     args[2] = num;
   }
+}
+
+/** @param {string[]} args */
+function registryPrompt(args) {
+  const dir = path.join(DOCS, args[0] || '');
+  if (!fs.existsSync(path.join(dir, '.sdd-flow.json'))) return null;
+  return read(path.join(SKILLS_DIR, 'sdd-grill/references/registry.md'));
 }

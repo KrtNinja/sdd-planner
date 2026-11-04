@@ -1,5 +1,6 @@
 // Команда approve: ставит «одобрено» / «принято», если чисто, включая RV-* и HG-*.
 // @ts-check
+import { fileQuestionBlockers, questionCard } from './registry-view.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -59,6 +60,8 @@ export function cmdApprove(ctx) {
     return ctx.io.exit(code);
   };
   const { target, scope, word } = approvalTarget(m, what, { num: pos[2], refuse });
+  const unresolved = fileQuestionBlockers(m, scope);
+  if (unresolved.length) refuse(unresolved.map(questionCard).join('\n\n'));
   const md = fs.readFileSync(target, 'utf8');
   const raw = header(md, 'Статус');
   if (raw === null) refuse(`в ${rel(target)} нет строки «Статус:» — добавьте её по шаблону`);
