@@ -196,6 +196,7 @@ test('choose plan:yes — файлы по плану с заготовками, 
   for (const h of ['## Общая приёмка (собранное приложение)', '## Tasks-core-половина', '## Notify-service-половина', '## Frontend-половина']) assert.ok(s3.includes(h), h);
   assert.match(s3, /^AC-003-B\? <имя>$/m);
   assert.match(s3, /^- Все AC-003-\* закрыты тестами: в названии теста — ссылка comments\/AC-ID$/m);
+  assert.match(read(cwd, 'comments/slices/002-comments.md'), /^## Открытые вопросы к требованиям$/m);
   assert.match(read(cwd, 'comments/slices/001-contracts.md'), /^Половины: tasks-core \+ notify-service \+ frontend, ревьюят все стороны вместе$/m);
   const readme = read(cwd, 'comments/slices/README.md');
   assert.match(readme, /^Статус: черновик$/m);
@@ -220,7 +221,7 @@ test('gen slices: не создаёт файлы, если в плане оши�
   fs.writeFileSync(file(cwd, 'comments/_work/plan.md'), PLAN);
   r = run(cwd, 'gen', 'slices', 'docs/comments');
   assert.equal(r.code, 1);
-  assert.match(r.out, /уже есть файлы slices/);
+  assert.match(r.out, /уже есть файлы частей работы/);
   assert.ok(rules(check(cwd)).includes('PL-13'));
 });
 
