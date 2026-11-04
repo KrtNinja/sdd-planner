@@ -197,7 +197,7 @@ gate — выбери вариант:
 Фич, где можно писать Dev Spec, нет.
 
 Фичи и этапы:
-- comments — План нарезки ждёт согласия (docs/comments/_work/plan.md)
+- comments — План разбиения работы ждёт согласования (docs/comments/_work/plan.md)
 
 Новая фича начинается с `/sdd-grill`.
 

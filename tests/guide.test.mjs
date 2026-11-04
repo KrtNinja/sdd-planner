@@ -24,7 +24,7 @@ test('gate без фичи: подходят несколько — вопрос
   assert.equal(r.code, 2);
   assert.deepEqual(optionIds(r.out), ['comments', 'likes']);
   assert.match(json(r.out).gear, /^⚙ sdd: вопрос «Фича» → \["gate","spec","<id>"\] · варианты: 1=comments, 2=likes · своими словами — вместо <id>$/);
-  assert.match(json(r.out).card, /^Фича не указана\.\n\n\*\*Какую фичу берём — писать Dev Spec\?\*\*\n\n1\. \*\*comments\*\* — Dev Spec/);
+  assert.match(json(r.out).card, /^Фича не указана\.\n\n\*\*Какую фичу берём — писать Dev Spec\?\*\*\n\n1\. \*\*comments\*\* — Требования/);
 });
 test('close без фичи: единственная с временными артефактами — сразу вопрос подтверждения', () => {
   const r = run(workspace(), 'close', '--json');

@@ -31,6 +31,6 @@ test('menu: закрытая фича не предлагает несущест
   const menu = run(cwd);
   assert.equal(menu.code, 0, menu.out);
   assert.deepEqual(menu.out.split('\n').filter((l) => l.startsWith('- **comments**')), [
-    '- **comments** — Планирование завершено: slices одобрены, ADR приняты, временные артефакты убраны',
+    '- **comments** — Планирование завершено: части работы одобрены, ADR приняты, временные файлы убраны',
   ]);
 });

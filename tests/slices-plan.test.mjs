@@ -172,7 +172,7 @@ test('plan: Р1 по принятому ADR, требование в двух sl
 });
 test('ask: план — человеку списком до вопроса, «Да» рекомендовано, других вопросов нет', () => {
   const a = ask(planWorkspace());
-  assert.equal(a.stage, 'План нарезки ждёт согласия (docs/comments/_work/plan.md)');
+  assert.equal(a.stage, 'План разбиения работы ждёт согласования (docs/comments/_work/plan.md)');
   assert.ok(a.card.startsWith(a.preview));
   assert.match(a.preview, /^- 003 Уведомления об упоминаниях — поведение, после 001, 002$/m);
   assert.match(a.preview, /Основание: FR-1…FR-7, NFR-1, NFR-2/);
@@ -205,7 +205,7 @@ test('choose plan:yes — файлы по плану с заготовками, 
   assert.ok(rules(res).includes('SL-37'));
   assert.ok(!rules(res).some((x) => ['SL-07', 'SL-14', 'SL-16', 'SL-19'].includes(x)), `заготовки не дают шума: ${rules(res).join(', ')}`);
   const a = ask(cwd);
-  assert.match(a.stage, /^Slices созданы по плану, заготовок «<…>» не заполнено: \d+$/);
+  assert.match(a.stage, /^Части работы созданы по плану, заготовок «<…>» не заполнено: \d+$/);
   assert.deepEqual(ids(a), ['here:sdd-slices', 'window:sdd-slices']); // продолжение этапа — здесь
 });
 test('gen slices: не создаёт файлы, если в плане ошибки или slices уже есть', () => {
@@ -234,7 +234,7 @@ test('done: заполненные slices — номера, «на ревью»,
   assert.match(r.out, /AC-002-B\? → AC-002-B6/);
   assert.match(r.out, /Этап готов: ошибок 0, предупреждений 0\. Статус «на ревью»: docs\/comments\/slices\/README\.md\./);
   const json = JSON.parse(r.out.slice(r.out.indexOf('{')));
-  assert.equal(json.stage, 'Slices на ревью');
+  assert.equal(json.stage, 'Части работы ожидают проверки');
   assert.match(read(cwd, 'comments/slices/README.md'), /^Статус: на ревью$/m);
   assert.ok(fs.readdirSync(path.join(cwd, '.tmp', 'sdd-lint-snapshots')).length > 0);
 });
@@ -337,7 +337,7 @@ test('Р1 — ADR: <тема>: вопрос «Нужен ADR», ворота bui
   edit(cwd, 'adr/0001-mention-notifications.md', 'Затрагивает slices: 003\n', '');
   run(cwd, 'fix', 'docs/comments');
   assert.ok(ids(ask(cwd)).includes('adr-here:003'));
-  assert.match(run(cwd, 'docs/comments').out, /написать ADR «дедупликация уведомлений» \(slice 003\): `\/sdd-adr comments "дедупликация уведомлений"`/);
+  assert.match(run(cwd, 'docs/comments').out, /написать ADR «дедупликация уведомлений» \(часть работы 003\): `\/sdd-adr comments "дедупликация уведомлений"`/);
   assert.equal(run(cwd, 'approve', 'adr', 'docs/comments', '0001').code, 0);
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   const g = run(cwd, 'gate', 'build', 'docs/comments');

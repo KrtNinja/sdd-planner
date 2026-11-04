@@ -164,10 +164,10 @@ research — выбери вариант:
 
 не git-репозиторий: сверка с git (DF-*) пропущена
 
-Slices на ревью. Следующий шаг:
+Части работы ожидают проверки. Следующий шаг:
 
-1. по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
-2. ревью в чистом контексте: `/sdd-review comments slices`
+1. по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
+2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
 Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14
@@ -188,10 +188,10 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
     "warn": 0,
     "info": 0
   },
-  "stage": "Slices на ревью",
+  "stage": "Части работы ожидают проверки",
   "next": [
-    "по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`",
-    "ревью в чистом контексте: `/sdd-review comments slices`",
+    "по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`",
+    "проверка ИИ в новой сессии: `/sdd-review comments slices`",
     "одобрить: `/sdd-lint approve slices docs/comments`"
   ],
   "tip": "Tip: Введите /sdd-review comments slices чтобы продолжить",
@@ -276,7 +276,7 @@ gate — выбери вариант:
 Фич, где можно писать Dev Spec, нет.
 
 Фичи и этапы:
-- comments — Slices на ревью
+- comments — Части работы ожидают проверки
 
 Новая фича начинается с `/sdd-grill`.
 
@@ -484,7 +484,7 @@ docs/comments/spec.md: уже «одобрено <ДАТА>».
 ~~~~text
 docs/comments/slices/README.md: Статус: одобрено <ДАТА> · <ОТПЕЧАТОК>
 
-Slices одобрены, ADR приняты. Следующий шаг: перед merge убрать временные артефакты (`docs/comments/brainstorming.md`): `/sdd-close comments`
+Части работы одобрены, ADR приняты. Следующий шаг: перед слиянием ветки убрать временные файлы (`docs/comments/brainstorming.md`): `/sdd-close comments`
 
 Tip: Введите /sdd-close comments чтобы продолжить
 ~~~~
@@ -817,7 +817,7 @@ diff работает только в git-репозитории
 {
   "feature": "comments",
   "dir": "docs/comments",
-  "stage": "Slices на ревью",
+  "stage": "Части работы ожидают проверки",
   "gate": {
     "build": "closed",
     "reason": "slices не одобрены",
@@ -1296,7 +1296,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~text
 docs/comments/slices/README.md: Статус: одобрено <ДАТА> · <ОТПЕЧАТОК>
 
-Slices одобрены, ADR приняты. Следующий шаг: перед merge убрать временные артефакты (`docs/comments/brainstorming.md`): `/sdd-close comments`
+Части работы одобрены, ADR приняты. Следующий шаг: перед слиянием ветки убрать временные файлы (`docs/comments/brainstorming.md`): `/sdd-close comments`
 
 Tip: Введите /sdd-close comments чтобы продолжить
 
@@ -2546,7 +2546,7 @@ compdef _sdd_lint sdd-lint sdd-lint.mjs
 
 Фичи в `docs/`:
 
-- **comments** — Slices на ревью → ревью в чистом контексте: `/sdd-review comments slices`
+- **comments** — Части работы ожидают проверки → проверка ИИ в новой сессии: `/sdd-review comments slices`
 
 Команды:
 
@@ -2576,10 +2576,10 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 
 ~~~~text
 
-Slices на ревью. Следующий шаг:
+Части работы ожидают проверки. Следующий шаг:
 
-1. по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
-2. ревью в чистом контексте: `/sdd-review comments slices`
+1. по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
+2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
 Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14
@@ -2600,10 +2600,10 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
     "warn": 0,
     "info": 0
   },
-  "stage": "Slices на ревью",
+  "stage": "Части работы ожидают проверки",
   "next": [
-    "по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`",
-    "ревью в чистом контексте: `/sdd-review comments slices`",
+    "по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`",
+    "проверка ИИ в новой сессии: `/sdd-review comments slices`",
     "одобрить: `/sdd-lint approve slices docs/comments`"
   ],
   "tip": "Tip: Введите /sdd-review comments slices чтобы продолжить"
@@ -2616,10 +2616,10 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 
 ~~~~text
 
-Slices на ревью. Следующий шаг:
+Части работы ожидают проверки. Следующий шаг:
 
-1. по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
-2. ревью в чистом контексте: `/sdd-review comments slices`
+1. по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
+2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
 Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14

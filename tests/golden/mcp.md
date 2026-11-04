@@ -7,10 +7,10 @@
 код 0
 
 ~~~~text
-Slices на ревью. Следующий шаг:
+Части работы ожидают проверки. Следующий шаг:
 
-1. по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
-2. ревью в чистом контексте: `/sdd-review comments slices`
+1. по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
+2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
 Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14
