@@ -182,6 +182,9 @@ test('неполный перенос после первого файла во�
   try { assert.match(cmd(dir, 'move').text, /прерывание/); } finally { stub.mock.restore(); }
   assert.ok(read(dir, 'spec.md').includes('### SC-1'));
   assert.ok(read(dir, 'scenarios.md').includes('### SC-1'));
+  const pending = loadFeature(dir).flow.problems.find((p) => p.message.startsWith('Перенос сценариев не завершён'));
+  assert.equal(pending.file, path.join(dir, 'spec.md'));
+  assert.equal(pending.n, 1);
   assert.equal(run(['fix', dir]).code, 1);
   assert.equal(cmd(dir, 'recover').code, 0);
   assert.equal(read(dir, 'spec.md').includes('### SC-1'), false);
@@ -305,4 +308,69 @@ test('сокращённая ссылка сохраняется; обязате
   write(dir, 'spec.md', read(dir, 'spec.md') + '\n```\nFR-2  Правило.\nПример: Анна.\n```\n');
   assert.match(cmd(dir, 'move').text, /содержит блок FR\/NFR/);
   assert.equal(fs.existsSync(path.join(dir, 'scenarios.md')), false);
+});
+
+test('recovery отвергает повреждённые пути и структуру плана до любой записи', () => {
+  const dir = setup();
+  const original = read(dir, 'spec.md');
+  const valid = planScenarioMove(loadFeature(dir));
+  const damaged = [
+    [{ ...valid.changes[0], file: 'relative.md' }, /Путь переноса/],
+    [{ ...valid.changes[0], file: '/outside/spec.md' }, /Путь переноса/],
+    [{ ...valid.changes[0], file: path.join(dir, 'secret.txt') }, /Путь переноса/],
+    [{ ...valid.changes[0], after: null }, /Нет текста/],
+  ];
+  for (const [change, expected] of damaged) {
+    const body = JSON.stringify({ changes: [change], snapshots: [] });
+    write(dir, '.sdd-scenarios.pending', JSON.stringify({ body, hash: questionDigest(body) }));
+    assert.match(cmd(dir, 'recover').text, expected);
+    assert.equal(read(dir, 'spec.md'), original);
+  }
+  for (const plan of [{ changes: [], snapshots: [] }, { changes: valid.changes, snapshots: [{ file: '/tmp/alien' }] }]) {
+    const body = JSON.stringify(plan);
+    write(dir, '.sdd-scenarios.pending', JSON.stringify({ body, hash: questionDigest(body) }));
+    assert.equal(cmd(dir, 'recover').code, 2);
+    assert.equal(read(dir, 'spec.md'), original);
+  }
+});
+
+test('перенос не легализует ручное или устаревшее одобрение', () => {
+  for (const status of ['одобрено 04.11.2026', 'одобрено 04.11.2026 · 123456']) {
+    const dir = setup();
+    write(dir, 'spec.md', read(dir, 'spec.md').replace('черновик', status));
+    assert.match(cmd(dir, 'move').text, /AP-0[12]/);
+    assert.equal(fs.existsSync(path.join(dir, 'scenarios.md')), false);
+  }
+});
+
+test('отсутствие маркера процесса сохраняет legacy даже при одноимённом служебном файле', async () => {
+  const { requireIdleMove } = await import('../skills/sdd-lint/scripts/sdd-lint/scenario-store.mjs');
+  const dir = setup();
+  write(dir, '.sdd-scenarios.pending', 'старый произвольный файл');
+  assert.throws(() => requireIdleMove(dir), /scenarios recover/);
+  fs.unlinkSync(path.join(dir, '.sdd-flow.json'));
+  assert.doesNotThrow(() => requireIdleMove(dir));
+});
+
+test('совместимый формат блока 01: SC уровня 2 переносится без изменения заголовков', () => {
+  const dir = setup();
+  let text = read(dir, 'spec.md').replace('## Пользовательские сценарии\n\n', '');
+  text = text.replace('### SC-1 —', '## SC-1 —').replace('#### SC-1-S1', '### SC-1-S1');
+  write(dir, 'spec.md', text + 'я'.repeat(100));
+  assert.equal(cmd(dir, 'move').code, 0);
+  assert.match(read(dir, 'scenarios.md'), /^## SC-1 —/);
+  assert.match(read(dir, 'scenarios.md'), /\n### SC-1-S1/);
+  const compact = section.replace('Пользовательские сценарии', 'Сценарии');
+  assert.equal(scenarioSection(compact).text, compact);
+  assert.equal(scenarioSection('## SC-1 — Один\n## SC-2 — Второй\n## Далее\n').text,
+    '## SC-1 — Один\n## SC-2 — Второй\n');
+});
+
+test('границы раздела сохраняют заголовок документа и следующий раздел дословно', () => {
+  const text = '# Заголовок\n\n## Пользовательские сценарии\n### SC-1 — Путь\nДействие.\n\n## Следующий раздел\nОстальной текст';
+  assert.deepEqual(scenarioSection(text), {
+    start: 2, stop: 6, text: '## Пользовательские сценарии\n### SC-1 — Путь\nДействие.\n\n',
+    before: '# Заголовок\n', after: '## Следующий раздел\nОстальной текст',
+  });
+  assert.equal(scenarioSection('```\n## Пользовательские сценарии\n```\n'), null);
 });

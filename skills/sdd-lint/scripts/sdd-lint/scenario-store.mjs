@@ -81,6 +81,7 @@ function validatePaths(dir, plan) {
 
 /** @param {string} dir */
 export function requireIdleMove(dir) {
+  if (read(path.join(dir, '.sdd-flow.json')) === null) return;
   if (read(scenarioJournal(dir)) !== null) throw new SectionConflict('Сначала scenarios recover; не редактируйте копии');
 }
 
