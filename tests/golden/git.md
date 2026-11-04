@@ -161,7 +161,7 @@ Tip: Введите /sdd-close comments чтобы продолжить
 код 2
 
 ~~~~text
-НЕ ОДОБРЕНО: у фичи comments нет ADR, ждущих «принято»
+НЕ ОДОБРЕНО: у задачи comments нет ADR, ждущих «принято»
 ~~~~
 
 ### `sdd-lint approve adr comments 0001`
