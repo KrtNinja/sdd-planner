@@ -131,7 +131,6 @@ function depsExist(c) {
   return [...c.slices.entries()].flatMap(([num, sl]) =>
     sl.deps
       .filter((d) => d === num || !c.slices.has(d))
-      
       .map((d) => finding('SL-11', sl.file, headerLine(sl.md, 'Зависимости'),
         d === num ? 'часть работы зависит сама от себя' : `зависимость ${d} — такой части работы нет`)),
   );
