@@ -59,7 +59,7 @@ function stopWords({ s }) {
     .flatMap((l) =>
       SPEC_STOP_WORDS.flatMap(([label, re]) => {
         const mm = l.text.match(re);
-        return mm ? [finding('SP-05', s.file, l.n, `«${mm[0]}» — ${label} в Dev Spec`)] : [];
+        return mm ? [finding('SP-05', s.file, l.n, `«${mm[0]}» — ${label} в требованиях`)] : [];
       }),
     );
 }

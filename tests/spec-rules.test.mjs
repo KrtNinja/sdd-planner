@@ -55,7 +55,7 @@ const SPEC = [
 
 test('SP-05: слово реализации в обычном разделе — находка; «Не про поведение» и строка «Протокол:» — мимо', () => {
   const m = feature({ 'spec.md': SPEC, 'brainstorming.md': PROTOCOL });
-  assert.deepEqual(brief(m, checkSpec(m), ['SP-05']), ['SP-05 spec.md:38 «Redis» — технология в Dev Spec']);
+  assert.deepEqual(brief(m, checkSpec(m), ['SP-05']), ['SP-05 spec.md:38 «Redis» — технология в требованиях']);
 });
 
 test('SP-09, SP-11, SP-12: пример без персонажа, граница без пары, число только из рекомендации агента', () => {
