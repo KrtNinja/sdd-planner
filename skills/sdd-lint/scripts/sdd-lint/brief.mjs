@@ -25,11 +25,11 @@ export function slicesBrief(m) {
   const reqs = [...m.spec.reqs.values()].filter((r) => !r.deleted);
   const reg = registry(m);
   const card = blocks(
-    `Требования spec.md (${reqs.length}) — каждое попадёт в «Основание» хотя бы одного slice:\n${list(reqs.map((r) => `${bold(r.id)} ${gist(r)}`))}`,
+    `Требования spec.md (${reqs.length}) — каждое попадёт в «Основание» хотя бы одной части работы:\n${list(reqs.map((r) => `${bold(r.id)} ${gist(r)}`))}`,
     reg ? `Сервисы: ${reg.list.join(', ')} — так они и называются в «Половины».` : 'Сервисы: в протоколе нет строки «Сервисы:» — назову их по spec и ADR.',
     m.featureAdrs.length
-      ? `ADR фичи:\n${list(m.featureAdrs.map(adrLine))}`
-      : 'ADR фичи: нет. Часть, которая ждёт ещё не принятого решения, пойдёт в план как «Р1 — ADR: <тема>».',
+      ? `Архитектурные решения (ADR) задачи:\n${list(m.featureAdrs.map(adrLine))}`
+      : 'Архитектурные решения (ADR) задачи: нет. Часть, которая ждёт ещё не принятого решения, пойдёт в план как «Р1 — ADR: <тема>».',
   );
   const parts = continuation(m);
   return { card, parts };
