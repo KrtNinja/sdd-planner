@@ -14,7 +14,7 @@ import { applyDecisionFiles, candidateFeature, checkDecision, checkDecisionMeani
 /** @typedef {{id: string, file: string | null, hash: string | null}} Context */
 /** @typedef {{changes: import('./decision-files.mjs').Change[], summary: string, assessment: string,
  * tradeoffs: string, remaining: string, obligations: string, context: Context[]}} Package */
-/** @typedef {{key: string, id: string, packageHash?: string, decision?: string, origin?: string,
+/** @typedef {{key: string, id: string, packageHash?: string, decision?: string, origin?: string, agreement?: string,
  * summary?: string, assessment?: string, tradeoffs?: string, remaining?: string, obligations?: string,
  * ready?: boolean, conflicts?: string[], context?: Context[], changes?: import('./decision-files.mjs').Change[]}} Input */
 
@@ -71,6 +71,7 @@ function prepareDecision(dir, q, input) {
   const pack = { changes, summary: input.summary, assessment: input.assessment, tradeoffs: input.tradeoffs,
     remaining: input.remaining, obligations: input.obligations, context: input.context };
   q.fields.Пакет = JSON.stringify(pack);
+  if (input.agreement !== undefined) acceptDecision(q, { ...input, decision: input.agreement, packageHash: questionDigest(q.fields.Пакет) });
 }
 
 /** @param {Context[]} current @param {Context[] | undefined} supplied */

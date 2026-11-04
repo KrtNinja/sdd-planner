@@ -70,6 +70,7 @@ export function recoverRegistry(dir) {
   const current = questionDigest(content(file));
   if (![envelope.base, envelope.hash].includes(current)) throw new Error('Реестр изменился; проверьте Git и pending вручную');
   validateReserved(dir, envelope.md);
+  validateRecoveredClosures(dir, content(file), envelope.md);
   if (fs.existsSync(`${file}.writing`)) fs.unlinkSync(`${file}.writing`);
   if (current !== envelope.hash) publishRegistry(file, envelope);
   fs.unlinkSync(pending);
@@ -87,4 +88,18 @@ function validateReserved(dir, md) {
   if (!state) throw new Error('Восстановление требует признака нового процесса');
   if (fs.existsSync(path.join(dir, '.sdd-flow.json.pending'))) throw new Error('Сначала восстановите счётчики');
   for (const q of registryRecords(md)) if (!reservedId(q, state)) throw new Error(`${q.id}: номер не зарезервирован`);
+}
+
+// Pending с закрытым Q нельзя публиковать, если его документы уже изменились после проверки.
+/** @param {string} dir @param {string} current @param {string} candidate */
+function validateRecoveredClosures(dir, current, candidate) {
+  const old = new Map(registryRecords(current).map((q) => [q.id, q.fields.Статус]));
+  for (const q of registryRecords(candidate)) {
+    if (!q.fields.Пакет || old.get(q.id) === q.fields.Статус) continue;
+    if (!['resolved', 'excluded'].includes(q.fields.Статус)) continue;
+    const pack = JSON.parse(q.fields.Пакет);
+    for (const c of pack.changes) {
+      if (read(path.resolve(dir, c.file)) !== c.after) throw new Error(`Закрытие ${q.id} требует восстановления документа ${c.file}`);
+    }
+  }
 }

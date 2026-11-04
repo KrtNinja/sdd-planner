@@ -42,9 +42,21 @@ function questionOperation(m, verb, input) {
   return questionCard(registryQuestions(loadFeature(m.dir), { id: q.id })[0]);
 }
 
-/** @param {string} verb @param {{id?: string}} input @param {string} dir */
+/** @param {string} verb @param {{id?: string, packageHash?: string, agreement?: string}} input @param {string} dir */
 function questionGuide(verb, input, dir) {
+  if (verb === 'prepare' && input.agreement !== undefined) return agreedGuide(dir, input.id);
+  if (['prepare', 'apply'].includes(verb)) return G.call(['ask', dir]);
+  if (verb === 'accept') return G.call(['questions', 'apply', dir, JSON.stringify({
+    key: `apply-${input.id}-${input.packageHash}`, id: input.id, packageHash: input.packageHash })]);
+  if (verb === 'revise') return G.call(['questions', 'resume', dir, JSON.stringify({ id: input.id })]);
   if (verb === 'resume') return 'продолжи только выбранную ветку по правилам выше';
   if (['answer', 'exclude'].includes(verb)) return G.call(['questions', 'resume', dir, JSON.stringify({ id: input.id })]);
   return G.stop;
+}
+
+/** @param {string} dir @param {string | undefined} id */
+function agreedGuide(dir, id) {
+  const q = registryQuestions(loadFeature(dir), { id })[0];
+  const approval = JSON.parse(q.fields.Согласование);
+  return G.call(['questions', 'apply', dir, JSON.stringify({ key: `apply-${id}-${approval.hash}`, id, packageHash: approval.hash })]);
 }

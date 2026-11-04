@@ -1,6 +1,7 @@
 // Вопрос человеку на этапе: варианты с рекомендацией и задания для них (ask / choose).
 // @ts-check
 import { registryQuestions, questionPending, independentDrafts } from './registry-view.mjs';
+import { decisionQuestion } from './decision-view.mjs';
 import { pendingAdrs } from './adr.mjs';
 import { showCmd, skill } from './config.mjs';
 import { neededAdrs, stubCount } from './cut.mjs';
@@ -171,6 +172,8 @@ function protocolQuestions(m, now) {
 export function askOf(m) {
   const st = stageOf(m);
   const pending = registryQuestions(m).filter(questionPending);
+  const prepared = pending.find((q) => q.fields.Пакет);
+  if (prepared) return { stage: st.now, questions: [decisionQuestion(m.dir, prepared)] };
   if (pending.length) return { stage: st.now, questions: [{
     header: 'Работа продолжается', question: `Нерешённых вопросов: ${pending.length}. Что делаем дальше?`,
     options: [

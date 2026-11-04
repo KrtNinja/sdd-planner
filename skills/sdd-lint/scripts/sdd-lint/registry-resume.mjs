@@ -47,7 +47,8 @@ function matchQuestions(m, candidates) {
 
 /** @param {string} stage */
 function stageRules(stage) {
-  if (stage === 'grill') return [requiredRules('grilling/SKILL.md'), requiredRules('sdd-grill/references/questions.md')].join('\n\n');
+  if (stage === 'grill') return [requiredRules('sdd-grill/SKILL.md'),
+    requiredRules('grilling/SKILL.md'), requiredRules('sdd-grill/references/questions.md')].join('\n\n');
   const skill = { spec: 'sdd-spec', scenarios: 'sdd-spec', tech: 'sdd-decide', slices: 'sdd-slices',
     adr: 'sdd-adr', review: 'sdd-review', decide: 'sdd-decide' }[stage];
   if (!skill) throw new Error(`Неизвестный исходный этап ${stage}`);

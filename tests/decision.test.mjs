@@ -206,3 +206,54 @@ test('подготовка пакета не мигрирует legacy даже 
   assert.throws(() => act(dir, 'prepare', proposal(dir)), /только в новом/);
   assert.equal(read(dir, 'spec.md'), SPEC);
 });
+
+test('recovery не публикует закрытый Q поверх изменённых после проверки документов', async () => {
+  const { recoverRegistry } = await import('../skills/sdd-lint/scripts/sdd-lint/registry-store.mjs');
+  const dir = setup();
+  act(dir, 'prepare', proposal(dir));
+  accept(dir);
+  const base = read(dir, 'questions.md');
+  act(dir, 'apply', { packageHash: hash(dir) });
+  const candidate = read(dir, 'questions.md');
+  const after = read(dir, 'spec.md');
+  fs.writeFileSync(path.join(dir, 'questions.md'), base);
+  fs.writeFileSync(path.join(dir, 'spec.md'), SPEC);
+  fs.writeFileSync(path.join(dir, 'questions.md.pending'), JSON.stringify({ base: questionDigest(base), md: candidate, hash: questionDigest(candidate) }));
+  assert.throws(() => recoverRegistry(dir), /требует восстановления документа/);
+  assert.equal(question(dir).fields.Статус, 'answered');
+  fs.writeFileSync(path.join(dir, 'spec.md'), after);
+  recoverRegistry(dir);
+  assert.equal(question(dir).fields.Статус, 'resolved');
+});
+
+test('R-09: один пакет через ask/choose; после согласия только механическое проведение', async () => {
+  const { run } = await import('../skills/sdd-lint/scripts/sdd-lint/run.mjs');
+  const { askOf } = await import('../skills/sdd-lint/scripts/sdd-lint/ask.mjs');
+  const dir = setup();
+  act(dir, 'prepare', proposal(dir));
+  const screen = askOf(loadFeature(dir)).questions[0];
+  assert.match(screen.preview, /Что меняется и почему/);
+  assert.equal(screen.options[0].label, 'Согласовать пакет');
+  const choice = run(['choose', dir, screen.options[0].id]);
+  assert.equal(choice.code, 0);
+  const output = choice.chunks.map((c) => c[1]).join('');
+  assert.match(output, /"questions","apply"/);
+  assert.equal(question(dir).fields.Статус, 'answered');
+  const next = askOf(loadFeature(dir)).questions[0].options[0];
+  assert.equal(next.label, 'Завершить проведение');
+  assert.equal(run(['choose', dir, next.id]).code, 0);
+  assert.equal(question(dir).fields.Статус, 'resolved');
+  assert.equal(run(['choose', dir, screen.options[0].id]).code, 2);
+});
+
+test('R-04/R-09: уже согласованное решение не требует нового служебного подтверждения', async () => {
+  const { run } = await import('../skills/sdd-lint/scripts/sdd-lint/run.mjs');
+  const dir = setup();
+  const input = proposal(dir, { key: 'agreed', id: 'Q1', origin: 'analyst', agreement: 'Уже согласовано, внеси этот пакет' });
+  const result = run(['questions', 'prepare', dir, JSON.stringify(input)]);
+  assert.equal(result.code, 0);
+  assert.match(result.chunks.map((c) => c[1]).join(''), /"questions","apply"/);
+  assert.equal(JSON.parse(question(dir).fields.Согласование).decision, input.agreement);
+  act(dir, 'apply', { packageHash: hash(dir) });
+  assert.equal(question(dir).fields.Статус, 'resolved');
+});
