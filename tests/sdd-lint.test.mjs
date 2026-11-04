@@ -933,7 +933,7 @@ test('ask: перед merge — вопрос про временные арте�
   assert.ok(fs.existsSync(file(cwd, 'comments/brainstorming.md')));
   assert.equal(run(cwd, 'choose', 'docs/comments', 'close:yes').code, 0);
   assert.ok(!fs.existsSync(file(cwd, 'comments/brainstorming.md')));
-  assert.match(run(cwd, 'close', 'comments').out, /Временных артефактов нет/);
+  assert.match(run(cwd, 'close', 'comments').out, /Временных файлов нет/);
 });
 
 // ---------- _work/: папка временных артефактов ----------
