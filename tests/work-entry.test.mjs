@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { checkWork, moveLegacy } from '../skills/sdd-lint/scripts/sdd-lint/work.mjs';
-import { feature, brief, inDir, JSON_ENV } from './helpers.mjs';
+import { feature, brief, inDir, JSON_ENV, commitAll, git } from './helpers.mjs';
 
 test('work: ссылка в рабочие артефакты сохраняет первый символ и обрезается до 80', () => {
   const text = 'см. _work/plan.md ' + 'a'.repeat(90);
@@ -20,5 +20,20 @@ test('moveLegacy: два переноса с общим родителем бе�
     assert.deepEqual(['_work/review/spec.md', '_work/plan.md'].map((f) => fs.readFileSync(f, 'utf8')), ['ревью', 'план']);
     assert.deepEqual(['review', 'slices/plan.md'].map((f) => fs.existsSync(path.resolve(f))), [false, false]);
     assert.deepEqual(moveLegacy(m), []);
+  });
+});
+
+
+test('moveLegacy: ошибка чтения индекса Git использует перенос файлов и сохраняет содержимое', () => {
+  const m = feature({ 'review/spec.md': 'ревью', 'slices/plan.md': 'план' });
+  commitAll(m.dir);
+  const g = git(m.dir);
+  fs.writeFileSync(path.join(m.dir, '.git/index'), 'broken index');
+  assert.throws(() => g('ls-files', '--', path.join(m.dir, 'review')));
+  assert.equal(g('rev-parse', '--show-toplevel').trim(), m.dir);
+  inDir(m.dir, JSON_ENV, () => {
+    assert.deepEqual(moveLegacy(m), ['review → _work/review', 'slices/plan.md → _work/plan.md']);
+    assert.deepEqual(['_work/review/spec.md', '_work/plan.md'].map((f) => fs.readFileSync(f, 'utf8')), ['ревью', 'план']);
+    assert.deepEqual(['review', 'slices/plan.md'].map((f) => fs.existsSync(f)), [false, false]);
   });
 });

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { genLinks, linkSpec } from '../skills/sdd-lint/scripts/sdd-lint/gen-links.mjs';
+import { genLinks, linkSpec, linkSlice } from '../skills/sdd-lint/scripts/sdd-lint/gen-links.mjs';
 import { createIo, Exit } from '../skills/sdd-lint/scripts/sdd-lint/io.mjs';
 import { parseArgs } from '../skills/sdd-lint/scripts/sdd-lint/args.mjs';
 import { feature, slice } from './helpers.mjs';
@@ -37,4 +37,22 @@ test('linkSpec: старые назначения объединяются по 
     '## Не про поведение', '- не про поведение (из протокола: )', '- не про поведение (из протокола: 5)', ''].join('\n');
   assert.equal(fs.readFileSync(m.specFile, 'utf8'), expected);
   assert.ok(message.endsWith('Ссылок на строки протокола: 0. Нет в протоколе: 1, 2, 3, 4, П1, 5 — исправь номер руками.'), message);
+});
+
+
+test('linkSlice: несколько старых ссылок переносятся снизу вверх; существующая строка не дублируется', () => {
+  const original = ['# Slice', '```', 'AC-001-B1 [FR-1] Один', '  WHEN запрос', '  THEN ответ', '```',
+    '```', 'AC-001-B2 [FR-2] Два', '  WHEN запрос', '  THEN ответ', '```',
+    '```', 'AC-001-B3 [FR-1] Три', '  WHEN запрос', '  THEN ответ', '```', 'Проверяет: FR-2', ''].join('\n');
+  const m = feature({ 'spec.md': '```\nFR-1 Поиск\n```\n```\nFR-2 Ответ\n```\n', 'slices/001-a.md': original });
+  const sl = m.slices.get('001');
+  assert.equal(linkSlice(sl, m.spec), 2);
+  const expected = ['# Slice', '```', 'AC-001-B1 Один', '  WHEN запрос', '  THEN ответ', '```',
+    'Проверяет: [FR-1](../spec.md#L2)', '```', 'AC-001-B2 Два', '  WHEN запрос', '  THEN ответ', '```',
+    'Проверяет: [FR-2](../spec.md#L5)', '```', 'AC-001-B3 Три', '  WHEN запрос', '  THEN ответ', '```',
+    'Проверяет: [FR-2](../spec.md#L5)', ''].join('\n');
+  assert.equal(fs.readFileSync(sl.file, 'utf8'), expected);
+  const reloaded = feature({ 'spec.md': m.spec.md, 'slices/001-a.md': expected });
+  assert.equal(linkSlice(reloaded.slices.get('001'), reloaded.spec), 0);
+  assert.equal(fs.readFileSync(reloaded.slices.get('001').file, 'utf8'), expected);
 });
