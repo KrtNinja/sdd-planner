@@ -123,7 +123,7 @@ test('задача фразой и имя: протокол из шаблона,
   const r = run(cwd, 'start', 'добавить панель настроек пользователя', '--slug', 'user-settings');
   assert.equal(r.code, 0, r.out);
   const md = read(cwd, 'docs/user-settings/brainstorming.md');
-  assert.match(md, /^# Добавить панель настроек пользователя — Brainstorming/);
+  assert.match(md, /^# Добавить панель настроек пользователя — Обсуждение задачи/);
   assert.match(md, /^Статус: идёт$/m);
   assert.match(md, /^Запрос: «добавить панель настроек пользователя»$/m);
   assert.match(md, /^Источники: </m);
@@ -179,7 +179,7 @@ test('задача файлом: «Автоматически» — имя из 
   const r = run(cwd, 'start', '@docs/inbox/user-settings.md', '--name', 'name:auto');
   assert.equal(r.code, 0, r.out);
   const md = read(cwd, 'docs/user-settings/brainstorming.md');
-  assert.match(md, /^# Панель настроек — Brainstorming/);
+  assert.match(md, /^# Панель настроек — Обсуждение задачи/);
   assert.match(md, /^Запрос: файл docs\/inbox\/user-settings\.md$/m);
   assert.match(r.out, /"id": "src:give"/);
 });
