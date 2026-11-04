@@ -2544,7 +2544,7 @@ compdef _sdd_lint sdd-lint sdd-lint.mjs
 ~~~~text
 **sdd-lint** — проверки планирования SDD
 
-Фичи в `docs/`:
+Задачи в `docs/`:
 
 - **comments** — Части работы ожидают проверки → проверка ИИ в новой сессии: `/sdd-review comments slices`
 
@@ -2563,9 +2563,9 @@ compdef _sdd_lint sdd-lint sdd-lint.mjs
 - `/sdd-lint next FR|NFR|AC|slice|adr comments` — следующий свободный номер
 - `/sdd-lint export comments` — требования в JSON для зоны реализации
 
-Закрыть фичу перед merge — `/sdd-close comments`: убирает протокол и `_work/` (ревью, план нарезки) — после подтверждения.
+Завершить задачу перед слиянием ветки — `/sdd-close comments`: убирает протокол и `_work/` (результаты проверки, план разбиения работы) — после подтверждения.
 
-Справка по команде: `/sdd-lint help <команда>`. Путь к фиче дописывает Tab после @: `@docs/comments/`
+Справка по команде: `/sdd-lint help <команда>`. Путь к задаче дописывает Tab после @: `@docs/comments/`
 
 Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~

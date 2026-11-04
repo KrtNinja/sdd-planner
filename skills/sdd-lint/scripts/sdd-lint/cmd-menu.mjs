@@ -21,10 +21,10 @@ export function cmdMenu(ctx) {
   const known = listFeatures();
   const out = ['**sdd-lint** — проверки планирования SDD', ''];
   let tip = null;
-  if (!isDir(DOCS)) out.push(`Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`);
-  else if (!known.length) out.push(`В ${DOCS}/ пока нет фич. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.`);
+  if (!isDir(DOCS)) out.push(`Нет папки ${DOCS}/ — запускайте из корня репозитория с документацией.`);
+  else if (!known.length) out.push(`В ${DOCS}/ пока нет задач. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.`);
   else {
-    out.push(`Фичи в ${code(`${DOCS}/`)}:`, '');
+    out.push(`Задачи в ${code(`${DOCS}/`)}:`, '');
     out.push(...known.map(featureMenuLine));
     // Фича одна — её шаг уходит в подсказку строки ввода; при нескольких выбор за человеком.
     if (known.length === 1) tip = tipLine(stageOf(loadFeature(path.join(DOCS, known[0]))).tip);
@@ -45,10 +45,12 @@ export function cmdMenu(ctx) {
     [lintCmd('export', ex), CMD_INFO.export],
   ];
   out.push('', 'Команды:', '', ...rows.map(([c, d]) => `- ${code(c)} — ${d}`));
-  out.push('', `Закрыть фичу перед merge — ${skillCode('sdd-close', ex)}: убирает протокол и ${code('_work/')} (ревью, план нарезки) — после подтверждения.`);
+  out.push('',
+    `Завершить задачу перед слиянием ветки — ${skillCode('sdd-close', ex)}: убирает протокол и ${code('_work/')} ` +
+    '(результаты проверки, план разбиения работы) — после подтверждения.');
   out.push(
     '',
-    `Справка по команде: ${lintCode('help', '<команда>')}. Путь к фиче дописывает Tab после @: ${code(`@${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`)}`,
+    `Справка по команде: ${lintCode('help', '<команда>')}. Путь к задаче дописывает Tab после @: ${code(`@${DOCS}/${ex === '<feature>' ? '' : `${ex}/`}`)}`,
   );
   if (tip) out.push('', tip);
   ctx.io.log(out.join('\n'));
@@ -184,8 +186,8 @@ function contextualOptions(slot, args, emit) {
   else if (slot === 'option' && resolveFeature(args[0]))
     askOf(loadFeature(/** @type {string} */ (resolveFeature(args[0])))).questions.forEach((q) => q.options.forEach((o) => emit(o.id, o.label)));
   else if (slot === 'side' && /^ac$/i.test(args[0])) {
-    emit('B', 'AC сервисной половины');
-    emit('F', 'AC frontend-половины');
+    emit('B', 'AC серверной части');
+    emit('F', 'AC пользовательского интерфейса');
   }
 }
 
