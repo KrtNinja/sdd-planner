@@ -183,5 +183,5 @@ test('close: замечание «к разбору» — без решения'
   const cwd = workspace();
   writeReview(cwd, [REVIEW_ROWS[0]]);
   run(cwd, 'choose', 'docs/comments', 'remarks:slices:all');
-  assert.match(run(cwd, 'close', 'docs/comments').out, /Замечания ревью без решения: R1/);
+  assert.match(run(cwd, 'close', 'docs/comments').out, /Замечания проверки без решения: R1/);
 });

@@ -229,7 +229,7 @@ test('close без --yes ничего не удаляет: что уйдёт, п
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /^\*\*Закрытие docs\/comments\*\* — пока ничего не удалено\./);
   assert.match(r.out, /Удалится:\n- `docs\/comments\/brainstorming\.md`\n- `docs\/comments\/spec\.md`: уберутся ссылки на протокол/);
-  assert.match(r.out, /Последствия:\n- Планирование не закончено \(slices не одобрены\)/);
+  assert.match(r.out, /Последствия:\n- Планирование не закончено \(части работы не одобрены\)/);
   assert.match(r.out, /Не git-репозиторий: удалённое не восстановить/);
   assert.match(r.out, /Подтвердить: `node scripts\/sdd-lint\.mjs close docs\/comments --yes`$/m);
   assert.ok(fs.existsSync(file(cwd, 'comments/brainstorming.md')));
@@ -877,12 +877,12 @@ test('close: удаляет _work/ целиком вместе с протоко
   assert.match(st, /перед слиянием ветки убрать временные файлы \(`docs\/comments\/brainstorming\.md`, `docs\/comments\/_work\/`\): `\/sdd-close comments`/);
   const p = run(cwd, 'close', 'comments');
   assert.match(p.out, /\n- `docs\/comments\/_work\/notes\.txt`\n- `docs\/comments\/_work\/plan\.md`\n- `docs\/comments\/_work\/review\/slices\.md`\n/);
-  assert.match(p.out, /Не закоммичено: `docs\/comments\/_work\/notes\.txt`, `docs\/comments\/_work\/plan\.md`, `docs\/comments\/_work\/review\/slices\.md` — удалится без следа/);
+  assert.match(p.out, /Не сохранено в коммите: `docs\/comments\/_work\/notes\.txt`, `docs\/comments\/_work\/plan\.md`, `docs\/comments\/_work\/review\/slices\.md` — удалится без следа/);
   assert.ok(fs.existsSync(file(cwd, 'comments/_work/plan.md')));
   const r = run(cwd, 'close', 'comments', '--yes');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /Удалено: `docs\/comments\/brainstorming\.md`, `docs\/comments\/_work\/`/);
-  assert.match(r.out, /Закрыто с последствиями:\n- Не закоммичено/);
+  assert.match(r.out, /Закрыто с последствиями:\n- Не сохранено в коммите/);
   for (const f of ['comments/brainstorming.md', 'comments/_work']) assert.ok(!fs.existsSync(file(cwd, f)), f);
   assert.match(check(cwd).stage, /временные файлы убраны/);
   assert.deepEqual(diffRules(cwd), []);
@@ -894,13 +894,13 @@ test('close: блокер ревью без решения — в последс
   const r = run(cwd, 'close', 'comments', '--json');
   assert.equal(r.code, 0, r.out);
   const v = JSON.parse(r.out);
-  assert.match(v.preview, /Блокеры ревью без решения: R1 \(`docs\/comments\/_work\/review\/slices\.md`\) — в FR и AC их нет/);
+  assert.match(v.preview, /Блокеры проверки без решения: R1 \(`docs\/comments\/_work\/review\/slices\.md`\) — в FR и AC их нет/);
   assert.ok(v.card.startsWith(v.preview));
   assert.deepEqual(v.questions[0].options.map((o) => [o.id, o.label, !!o.recommended]), [
     ['close:no', 'Не удалять', true],
     ['close:yes', 'Удалить', false],
   ]);
-  assert.match(v.preview, /после удаления пропадут совсем: файл ревью не закоммичен/);
+  assert.match(v.preview, /после удаления пропадут совсем: файл проверки не сохранён в коммите/);
   assert.ok(fs.existsSync(file(cwd, 'comments/brainstorming.md')));
   assert.ok(fs.existsSync(file(cwd, 'comments/_work/review/slices.md')));
   assert.equal(run(cwd, 'choose', 'docs/comments', 'close:no').code, 0);
@@ -911,10 +911,10 @@ test('close: замечание без решения не мешает, но н
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   withReview(cwd, oneFinding('', 'замечание'));
   commitAll(cwd, 'review');
-  assert.match(run(cwd, 'close', 'comments').out, /Замечания ревью без решения: R1 \(`docs\/comments\/_work\/review\/slices\.md`\) — уйдут в историю git/);
+  assert.match(run(cwd, 'close', 'comments').out, /Замечания проверки без решения: R1 \(`docs\/comments\/_work\/review\/slices\.md`\) — уйдут в историю git/);
   const r = run(cwd, 'close', 'comments', '--yes');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /Закрыто с последствиями:[\s\S]*Замечания ревью без решения: R1/);
+  assert.match(r.out, /Закрыто с последствиями:[\s\S]*Замечания проверки без решения: R1/);
 });
 test('ask: перед merge — вопрос про временные артефакты, вариант ведёт на /sdd-close', () => {
   const cwd = workspace();
@@ -929,7 +929,7 @@ test('ask: перед merge — вопрос про временные арте�
   // На экране — вопрос подтверждения close со своей строкой ⚙, а не переход к следующему вопросу этапа.
   const shown = spawnSync('node', [LINT, 'choose', 'docs/comments', 'close'], { cwd, encoding: 'utf8', env: { ...process.env, ...JSON_ENV, SDD_VIEW: '' } }).stdout;
   assert.match(shown, /^\*\*Закрытие docs\/comments\*\* — пока ничего не удалено\./);
-  assert.match(shown, /\n\n⚙ sdd: вопрос «Закрыть фичу» → \["choose","docs\/comments","<id>"\] · варианты: 1=close:no, 2=close:yes\n$/);
+  assert.match(shown, /\n\n⚙ sdd: вопрос «Завершить задачу» → \["choose","docs\/comments","<id>"\] · варианты: 1=close:no, 2=close:yes\n$/);
   assert.ok(fs.existsSync(file(cwd, 'comments/brainstorming.md')));
   assert.equal(run(cwd, 'choose', 'docs/comments', 'close:yes').code, 0);
   assert.ok(!fs.existsSync(file(cwd, 'comments/brainstorming.md')));
