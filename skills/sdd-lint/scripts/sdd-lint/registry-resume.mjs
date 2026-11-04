@@ -18,7 +18,7 @@ function requiredRules(relative) {
 
 /** @param {Feature} m @param {{id?: string, candidates?: string[]}} input */
 export function resumeQuestion(m, input) {
-  if (!m.flow.state) throw new Error('Продолжение Q доступно только в новом процессе');
+  if (!m.flow.state) throw new Error('Не найден .sdd-flow.json для продолжения Q');
   if (!input.id) return matchQuestions(m, input.candidates);
   const q = registryQuestions(m, { id: input.id })[0];
   if (!q) throw new Error(`Вопрос ${input.id} не найден; похожий вопрос не подставляется`);

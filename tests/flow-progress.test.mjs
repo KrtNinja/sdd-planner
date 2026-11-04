@@ -120,15 +120,15 @@ test('U-09: каждый скилл получает только контрак
   inDir(root, JSON_ENV, () => {
     const grill = text(['prompt', 'sdd-grill', 'validation']);
     assert.match(grill, /Короткий маршрут/);
-    assert.doesNotMatch(grill, /# Техническое обеспечение нового процесса|# Сценарии нового процесса/);
+    assert.doesNotMatch(grill, /# Техническое обеспечение|# Пользовательские сценарии/);
     const spec = text(['prompt', 'sdd-spec', 'validation']);
-    assert.doesNotMatch(spec, /# Техническое обеспечение нового процесса|# Сценарии нового процесса/);
+    assert.doesNotMatch(spec, /# Техническое обеспечение|# Пользовательские сценарии/);
     const scenarios = text(['prompt', 'sdd-scenarios', 'validation']);
-    assert.match(scenarios, /# Сценарии нового процесса/);
-    assert.doesNotMatch(scenarios, /# Техническое обеспечение нового процесса/);
+    assert.match(scenarios, /# Пользовательские сценарии/);
+    assert.doesNotMatch(scenarios, /# Техническое обеспечение/);
     const tech = text(['prompt', 'sdd-tech', 'validation']);
-    assert.match(tech, /# Техническое обеспечение нового процесса/);
-    assert.doesNotMatch(tech, /# Сценарии нового процесса/);
+    assert.match(tech, /# Техническое обеспечение/);
+    assert.doesNotMatch(tech, /# Пользовательские сценарии/);
     assert.match(progressText(loadFeature(dir)), /пока нет завершённых результатов/);
   });
 });

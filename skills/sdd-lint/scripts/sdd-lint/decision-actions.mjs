@@ -23,7 +23,7 @@ const unlockedFeature = (dir) => loadFeature(dir, (file) => file.endsWith('quest
 
 /** @param {string} dir @param {string} verb @param {Input} input */
 export function decisionAction(dir, verb, input) {
-  if (!loadFeature(dir).flow.state) throw new Error('Пакет доступен только в новом процессе');
+  if (!loadFeature(dir).flow.state) throw new Error('Не найден .sdd-flow.json для пакета решения');
   if (!input || typeof input.key !== 'string' || !/^[\w.-]{1,120}$/.test(input.key)) throw new Error('Нужен постоянный ключ действия key');
   return writeRegistry(dir, (md) => {
     const { records, previous, digest } = questionRequest(md, verb, input);

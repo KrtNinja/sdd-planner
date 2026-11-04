@@ -203,7 +203,7 @@ test('R-11: ответ после настоящего close, без восст�
 test('подготовка пакета не мигрирует legacy даже при оставшемся questions.md', () => {
   const dir = setup();
   fs.unlinkSync(path.join(dir, '.sdd-flow.json'));
-  assert.throws(() => act(dir, 'prepare', proposal(dir)), /только в новом/);
+  assert.throws(() => act(dir, 'prepare', proposal(dir)), /Не найден \.sdd-flow\.json/);
   assert.equal(read(dir, 'spec.md'), SPEC);
 });
 

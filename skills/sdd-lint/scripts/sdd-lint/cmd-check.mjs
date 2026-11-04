@@ -205,7 +205,7 @@ function maybeFlowTaskGate(ctx, m, stage) {
   const task = ctx.args.pos[2];
   if (stage !== 'spec' || !['scenarios', 'tech'].includes(task)) return;
   if (!m.flow.state || !m.spec) {
-    ctx.io.log(screen('Этот шаг требует spec.md нового процесса; legacy остаётся на прежнем маршруте.', G.stop));
+    ctx.io.log(screen('Для этого шага нужны spec.md и .sdd-flow.json.', G.stop));
     ctx.io.exit(3);
   }
   ctx.io.log(screen(`Продолжаем ${task}: черновая работа, без отдельного согласования.`,

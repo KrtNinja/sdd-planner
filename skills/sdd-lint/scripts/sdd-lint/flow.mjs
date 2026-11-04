@@ -68,7 +68,7 @@ export function checkDocumentationFlow(m) {
 
 /** @param {import('./model.mjs').Feature} m */
 export function requireDocumentationFlow(m) {
-  if (!m.flow.state) throw new Error('Действие доступно только в новом процессе; миграции нет');
+  if (!m.flow.state) throw new Error('Не найден .sdd-flow.json для работы с ID и связями');
   const problems = checkDocumentationFlow(m);
   if (problems.length) throw new Error(problems.map((p) => p.msg).join('; '));
 }

@@ -1,6 +1,6 @@
 {
   "baseline": "b7fcb83f5a8aa16bdab39678932529526e456d29",
-  "implementation": "9cca15e",
+  "implementation": "PR #56: текущие исходники после сокращения инструкций",
   "kind": "scripted fixtures; no target model calls",
   "before": [
     {
@@ -291,65 +291,65 @@
         {
           "command": "prompt sdd-grill validation",
           "code": 0,
-          "chars": 12761,
-          "ms": 7.25
+          "chars": 12651,
+          "ms": 5.27
         },
         {
           "command": "ask docs/validation",
           "code": 0,
           "chars": 409,
-          "ms": 3.62
+          "ms": 5.05
         },
         {
           "command": "prompt sdd-spec validation",
           "code": 0,
-          "chars": 12098,
-          "ms": 0.93
+          "chars": 11829,
+          "ms": 1.54
         },
         {
           "command": "prompt sdd-scenarios validation",
           "code": 0,
-          "chars": 12885,
-          "ms": 3.18
+          "chars": 12678,
+          "ms": 4.26
         },
         {
           "command": "prompt sdd-tech validation",
           "code": 0,
-          "chars": 15997,
-          "ms": 1.16
+          "chars": 15727,
+          "ms": 1.12
         },
         {
           "command": "gen links docs/validation",
           "code": 0,
           "chars": 56,
-          "ms": 2.42
+          "ms": 4.12
         },
         {
           "command": "ask docs/validation",
           "code": 0,
           "chars": 645,
-          "ms": 3.06
+          "ms": 3.81
         },
         {
           "command": "prompt sdd-review validation",
           "code": 0,
-          "chars": 25425,
-          "ms": 1.22
+          "chars": 25116,
+          "ms": 1.67
         },
         {
           "command": "approve spec docs/validation",
           "code": 0,
           "chars": 178,
-          "ms": 40.83
+          "ms": 33.17
         },
         {
           "command": "gate slices docs/validation",
           "code": 0,
           "chars": 591,
-          "ms": 5.7
+          "ms": 7.74
         }
       ],
-      "outputChars": 81045,
+      "outputChars": 79880,
       "explicitReads": [
         {
           "file": "brainstorming.md",
@@ -365,7 +365,7 @@
         }
       ],
       "repeatedExplicitReads": 0,
-      "timeMs": 69.37
+      "timeMs": 67.75
     },
     {
       "name": "export",
@@ -373,89 +373,89 @@
         {
           "command": "prompt sdd-grill export",
           "code": 0,
-          "chars": 12753,
-          "ms": 2.11
+          "chars": 12643,
+          "ms": 1.77
         },
         {
           "command": "ask docs/export",
           "code": 0,
           "chars": 397,
-          "ms": 0.64
+          "ms": 0.99
         },
         {
           "command": "prompt sdd-spec export",
           "code": 0,
-          "chars": 12090,
-          "ms": 0.8
+          "chars": 11821,
+          "ms": 1.3
         },
         {
           "command": "prompt sdd-scenarios export",
           "code": 0,
-          "chars": 12877,
-          "ms": 1.2
+          "chars": 12670,
+          "ms": 1.85
         },
         {
           "command": "prompt sdd-tech export",
           "code": 0,
-          "chars": 15989,
-          "ms": 0.98
+          "chars": 15719,
+          "ms": 2.52
         },
         {
           "command": "gen links docs/export",
           "code": 0,
           "chars": 52,
-          "ms": 1.96
+          "ms": 0.98
         },
         {
           "command": "questions add docs/export",
           "code": 0,
           "chars": 97,
-          "ms": 17.86
+          "ms": 15.96
         },
         {
           "command": "questions defer docs/export",
           "code": 0,
           "chars": 107,
-          "ms": 4.38
+          "ms": 4.59
         },
         {
           "command": "ask docs/export",
           "code": 0,
           "chars": 340,
-          "ms": 0.95
+          "ms": 0.83
         },
         {
           "command": "approve spec docs/export",
           "code": 3,
           "chars": 107,
-          "ms": 0.47
+          "ms": 0.34
         },
         {
           "command": "questions answer docs/export",
           "code": 0,
           "chars": 166,
-          "ms": 3.8
+          "ms": 7.21
         },
         {
           "command": "questions resume docs/export",
           "code": 0,
-          "chars": 14185,
-          "ms": 1.08
+          "chars": 14146,
+          "ms": 7.3
         },
         {
           "command": "ask docs/export",
           "code": 0,
           "chars": 409,
-          "ms": 0.85
+          "ms": 0.83
         },
         {
           "command": "prompt sdd-review export",
           "code": 0,
-          "chars": 25413,
-          "ms": 0.86
+          "chars": 25104,
+          "ms": 2.97
         }
       ],
-      "outputChars": 94982,
+      "outputChars": 93778,
       "explicitReads": [
         {
           "file": "brainstorming.md",
@@ -471,7 +471,7 @@
         }
       ],
       "repeatedExplicitReads": 0,
-      "timeMs": 37.94
+      "timeMs": 49.43999999999999
     },
     {
       "name": "complex",
@@ -479,107 +479,107 @@
         {
           "command": "prompt sdd-grill complex",
           "code": 0,
-          "chars": 12755,
-          "ms": 1.62
+          "chars": 12645,
+          "ms": 1.05
         },
         {
           "command": "ask docs/complex",
           "code": 0,
           "chars": 400,
-          "ms": 0.33
+          "ms": 0.99
         },
         {
           "command": "prompt sdd-spec complex",
           "code": 0,
-          "chars": 12092,
-          "ms": 0.47
+          "chars": 11823,
+          "ms": 0.79
         },
         {
           "command": "prompt sdd-scenarios complex",
           "code": 0,
-          "chars": 12879,
-          "ms": 0.92
+          "chars": 12672,
+          "ms": 0.9
         },
         {
           "command": "prompt sdd-tech complex",
           "code": 0,
-          "chars": 15991,
-          "ms": 0.79
+          "chars": 15721,
+          "ms": 0.93
         },
         {
           "command": "gen links docs/complex",
           "code": 0,
           "chars": 53,
-          "ms": 1.33
+          "ms": 2.35
         },
         {
           "command": "approve adr docs/complex",
           "code": 0,
           "chars": 384,
-          "ms": 15.94
+          "ms": 15
         },
         {
           "command": "scenarios move docs/complex",
           "code": 0,
           "chars": 135,
-          "ms": 25.58
+          "ms": 25.56
         },
         {
           "command": "trace docs/complex SC-1",
           "code": 0,
           "chars": 315,
-          "ms": 1.12
+          "ms": 0.83
         },
         {
           "command": "questions add docs/complex",
           "code": 0,
           "chars": 97,
-          "ms": 10.59
+          "ms": 6.8
         },
         {
           "command": "questions defer docs/complex",
           "code": 0,
           "chars": 107,
-          "ms": 9.21
+          "ms": 8.42
         },
         {
           "command": "ask docs/complex",
           "code": 0,
           "chars": 341,
-          "ms": 0.7
+          "ms": 0.85
         },
         {
           "command": "approve spec docs/complex",
           "code": 3,
           "chars": 107,
-          "ms": 0.66
+          "ms": 0.71
         },
         {
           "command": "questions answer docs/complex",
           "code": 0,
           "chars": 167,
-          "ms": 5.58
+          "ms": 4.04
         },
         {
           "command": "questions resume docs/complex",
           "code": 0,
-          "chars": 23983,
-          "ms": 1.42
+          "chars": 23944,
+          "ms": 1.29
         },
         {
           "command": "ask docs/complex",
           "code": 0,
           "chars": 410,
-          "ms": 1.24
+          "ms": 1.1
         },
         {
           "command": "prompt sdd-review complex",
           "code": 0,
-          "chars": 25416,
-          "ms": 1.44
+          "chars": 25107,
+          "ms": 1.51
         }
       ],
-      "outputChars": 105632,
+      "outputChars": 104428,
       "explicitReads": [
         {
           "file": "brainstorming.md",
@@ -599,7 +599,7 @@
         }
       ],
       "repeatedExplicitReads": 0,
-      "timeMs": 78.94
+      "timeMs": 73.11999999999999
     }
   ]
 }

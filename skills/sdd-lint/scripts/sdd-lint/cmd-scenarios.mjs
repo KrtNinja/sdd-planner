@@ -53,7 +53,7 @@ export function cmdScenarios(ctx) {
 
 /** @param {Feature} m @param {string} verb @param {string} query */
 function operate(m, verb, query) {
-  if (!m.flow.state) throw new Error('Сценарии доступны только в новом процессе; legacy не меняется');
+  if (!m.flow.state) throw new Error('Не найден .sdd-flow.json для работы со сценариями');
   if (verb === 'move') return move(m);
   if (verb === 'find') return findScenarios(m, query);
   if (verb === 'status') { requireDocumentationFlow(m); return scenarioStatus(m); }

@@ -11,7 +11,7 @@ const load = (dir) => parseFlowState(fs.readFileSync(statePath(dir), 'utf8'));
 test('F-01/F-02: отсутствие версии — legacy; opt-in только пустой тестовой фичи', () => {
   assert.equal(parseFlowState(null), null);
   const dir = tmpDir();
-  assert.throws(() => reserveFlowId(dir, 'Q'), /не мигрируют/);
+  assert.throws(() => reserveFlowId(dir, 'Q'), /\.sdd-flow\.json/);
   assert.deepEqual(initTestFlow(dir), { version: 2, next: { Q: 1, SC: 1, STEP: 1 } });
   assert.throws(() => initTestFlow(dir), /пустой/);
   assert.throws(() => parseFlowState('{'), SyntaxError);

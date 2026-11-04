@@ -123,7 +123,7 @@ export function helpFor(name) {
   if (name === 'scenarios') return 'scenarios <status|find|move|recover> <feature> [поиск] [--json]';
   if (name === 'questions') return 'questions <add|defer|answer|exclude|scope|list|work|resume|' +
     'prepare|accept|apply|revise|history|recover> <feature> <JSON> [--json]\n' +
-    'Реестр тестового нового процесса; действия с key сохраняются один раз. Контракт: tools/documentation-flow.md\n' +
+    'Реестр вопросов; действия с key сохраняются один раз. Контракт: tools/documentation-flow.md\n' +
     'ask — карточка продолжения; resume — исходная ветка Q; trace <feature> Qn|SC-n|TECH|ADR-nnnn — связи для пересмотра, не доказательство полноты.';
   const blocks = HELP.split('\n\n')[1].split(/\n(?=  sdd-lint)/);
   // Каждый блок постоянного HELP начинается с sdd-lint и имени команды.

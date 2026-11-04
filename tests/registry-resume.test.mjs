@@ -115,7 +115,7 @@ test('исходные этапы используют актуальные пр
     assert.match(resumeQuestion(loadFeature(dir), { id: 'Q1' }), new RegExp(`Исходный этап: ${stage}`));
   }
   fs.unlinkSync(path.join(dir, '.sdd-flow.json'));
-  assert.throws(() => resumeQuestion(loadFeature(dir), { id: 'Q1' }), /только в новом/);
+  assert.throws(() => resumeQuestion(loadFeature(dir), { id: 'Q1' }), /Не найден \.sdd-flow\.json/);
 });
 
 test('контекст SC содержит только выбранную ветку и сохраняет блоки кода', async () => {
