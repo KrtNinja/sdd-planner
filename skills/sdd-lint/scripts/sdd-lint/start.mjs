@@ -31,12 +31,12 @@ const rename = (d) => `другое имя папки → ${A(['start', d, '--re
 
 /** @param {Feature} m @param {Question} q @param {string[]} [lead] */
 const questionText = (m, q, lead = []) =>
-  viewText(questionsView(rel(m.dir), 'Brainstorming: источники', [q], { lead: blocks(lead), extra: [rename(rel(m.dir))] }));
+  viewText(questionsView(rel(m.dir), 'Обсуждение задачи: источники', [q], { lead: blocks(lead), extra: [rename(rel(m.dir))] }));
 /** @param {Feature} m @param {boolean} created @param {string[] | null} [again] */
 function researchText(m, created, again = null) {
   const d = rel(m.dir);
   const say = created
-    ? `Папка фичи — \`${d}\` (другое имя — напишите, какое). Изучаю источники, это займёт несколько минут.`
+    ? `Папка задачи — \`${d}\` (другое имя — напишите, какое). Изучаю источники, это займёт несколько минут.`
     : 'Изучаю источники, это займёт несколько минут.';
   return screen(
     blocks(again || say),
@@ -70,7 +70,8 @@ function readyText(m, st, created, warn) {
   if (created) parts.push(rename(d));
   const say = rows
     ? `Продолжаем \`${d}\`: решений ${rows}. Всё нужное — в протоколе и контексте, историю чата держать не нужно.`
-    : `Начинаем brainstorming \`${d}\`${created ? ' (другое имя папки — напишите, какое)' : ''}. Вопросы — блоками; отвечайте вариантом или своими словами.`;
+    : `Начинаем обсуждение задачи \`${d}\`${created ? ' (другое имя папки — напишите, какое)' : ''}. ` +
+      'Вопросы — блоками; отвечайте вариантом или своими словами.';
   return screen(blocks(say, warn), parts);
 }
 
@@ -87,8 +88,8 @@ function resumeWithoutProtocol(m) {
   const d = rel(m.dir);
   if (m.spec)
     return screen(
-      `Brainstorming \`${d}\` пройден и закрыт: есть spec.md. Поменять поведение — ${skillCode('sdd-decide', m.name, '"<вопрос>"', '"<решение>"')}; ` +
-        `что дальше по фиче — ${lintCode(m.name)}.`,
+      `Обсуждение задачи \`${d}\` завершено: есть spec.md. Поменять поведение — ${skillCode('sdd-decide', m.name, '"<вопрос>"', '"<решение>"')}; ` +
+        `что дальше по задаче — ${lintCode(m.name)}.`,
       G.stop,
     );
   return askTask({}, m.name);
@@ -99,7 +100,7 @@ function resumeReadyProtocol(m) {
   const { stage, questions } = askOf(m);
   return viewText(
     questionsView(d, stage, questions, {
-      lead: `Протокол \`${d}\` готов: brainstorming закончен, новое решение — через ${skillCode('sdd-decide', m.name)}.`,
+      lead: `Протокол \`${d}\` готов: обсуждение задачи закончено, новое решение — через ${skillCode('sdd-decide', m.name)}.`,
     }),
   );
 }
@@ -116,7 +117,7 @@ function resumeResearch(m, created) {
     if (runs <= 2)
       return researchText(m, created, [
         `Контекст \`${rel(st.ctx.file)}\` не прошёл проверку — изучаю заново, попытка ${runs} из 2:\n${st.errs.map(item).join('\n')}`,
-        'Сабагент получит этот список вместе с заданием.',
+        'Отдельный агент получит этот список вместе с заданием.',
       ]);
     // Две попытки не помогли — идём дальше, но агент знает, каким фактам не верить сразу.
     markContext(st.ctx, 'Проверено');
@@ -161,7 +162,7 @@ function createFeature(c, slug, raw, own) {
   if (!isDir(DOCS) && !fs.existsSync('.git'))
     return {
       text: screen(
-        `Здесь (\`${process.cwd()}\`) нет папки \`${DOCS}/\` и git — похоже, GigaCode запущен не из репозитория с доками. ` +
+        `Здесь (\`${process.cwd()}\`) нет папки \`${DOCS}/\` и git — похоже, GigaCode запущен не из репозитория с документацией. ` +
           `Запустите его из корня репозитория или создайте здесь папку \`${DOCS}/\` и повторите ${skillCode('sdd-grill')}.`,
         G.stop,
       ),
@@ -249,7 +250,8 @@ export function renameFeature(dir, slug) {
   const d = rel(m.dir);
   const problem = slugProblem(slug);
   if (problem) return waitText(`Имя папки ${problem}. Какое имя взять?`, ['start', d, '--rename', ANSWER]);
-  if (m.spec || !m.protocol || /готов/i.test(m.protocol.status || '')) return screen(`Переименовать \`${d}\` можно только пока идёт brainstorming.`, G.stop);
+  if (m.spec || !m.protocol || /готов/i.test(m.protocol.status || ''))
+    return screen(`Переименовать \`${d}\` можно только пока идёт обсуждение задачи. Продолжить работу можно под текущим именем.`, G.stop);
   const to = path.join(path.dirname(m.dir), slug);
   const twin = caseTwin(slug, m.name);
   if (twin)

@@ -17,7 +17,7 @@
 код 0
 
 ~~~~text
-Протокол `docs/comments` готов: brainstorming закончен, новое решение — через `/sdd-decide comments`.
+Протокол `docs/comments` готов: обсуждение задачи закончено, новое решение — через `/sdd-decide comments`.
 
 **Slices «на ревью». Что дальше?**
 

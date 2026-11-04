@@ -231,7 +231,7 @@ test('choose src:new — изучать нечего, старт готов: «�
   const cwd = repo(SERVICES);
   run(cwd, 'start', 'панель настроек пользователя', '--slug', 'settings');
   const r = run(cwd, 'choose', 'docs/settings', 'src:new');
-  assert.match(r.out, /^Начинаем brainstorming `docs\/settings`/);
+  assert.match(r.out, /^Начинаем обсуждение задачи `docs\/settings`/);
   assert.match(r.out, /\n⚙ sdd: старт готов · фича docs\/settings · контекста нет, новый проект: спрашивай, как должно быть/);
   assert.match(r.out, / · дальше по скиллу со 2-го шага\n$/);
   assert.equal(r.out.split('\n').filter((l) => l.startsWith('⚙ sdd:')).length, 1);
