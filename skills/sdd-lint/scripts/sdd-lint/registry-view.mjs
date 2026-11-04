@@ -114,3 +114,13 @@ function requireKnownDependencies(m) {
     for (const id of slice.basis) if (!m.spec?.reqs.has(id)) throw new Error(`Неизвестное основание части работы ${id}`);
   }
 }
+
+// Выбор по существующим адресам: человек видит название, маршрут получает точный scope.
+/** @param {Feature} m */
+export function independentDrafts(m) {
+  try { requireDocumentationFlow(m); requireKnownDependencies(m); }
+  catch { return []; }
+  const scenarios = m.flow.records.filter((r) => r.kind === 'scenario').map((r) => ({ id: r.id, title: r.title }));
+  const requirements = [...(m.spec?.reqs.values() || [])].filter((r) => !r.deleted).map((r) => ({ id: r.id, title: r.first }));
+  return [...scenarios, ...requirements].filter((r) => !blockingQuestions(m, [r.id]).length);
+}

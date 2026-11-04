@@ -1,6 +1,6 @@
 // Вопрос человеку на этапе: варианты с рекомендацией и задания для них (ask / choose).
 // @ts-check
-import { registryQuestions, questionPending } from './registry-view.mjs';
+import { registryQuestions, questionPending, independentDrafts } from './registry-view.mjs';
 import { pendingAdrs } from './adr.mjs';
 import { showCmd, skill } from './config.mjs';
 import { neededAdrs, stubCount } from './cut.mjs';
@@ -175,8 +175,11 @@ export function askOf(m) {
     header: 'Работа продолжается', question: `Нерешённых вопросов: ${pending.length}. Что делаем дальше?`,
     options: [
       { id: 'questions:list', label: 'Посмотреть сводку', action: { lint: ['questions', 'list', rel(m.dir)] } },
-      { id: 'questions:work', label: 'Продолжить независимый черновик',
-        action: { show: 'Назовите тему или связанные элементы для черновика; инструмент проверит зависимости.' } },
+      ...independentDrafts(m).slice(0, 2).map((r) => ({
+        id: `questions:work:${r.id}`, label: `Продолжить черновик: ${r.title}`,
+        action: { here: ['prompt', 'sdd-spec', m.name, `draft:${r.id}`] },
+      })),
+      { id: 'questions:later', label: 'Вернуться позже', action: { none: true } },
     ],
   }] };
 

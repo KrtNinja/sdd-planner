@@ -6,9 +6,10 @@ import { tmpDir, SPEC, feature, slice, ac, inDir } from './helpers.mjs';
 import { initTestFlow, reserveFlowId } from '../skills/sdd-lint/scripts/sdd-lint/flow-state.mjs';
 import { loadFeature, runChecks } from '../skills/sdd-lint/scripts/sdd-lint/feature.mjs';
 import { applyQuestion } from '../skills/sdd-lint/scripts/sdd-lint/registry-actions.mjs';
-import { registrySummary, draftWork, fileQuestionBlockers } from '../skills/sdd-lint/scripts/sdd-lint/registry-view.mjs';
+import { registrySummary, draftWork, fileQuestionBlockers, independentDrafts } from '../skills/sdd-lint/scripts/sdd-lint/registry-view.mjs';
 import { questionDigest, registryRecords, questionActions } from '../skills/sdd-lint/scripts/sdd-lint/registry-format.mjs';
 import { recoverRegistry } from '../skills/sdd-lint/scripts/sdd-lint/registry-store.mjs';
+import { askOf } from '../skills/sdd-lint/scripts/sdd-lint/ask.mjs';
 import { openQuestions } from '../skills/sdd-lint/scripts/sdd-lint/open-questions.mjs';
 import { run } from '../skills/sdd-lint/scripts/sdd-lint/run.mjs';
 
@@ -479,4 +480,38 @@ test('SP-07/SP-06 учитывают реестр, закрытые Q не бл�
   fs.writeFileSync(path.join(dir, 'questions.md'), text(dir).replace('Статус: open', 'Статус: resolved'));
   m = loadFeature(dir);
   assert.equal(runChecks(m).filter((f) => ['SP-06', 'SP-07'].includes(f.rule)).length, 0);
+});
+
+test('ask предлагает конкретный независимый черновик и choose передаёт точную область скиллу', () => {
+  const dir = setup();
+  act(dir, 'add', input());
+  act(dir, 'defer', { key: 'later', id: 'Q1' });
+  const m = loadFeature(dir);
+  assert.deepEqual(independentDrafts(m).map((r) => r.id), ['FR-2', 'FR-3', 'FR-4', 'NFR-1']);
+  const options = askOf(m).questions[0].options;
+  assert.equal(options.length, 4);
+  assert.equal(options.some((o) => o.id === 'questions:work:FR-1'), false);
+  inDir(path.dirname(path.dirname(dir)), {}, () => {
+    const result = run(['choose', dir, 'questions:work:FR-2']);
+    assert.equal(result.code, 0);
+    assert.match(output(result), /draft:FR-2/);
+    assert.match(output(result), /Вопросы тестового нового процесса/);
+  });
+  act(dir, 'scope', { key: 'unknown', id: 'Q1', impact: 'unknown', refs: [] });
+  assert.equal(independentDrafts(loadFeature(dir)).length, 0);
+  assert.deepEqual(independentDrafts(feature({ 'spec.md': SPEC })), []);
+});
+
+test('независимые сценарии доступны до spec; отсутствующее основание не считается независимым', () => {
+  const dir = setup();
+  fs.unlinkSync(path.join(dir, 'spec.md'));
+  reserveFlowId(dir, 'SC');
+  reserveFlowId(dir, 'SC');
+  fs.writeFileSync(path.join(dir, 'scenarios.md'), '## SC-1 — Отправка\n\n## SC-2 — Просмотр\n');
+  act(dir, 'add', { ...input(), refs: ['SC-1'] });
+  assert.deepEqual(independentDrafts(loadFeature(dir)), [{ id: 'SC-2', title: 'Просмотр' }]);
+  fs.mkdirSync(path.join(dir, 'slices'));
+  fs.writeFileSync(path.join(dir, 'slices/001-one.md'), slice('001', { basis: 'FR-9' }));
+  assert.throws(() => draftWork(loadFeature(dir), ['SC-2']), /Неизвестное основание части работы FR-9/);
+  assert.deepEqual(independentDrafts(loadFeature(dir)), []);
 });
