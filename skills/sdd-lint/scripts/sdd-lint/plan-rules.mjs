@@ -110,7 +110,7 @@ const PLAN_TAIL = [
     },
   },
   { ids: ['PL-10'], check: ({ p, f }) => sharedReqs(p).map(([id, ns]) => finding('PL-10', f, null, `${id} — в ${ns.join(', ')}`)) },
-  { ids: ['PL-12'], check: ({ p, f }) => (p.slices.length > 6 ? [finding('PL-12', f, null, `${p.slices.length} slices`)] : []) },
+  { ids: ['PL-12'], check: ({ p, f }) => (p.slices.length > 6 ? [finding('PL-12', f, null, `Частей работы: ${p.slices.length}`)] : []) },
 ];
 
 // Плана нет — проверять нечего; slices уже нарезаны — план лишний (PL-13); плохие заголовки и пустой план — PL-01.
@@ -119,9 +119,9 @@ export function checkPlan(m) {
   const p = m.plan;
   if (!p) return [];
   const f = p.file;
-  if (m.slices.size) return [finding('PL-13', f, null, `в slices/ уже ${m.slices.size} файл(ов) slices`)];
-  const bad = p.bad.map((b) => finding('PL-01', f, b.n, `«${b.text}» — не заголовок slice`));
-  if (!p.slices.length) return [...bad, finding('PL-01', f, null, 'нет ни одного slice')];
+  if (m.slices.size) return [finding('PL-13', f, null, `в slices/ уже есть файлы частей работы: ${m.slices.size}`)];
+  const bad = p.bad.map((b) => finding('PL-01', f, b.n, `«${b.text}» — не заголовок части работы`));
+  if (!p.slices.length) return [...bad, finding('PL-01', f, null, 'нет ни одной части работы')];
   const first = p.slices.filter((s) => s.type === 'поведение').map((s) => s.num).sort()[0];
   /** @type {PlanContext} */
   const c = { m, p, f, nums: new Set(p.slices.map((s) => s.num)), first, reg: registry(m) };
