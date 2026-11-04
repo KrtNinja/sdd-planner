@@ -258,6 +258,26 @@ test('определение ссылки вне раздела не теряе�
   assert.match(read(dir, 'scenarios.md'), /\[правило\]\(spec.md#L6\)/);
 });
 
+test('определение внутри сценариев сохраняет ссылки оставшегося spec', () => {
+  const dir = setup();
+  const before = read(dir, 'spec.md').replace('## Требования', '[Основной путь][route]\n\n## Требования') +
+    '\n[route]: #sc-1--скачать-отчёт\n';
+  write(dir, 'spec.md', before);
+  assert.equal(cmd(dir, 'move').code, 0);
+  assert.match(read(dir, 'spec.md'), /\[Основной путь\]\(scenarios.md#sc-1--скачать-отчёт\)/);
+  assert.equal(read(dir, 'scenarios.md'), scenarioSection(before).text);
+});
+
+test('названия ссылок сохраняются вместе с новыми адресами', () => {
+  const dir = setup();
+  write(dir, 'spec.md', read(dir, 'spec.md').replace('Роль:', '[Правило][req]\nРоль:') +
+    '\n## Источники\n[req]: #L6 "Правило экспорта"\n');
+  write(dir, 'api.md', '[Путь](spec.md#sc-1--скачать-отчёт "Основной путь")');
+  assert.equal(cmd(dir, 'move').code, 0);
+  assert.match(read(dir, 'scenarios.md'), /\[Правило\]\(spec.md#L6 "Правило экспорта"\)/);
+  assert.equal(read(dir, 'api.md'), '[Путь](scenarios.md#sc-1--скачать-отчёт "Основной путь")');
+});
+
 test('approve и правила review охватывают оба места хранения', async () => {
   const { inDir } = await import('./helpers.mjs');
   const dir = setup();

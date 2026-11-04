@@ -55,7 +55,8 @@ function buildMove(m, part, target) {
   const replacement = `## Пользовательские сценарии\n\n${SCENARIO_LINK}\n\n`;
   const move = { spec: m.specFile, target, start: part.start, stop: part.stop,
     replacement: replacement.split('\n').length - 1, anchors: scenarioAnchors(part.text) };
-  const spec = (part.before ? part.before + '\n' : '') + replacement + part.after;
+  const remaining = (part.before ? part.before + '\n' : '') + replacement + part.after;
+  const spec = inlineScenarioReferences(remaining, /** @type {string} */ (m.spec?.md));
   const docs = [...markdownFiles(m.dir), ...m.featureAdrs.map((a) => a.file)];
   /** @type {MoveChange[]} */
   const changes = docs.flatMap((file) => {

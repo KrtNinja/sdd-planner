@@ -46,7 +46,7 @@ export function relocateScenarioLinks(md, source, output, move) {
   const raw = md.split('\n');
   for (const l of scan(md).lines) {
     if (l.inCode || /^(?:Пакет|Согласование|Снимок|ОтветJSON|ОтветыJSON|Действия):/.test(l.text)) continue;
-    raw[l.n - 1] = l.text.replace(/(\]\()([^\s)]+)(\))/g,
+    raw[l.n - 1] = l.text.replace(/(\]\()([^\s)]+)(\s+["'][^\n]*?["']\)|\))/g,
       (_, open, href, close) => open + relocateHref(href, source, output, move) + close)
       .replace(/^(\s*\[[^\]]+\]:\s*)(\S+)/, (_, lead, href) => lead + relocateHref(href, source, output, move));
   }
@@ -67,7 +67,7 @@ function relocateRange(range, move) {
 export function inlineScenarioReferences(section, spec) {
   const definitions = new Map();
   for (const line of proseLines(spec)) {
-    const match = line.text.match(/^\s*\[([^\]]+)\]:\s*(\S+)\s*$/);
+    const match = line.text.match(/^\s*\[([^\]]+)\]:\s*(\S+(?:\s+["'][^\n]*["'])?)\s*$/);
     if (match) definitions.set(match[1].toLowerCase(), match[2]);
   }
   const raw = section.split('\n');
