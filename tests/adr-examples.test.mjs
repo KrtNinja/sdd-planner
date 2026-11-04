@@ -47,7 +47,7 @@ test('AD-10: статус ADR проверяется только при одо�
       m.slicesStatus = slicesStatus;
       m.featureAdrs[0].status = status;
       expectRules(m, checkAdrs(m), ['AD-10'], slicesStatus === 'одобрено' && status !== 'принято'
-        ? [['AD-10', 'warn', FILE, null, `статус «${status || '—'}», slices уже одобрены`]] : []);
+        ? [['AD-10', 'warn', FILE, null, `статус «${status || '—'}», части работы уже одобрены`]] : []);
     }
   }
 });

@@ -77,8 +77,8 @@ function touchedSlices(a, m) {
   const touched = (header(a.md, 'Затрагивает slices') || '').match(/\b\d{3}\b/g) || [];
   const consNums = [...sectionText(a.sc, /^Последствия/).matchAll(/slices?\s+(\d{3})/gi)].map((x) => x[1]);
   return [
-    ...uniq([...touched, ...consNums]).filter((n) => !m.slices.has(n)).map((n) => finding('AD-07', a.file, null, `slice ${n} нет`)),
-    ...touched.filter((n) => !consNums.includes(n)).map((n) => finding('AD-07', a.file, null, `slice ${n} из шапки не описан в «Последствия»`)),
+    ...uniq([...touched, ...consNums]).filter((n) => !m.slices.has(n)).map((n) => finding('AD-07', a.file, null, `части работы ${n} нет`)),
+    ...touched.filter((n) => !consNums.includes(n)).map((n) => finding('AD-07', a.file, null, `часть работы ${n} из шапки не описана в «Последствия»`)),
   ];
 }
 
@@ -103,12 +103,13 @@ const ADR = [
     check: (a) =>
       inSection(a.sc, /^Не выяснено/)
         .filter((x) => !x.inCode && /^\s*[-*]\s+\S/.test(x.text) && !/блокир/i.test(x.text) && !/блокир/i.test(x.h2))
-        .map((l) => finding('AD-08', a.file, l.n, 'не сказано, блокирует ли пункт slices')),
+        .map((l) => finding('AD-08', a.file, l.n, 'не сказано, блокирует ли пункт части работы')),
   },
   {
     ids: ['AD-10'],
     check: (a, m) =>
-      approved(m.slicesStatus) && !/принят/i.test(a.status || '') ? [finding('AD-10', a.file, null, `статус «${a.status || '—'}», slices уже одобрены`)] : [],
+      approved(m.slicesStatus) && !/принят/i.test(a.status || '') ?
+        [finding('AD-10', a.file, null, `статус «${a.status || '—'}», части работы уже одобрены`)] : [],
   },
 ];
 
