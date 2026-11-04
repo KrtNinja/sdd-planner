@@ -35,7 +35,8 @@ export function registrySummary(m, filter = {}) {
 
 /** @param {Feature} m */
 function dependencyPairs(m) {
-  const pairs = (m.flow.graph?.edges || []).filter((e) => !/^Q/.test(e.from)).map((e) => [e.from, e.to]);
+  const graph = /** @type {import('./flow-graph.mjs').FlowGraph} */ (m.flow.graph);
+  const pairs = graph.edges.filter((e) => !/^Q/.test(e.from)).map((e) => [e.from, e.to]);
   for (const slice of m.slices.values()) {
     const requirements = [...slice.basis];
     for (const ac of slice.acs) for (const id of requirements) pairs.push([ac.id, id]);
@@ -72,7 +73,8 @@ export function draftWork(m, ids) {
   requireKnownDependencies(m);
   if (!ids.length) throw new Error('Укажите элементы черновика; пустая область не доказывает независимость');
   for (const id of ids) {
-    if (!m.flow.graph?.byId.has(id) || /^Q/.test(id)) throw new Error(`Неизвестная область черновика: ${id}`);
+    const graph = /** @type {import('./flow-graph.mjs').FlowGraph} */ (m.flow.graph);
+    if (!graph.byId.has(id) || /^Q/.test(id)) throw new Error(`Неизвестная область черновика: ${id}`);
   }
   const blocked = blockingQuestions(m, ids);
   if (blocked.length) throw new Error(`Черновик зависит от нерешённых вопросов:\n${blocked.map(questionCard).join('\n\n')}`);
@@ -82,8 +84,10 @@ export function draftWork(m, ids) {
 
 /** @param {Feature} m @param {string[]} files */
 export function fileQuestionBlockers(m, files) {
+  if (!m.flow.state) return [];
+  const graph = /** @type {import('./flow-graph.mjs').FlowGraph} */ (m.flow.graph);
   const scope = new Set(files.map((f) => path.resolve(f)));
-  const ids = [...(m.flow.graph?.byId.values() || [])].filter((a) => scope.has(path.resolve(a.file))).map((a) => a.id);
+  const ids = [...graph.byId.values()].filter((a) => scope.has(path.resolve(a.file))).map((a) => a.id);
   return blockingQuestions(m, ids);
 }
 

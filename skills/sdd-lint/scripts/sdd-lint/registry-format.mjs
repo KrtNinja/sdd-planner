@@ -48,7 +48,10 @@ export function replaceQuestion(md, q, before) {
   if (!before) return `${md.trimEnd()}\n\n${renderQuestion(q)}\n`.trimStart();
   const lines = md.split('\n');
   let end = before.n;
-  while (end < lines.length && !/^#{1,6}\s/.test(lines[end])) end++;
+  for (const line of lines.slice(before.n)) {
+    if (/^#{1,6}\s/.test(line)) break;
+    end++;
+  }
   const fields = new Set([...Object.keys(before.fields), ...Object.keys(q.fields)]);
   const body = lines.slice(before.n, end).filter((line) => !/^<a id=/.test(line) && ![...fields].some((k) => line.startsWith(`${k}:`)));
   lines.splice(before.n - 1, end - before.n + 1, renderQuestion(q).trimEnd(), ...body);

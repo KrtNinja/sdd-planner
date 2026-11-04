@@ -411,3 +411,72 @@ test('конкурирующая внешняя правка и сбой fsync s
   assert.equal(fs.existsSync(`${file}.writing`), false);
   assert.equal(fs.existsSync(`${file}.pending`), false);
 });
+
+test('карточка различает известное влияние и неизвестное с непустыми/пустыми ссылками', () => {
+  const dir = setup();
+  act(dir, 'add', input());
+  assert.match(registrySummary(loadFeature(dir)), /Зависимая область: FR-1\./);
+  act(dir, 'scope', { key: 'unknown', id: 'Q1', impact: 'unknown', refs: ['FR-1'] });
+  assert.match(registrySummary(loadFeature(dir)), /Область влияния неизвестна/);
+  assert.throws(() => draftWork(loadFeature(dir), ['FR-2']), /Q1/);
+  fs.writeFileSync(path.join(dir, 'questions.md'), text(dir).replace('Влияние: unknown', 'Влияние: known').replace('Элементы: FR-1', ''));
+  assert.match(registrySummary(loadFeature(dir)), /Область влияния неизвестна/);
+  assert.throws(() => draftWork(loadFeature(dir), ['FR-2']), /Q1/);
+});
+
+test('влияние распространяется через сценарии, но решённый Q не соединяет независимые области', () => {
+  const dir = setup();
+  reserveFlowId(dir, 'SC');
+  fs.appendFileSync(path.join(dir, 'spec.md'), '\n## SC-1 — Отправить\nТребования: FR-1\n');
+  act(dir, 'add', { ...input(), refs: ['SC-1'] });
+  assert.throws(() => draftWork(loadFeature(dir), ['FR-1']), /Q1/);
+  assert.match(draftWork(loadFeature(dir), ['FR-2']), /Можно/);
+  const file = path.join(dir, 'questions.md');
+  fs.writeFileSync(file, text(dir).replace('Статус: open', 'Статус: resolved'));
+  act(dir, 'add', { ...input('new'), refs: ['FR-2'] });
+  assert.match(draftWork(loadFeature(dir), ['FR-1']), /Можно/);
+});
+
+test('повреждённая зависимость slice диагностируется без падения чтения реестра', () => {
+  const dir = setup();
+  fs.mkdirSync(path.join(dir, 'slices'));
+  fs.writeFileSync(path.join(dir, 'slices/001-one.md'), slice('001', { basis: 'FR-1', deps: '009' }, ...ac('AC-001-B1')));
+  act(dir, 'add', input());
+  const m = loadFeature(dir);
+  assert.equal(fileQuestionBlockers(m, [m.specFile]).length, 1);
+  assert.doesNotThrow(() => runChecks(m));
+});
+
+test('диагностика незавершённой записи реестра указывает первую строку questions.md', () => {
+  const dir = setup();
+  fs.writeFileSync(path.join(dir, 'questions.md.pending'), '{');
+  const f = runChecks(loadFeature(dir)).find((f) => /Незавершённая запись реестра/.test(f.msg));
+  assert.equal(f.line, 1);
+  assert.ok(f.file.endsWith('questions.md'));
+});
+
+test('правка Q сохраняет все остальные байты документа, включая свободный текст и пустые строки', () => {
+  const dir = setup();
+  act(dir, 'add', input());
+  fs.appendFileSync(path.join(dir, 'questions.md'), '\nСвободный абзац.\n\n## Заметка\nНе относится к полям Q.\n');
+  act(dir, 'add', { ...input('two'), title: 'Другой вопрос' });
+  const before = text(dir);
+  act(dir, 'defer', { key: 'later', id: 'Q1' });
+  const unchanged = (md) => md.replace(/^Статус:.*\n/gm, '').replace(/^Действия:.*\n/gm, '');
+  assert.equal(unchanged(text(dir)), unchanged(before));
+  const beforeLast = text(dir);
+  act(dir, 'defer', { key: 'last', id: 'Q2' });
+  assert.equal(unchanged(text(dir)), unchanged(beforeLast));
+});
+
+test('SP-07/SP-06 учитывают реестр, закрытые Q не блокируют документ', () => {
+  const dir = setup();
+  act(dir, 'add', input());
+  let m = loadFeature(dir);
+  assert.equal(runChecks(m).filter((f) => f.rule === 'SP-07').length, 1);
+  m.spec.status = 'одобрено';
+  assert.equal(runChecks(m).filter((f) => f.rule === 'SP-06').length, 1);
+  fs.writeFileSync(path.join(dir, 'questions.md'), text(dir).replace('Статус: open', 'Статус: resolved'));
+  m = loadFeature(dir);
+  assert.equal(runChecks(m).filter((f) => ['SP-06', 'SP-07'].includes(f.rule)).length, 0);
+});
