@@ -1,6 +1,7 @@
 // Адресация по ID: индекс пересобирается из документов, обратные связи не хранятся.
 // @ts-check
 import path from 'node:path';
+import { adrBasis } from './adr-basis.mjs';
 import { scan } from './md.mjs';
 
 /** @typedef {import('./flow-format.mjs').FlowRecord} FlowRecord */
@@ -83,7 +84,7 @@ export function buildFlowGraph(m, records, readFn) {
   /** @type {FormatProblem[]} */
   const problems = [];
   const byId = indexAddresses([...existingAddresses(m), ...records], problems);
-  const graph = { byId, edges: records.flatMap(recordEdges), problems };
+  const graph = { byId, edges: [...records.flatMap(recordEdges), ...adrEdges(m)], problems };
   missingTargets(graph, m.dir, readFn);
   parentCycles(records, problems);
   return graph;
@@ -105,4 +106,9 @@ export function reservedId(record, state) {
   if (record.kind === 'scenario') return Number(record.id.slice(3)) < state.next.SC;
   if (record.kind === 'step') return Number(record.id.split('-S')[1]) < state.next.STEP;
   return true;
+}
+
+/** @param {import('./model.mjs').Feature} m @returns {Edge[]} */
+function adrEdges(m) {
+  return m.featureAdrs.flatMap((a) => adrBasis(a).map((id) => ({ from: `ADR-${a.num}`, to: id, kind: 'basis' })));
 }

@@ -1,5 +1,6 @@
 // Правила AD-* по ADR: номера всех ADR, затем каждый ADR фичи — списком { ids, check }.
 // @ts-check
+import { adrBasis } from './adr-basis.mjs';
 import { limitIds } from './adr.mjs';
 import { finding, noStatus } from './findings.mjs';
 import { rel, uniq, approved, inSection, hasSection, sectionText, header, reqIds } from './md.mjs';
@@ -61,22 +62,27 @@ function limits(a) {
 
 // AD-06: «Контекст» ссылается на FR/NFR, и они есть в spec.
 /** @param {Adr} a @param {Feature} m */
-function contextReqs(a, { spec }) {
+function contextReqs(a, m) {
+  const { spec } = m;
   if (!hasSection(a.sc, /^Контекст/)) return [];
-  const ids = reqIds(sectionText(a.sc, /^Контекст/));
+  const ids = m.flow.state ? adrBasis(a) : reqIds(sectionText(a.sc, /^Контекст/));
+  const targets = m.flow.state ? /** @type {import('./flow-graph.mjs').FlowGraph} */ (m.flow.graph).byId : spec?.reqs;
   return [
-    ...(ids.length ? [] : [finding('AD-06', a.file, null, '«Контекст» без FR/NFR')]),
-    ...(spec ? ids.filter((id) => !spec.reqs.has(id)).map((id) => finding('AD-06', a.file, null, `«Контекст»: ${id} нет в spec.md`)) : []),
+    ...(ids.length ? [] : [finding('AD-06', a.file, null, m.flow.state ? '«Контекст» без FR/NFR/SC' : '«Контекст» без FR/NFR')]),
+    ...(targets ? ids.filter((id) => !targets.has(id))
+      .map((id) => finding('AD-06', a.file, null, `«Контекст»: ${id} нет в spec.md`)) : []),
   ];
 }
 
 // AD-07: slices из шапки и «Последствий» существуют, а из шапки — описаны в «Последствиях».
 /** @param {Adr} a @param {Feature} m */
 function touchedSlices(a, m) {
-  if (!m.slices.size) return [];
+  if (!m.slices.size && !m.flow.state) return [];
   const touched = (header(a.md, 'Затрагивает slices') || '').match(/\b\d{3}\b/g) || [];
   const consNums = [...sectionText(a.sc, /^Последствия/).matchAll(/slices?\s+(\d{3})/gi)].map((x) => x[1]);
   return [
+    ...(m.flow.state && m.slices.size > 0 && !touched.length
+      ? [finding('AD-07', a.file, null, 'После разбиения добавьте реальные связи ADR с частями работы')] : []),
     ...uniq([...touched, ...consNums]).filter((n) => !m.slices.has(n)).map((n) => finding('AD-07', a.file, null, `части работы ${n} нет`)),
     ...touched.filter((n) => !consNums.includes(n)).map((n) => finding('AD-07', a.file, null, `часть работы ${n} из шапки не описана в «Последствия»`)),
   ];

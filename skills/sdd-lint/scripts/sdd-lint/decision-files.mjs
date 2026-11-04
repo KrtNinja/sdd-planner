@@ -1,6 +1,7 @@
 // Узкий пакет документов одного ответа Q: сравнение точных версий и повторная запись без добавлений.
 // @ts-check
 import fs from 'node:fs';
+import { scenarioSection, scenarioFiles } from './scenario-section.mjs';
 import path from 'node:path';
 import { read } from './md.mjs';
 import { publishQuestionDocument } from './registry-store.mjs';
@@ -81,7 +82,7 @@ export function checkDecision(m) {
 /** @param {Feature} before @param {Feature} after @param {string} obligations */
 export function checkDecisionMeaning(before, after, obligations) {
   if (!['changed', 'unchanged'].includes(obligations)) throw new Error('obligations: changed или unchanged');
-  if (obligations === 'unchanged' && requirementsText(before) !== requirementsText(after)) throw new Error('Техническое уточнение не может менять FR/NFR');
+  if (obligations === 'unchanged') unchangedBehaviour(before, after);
   for (const id of before.flow.graph?.byId.keys() || []) {
     if (!after.flow.graph?.byId.has(id)) throw new Error(`Пакет удаляет существующий ID ${id}`);
   }
@@ -150,4 +151,16 @@ function checkProtocolScope(before, after) {
   if (!before.protocol || !after.protocol) return;
   const scope = new Set(after.protocol.outScope.map((x) => x.text));
   if (before.protocol.outScope.some((x) => !scope.has(x.text))) throw new Error('Согласованные исключения протокола нельзя удалять');
+}
+
+/** @param {Feature} m */
+function scenarioText(m) {
+  return JSON.stringify([scenarioSection(m.spec?.md || '')?.text || '', ...scenarioFiles(m).map((d) => d.md)]);
+}
+
+/** @param {Feature} before @param {Feature} after */
+function unchangedBehaviour(before, after) {
+  if (requirementsText(before) !== requirementsText(after)) throw new Error('Техническое уточнение не может менять FR/NFR');
+  if (scenarioText(before) !== scenarioText(after))
+    throw new Error('Техническое уточнение не может менять сценарии: обсудите изменение поведения через sdd-decide');
 }

@@ -1,5 +1,6 @@
 // Фича целиком: загрузка артефактов и запуск всех проверок.
 // @ts-check
+import { checkTech, techFiles } from './tech.mjs';
 import { scenarioFiles } from './scenario-section.mjs';
 import { checkRegistry } from './registry-rules.mjs';
 import fs from 'node:fs';
@@ -103,7 +104,7 @@ export function loadFeature(dir, readFn = read, listFn = null) {
 
 /** @param {Feature} m */
 export const featureFiles = (m) =>
-  [...new Set([...scenarioFiles(m).map((d) => d.file), m.protocolFile, m.specFile, m.readmeFile,
+  [...new Set([...techFiles(m).map((d) => d.file), ...scenarioFiles(m).map((d) => d.file), m.protocolFile, m.specFile, m.readmeFile,
     ...[...m.slices.values()].map((s) => s.file), ...m.featureAdrs.map((a) => a.file)])].filter((f) =>
     fs.existsSync(f),
   );
@@ -114,6 +115,7 @@ export function runChecks(m) {
   return [
     ...checkDocumentationFlow(m),
     ...checkRegistry(m),
+    ...checkTech(m),
     ...checkProtocol(m),
     ...checkSpec(m),
     ...checkSlices(m),

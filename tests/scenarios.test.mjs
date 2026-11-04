@@ -226,7 +226,7 @@ function preparedAnswer(dir, extra = []) {
   applyQuestion(dir, 'answer', { key: 'a', id: 'Q1', answer: 'Да' });
   const before = read(dir, 'spec.md');
   const proposal = { key: 'p', id: 'Q1', summary: 'Повтор', assessment: 'Ответ полон', tradeoffs: 'Нет', remaining: 'Нет',
-    ready: true, conflicts: [], obligations: 'unchanged', context: questionContext(loadFeature(dir), ['SC-1-S1']),
+    ready: true, conflicts: [], obligations: 'changed', context: questionContext(loadFeature(dir), ['SC-1-S1']),
     changes: [{ file: 'spec.md', before, after: before.replace('новый запрос', 'повторный запрос') }] };
   proposal.changes.push(...extra);
   decisionAction(dir, 'prepare', proposal);
@@ -285,6 +285,7 @@ test('названия ссылок сохраняются вместе с но�
 test('approve и правила review охватывают оба места хранения', async () => {
   const { inDir } = await import('./helpers.mjs');
   const dir = setup();
+  write(dir, 'tech.md', '## TECH — Экспорт\nСвязи: FR-1\nСуществующий сервис готовит файл; новых решений ADR нет.\n');
   assert.equal(run(['approve', 'spec', dir]).code, 0);
   assert.equal(cmd(dir, 'move').code, 0);
   assert.equal(run(['approve', 'spec', dir]).code, 0);
