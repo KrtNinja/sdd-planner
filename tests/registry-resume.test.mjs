@@ -145,3 +145,21 @@ test('R-01: прямой gate decide направляет ответ Q и обы
   fs.unlinkSync(path.join(dir, 'questions.md'));
   assert.match(resumeQuestion(loadFeature(dir), {}), /создайте новый Q/);
 });
+
+
+test('контракт: точный якорь, исчезнувший файл и запрет выхода за фичу', async () => {
+  const { questionContext } = await import('../skills/sdd-lint/scripts/sdd-lint/registry-context.mjs');
+  const dir = setup();
+  const file = path.join(dir, 'contract.md');
+  const id = 'contract:contract.md#export';
+  fs.writeFileSync(file, '<a id="export"></a>\nКонтракт экспорта\n');
+  const current = questionContext(loadFeature(dir), [id])[0];
+  assert.equal(current.file, 'contract.md');
+  assert.equal(current.n, 1);
+  assert.match(current.text, /Контракт экспорта/);
+  fs.writeFileSync(file, '```html\n<a id="export"></a>\n```\n');
+  assert.equal(questionContext(loadFeature(dir), [id])[0].file, null);
+  fs.unlinkSync(file);
+  assert.equal(questionContext(loadFeature(dir), [id])[0].hash, null);
+  assert.throws(() => questionContext(loadFeature(dir), ['contract:../outside.md#export']), /вне фичи/);
+});
