@@ -6,7 +6,7 @@ import { loadFeature } from './feature.mjs';
 import { requireDocumentationFlow } from './flow.mjs';
 import { buildFlowGraph } from './flow-graph.mjs';
 import { reserveFlowId } from './flow-state.mjs';
-import { previousAction, questionActions, questionDigest, registryRecords, replaceQuestion } from './registry-format.mjs';
+import { questionRequest, questionActions, registryRecords, replaceQuestion } from './registry-format.mjs';
 import { writeRegistry } from './registry-store.mjs';
 
 /** @typedef {import('./flow-format.mjs').FlowRecord} FlowQuestion */
@@ -93,10 +93,8 @@ export function applyQuestion(dir, verb, input) {
   validateInput(input);
   validateAction(verb, input);
   if (!loadFeature(dir).flow.state) throw new Error('Реестр доступен только в новом процессе; миграции нет');
-  const digest = questionDigest(JSON.stringify([verb, Object.entries(input).sort(([a], [b]) => a.localeCompare(b))]));
   return writeRegistry(dir, (md) => {
-    const records = registryRecords(md);
-    const previous = previousAction(records, input.key, digest);
+    const { records, previous, digest } = questionRequest(md, verb, input);
     if (previous) return { md, result: previous };
     const before = records.find((r) => r.id === input.id) || null;
     if (before?.fields.Пакет) throw new Error('Сначала завершите проведение сохранённого пакета');

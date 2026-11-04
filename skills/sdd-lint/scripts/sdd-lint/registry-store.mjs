@@ -35,10 +35,15 @@ export function writeRegistry(dir, change) {
 /** @param {string} file @param {{base: string, md: string, hash: string}} envelope */
 function publishRegistry(file, envelope) {
   if (questionDigest(content(file)) !== envelope.base) throw new Error('Реестр изменился во время записи; повторите после проверки');
-  const temp = `${file}.writing`;
+  publishQuestionDocument(file, envelope.md, '.writing');
+}
+
+/** @param {string} file @param {string} md @param {string} suffix */
+export function publishQuestionDocument(file, md, suffix) {
+  const temp = `${file}${suffix}`;
   const fd = fs.openSync(temp, 'wx', 0o600);
   try {
-    fs.writeFileSync(fd, envelope.md);
+    fs.writeFileSync(fd, md);
     fs.fsyncSync(fd);
     fs.renameSync(temp, file);
   } finally {
