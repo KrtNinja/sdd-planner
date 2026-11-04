@@ -28,8 +28,9 @@ export function questionActions(q) {
 /** @param {FlowQuestion[]} records @param {string} key @param {string} digest */
 export function previousAction(records, key, digest) {
   for (const q of records) {
-    const saved = questionActions(q)[key];
-    if (!saved) continue;
+    const actions = questionActions(q);
+    if (!Object.hasOwn(actions, key)) continue;
+    const saved = actions[key];
     if (saved !== digest) throw new Error('Ключ действия уже использован с другими данными');
     return q;
   }
@@ -48,7 +49,8 @@ export function replaceQuestion(md, q, before) {
   const lines = md.split('\n');
   let end = before.n;
   while (end < lines.length && !/^#{1,6}\s/.test(lines[end])) end++;
-  const body = lines.slice(before.n, end).filter((line) => !/^<a id=/.test(line) && !Object.keys(q.fields).some((k) => line.startsWith(`${k}:`)));
+  const fields = new Set([...Object.keys(before.fields), ...Object.keys(q.fields)]);
+  const body = lines.slice(before.n, end).filter((line) => !/^<a id=/.test(line) && ![...fields].some((k) => line.startsWith(`${k}:`)));
   lines.splice(before.n - 1, end - before.n + 1, renderQuestion(q).trimEnd(), ...body);
   return lines.join('\n');
 }

@@ -1,6 +1,7 @@
 // Краткие карточки и консервативная проверка независимости по существующему графу.
 // @ts-check
 import { requireDocumentationFlow } from './flow.mjs';
+import { reqIds, header } from './md.mjs';
 import path from 'node:path';
 
 /** @typedef {import('./model.mjs').Feature} Feature */
@@ -40,7 +41,7 @@ function dependencyPairs(m) {
     for (const ac of slice.acs) for (const id of requirements) pairs.push([ac.id, id]);
     pairs.push(...sliceDependencies(m, slice));
   }
-  return pairs;
+  return [...pairs, ...adrDependencies(m)];
 }
 
 /** @param {Feature} m @param {string[]} ids */
@@ -68,6 +69,7 @@ function blockingQuestions(m, ids) {
 /** @param {Feature} m @param {string[]} ids */
 export function draftWork(m, ids) {
   requireDocumentationFlow(m);
+  requireKnownDependencies(m);
   if (!ids.length) throw new Error('Укажите элементы черновика; пустая область не доказывает независимость');
   for (const id of ids) {
     if (!m.flow.graph?.byId.has(id) || /^Q/.test(id)) throw new Error(`Неизвестная область черновика: ${id}`);
@@ -89,4 +91,22 @@ export function fileQuestionBlockers(m, files) {
 function sliceDependencies(m, slice) {
   return slice.deps.flatMap((dep) => [...(m.slices.get(dep)?.basis || [])]
     .flatMap((id) => [...slice.basis].map((own) => [own, id])));
+}
+
+/** @param {Feature} m */
+function adrDependencies(m) {
+  const pairs = m.featureAdrs.flatMap((adr) => reqIds(adr.md).map((id) => [`ADR-${adr.num}`, id]));
+  for (const slice of m.slices.values()) {
+    const adrs = (header(slice.md, 'Почему отдельно', '') || '').match(/\bADR-\d{4}\b/g) || [];
+    for (const adr of adrs) for (const id of slice.basis) pairs.push([adr, id]);
+  }
+  return pairs;
+}
+
+/** @param {Feature} m */
+function requireKnownDependencies(m) {
+  for (const slice of m.slices.values()) {
+    for (const dep of slice.deps) if (!m.slices.has(dep)) throw new Error(`Неизвестная зависимость части работы ${dep}`);
+    for (const id of slice.basis) if (!m.spec?.reqs.has(id)) throw new Error(`Неизвестное основание части работы ${id}`);
+  }
 }

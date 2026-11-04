@@ -13,7 +13,8 @@ import { openQuestions } from '../skills/sdd-lint/scripts/sdd-lint/open-question
 import { run } from '../skills/sdd-lint/scripts/sdd-lint/run.mjs';
 
 function setup() {
-  const dir = tmpDir();
+  const dir = path.join(tmpDir(), 'docs', 'registry');
+  fs.mkdirSync(dir, { recursive: true });
   initTestFlow(dir);
   fs.writeFileSync(path.join(dir, 'spec.md'), SPEC);
   fs.writeFileSync(path.join(dir, 'brainstorming.md'), '# Обсуждение\nСтатус: идёт\n');
@@ -36,6 +37,7 @@ test('Q-01–Q-05: ленивый реестр, отложенный grill, не
   const q = act(dir, 'add', input());
   assert.equal(q.id, 'Q1');
   assert.equal(state(dir).next.Q, 2);
+  assert.throws(() => draftWork(loadFeature(dir), ['Q1']), /Неизвестная/);
   assert.equal(act(dir, 'defer', { key: 'later', id: q.id }).fields.Статус, 'deferred');
   const fresh = loadFeature(dir);
   assert.match(registrySummary(fresh), /ждёт ответа \(отложен\)/);
@@ -114,7 +116,7 @@ test('граф учитывает AC, основания и зависимост
   fs.mkdirSync(path.join(dir, 'slices'));
   fs.writeFileSync(path.join(dir, 'slices/001-one.md'), slice('001', { basis: 'FR-1' }, ...ac('AC-001-B1')));
   fs.writeFileSync(path.join(dir, 'slices/002-two.md'), slice('002', { basis: 'FR-2', deps: '001' }, ...ac('AC-002-B1', 'FR-2')));
-  act(dir, 'add', input());
+  act(dir, 'add', { ...input(), refs: ['AC-001-B1'] });
   assert.throws(() => draftWork(loadFeature(dir), ['AC-002-B1']), /Q1/);
   assert.match(draftWork(loadFeature(dir), ['FR-3']), /Можно/);
 });
@@ -133,6 +135,7 @@ test('проверка входа: неверные поля, ссылки и le
   assert.equal(state(dir).next.Q, 1);
   assert.throws(() => draftWork(loadFeature(dir), []), /пустая/);
   assert.throws(() => draftWork(loadFeature(dir), ['Q9']), /Неизвестная/);
+  assert.throws(() => draftWork(loadFeature(dir), ['FR-99']), /Неизвестная/);
   const legacy = feature({ 'spec.md': SPEC });
   assert.throws(() => act(legacy.dir, 'add', input()), /миграции нет/);
   assert.throws(() => draftWork(legacy, ['FR-1']), /новом процессе/);
@@ -344,4 +347,67 @@ test('ответ не принимается пустым, закрытая за
   const error = run(['questions', 'add', dir, '{}', '--json']);
   assert.equal(error.code, 2);
   assert.match(JSON.parse(output(error)).error, /ключ/);
+});
+
+test('независимость включает требования ADR и ожидание ADR в slice; неизвестная зависимость блокирует выбор', () => {
+  const dir = setup();
+  const name = path.basename(dir);
+  const adrDir = path.join(dir, '..', 'adr');
+  fs.mkdirSync(adrDir, { recursive: true });
+  const adrFile = path.join(adrDir, '9876-registry-test.md');
+  try {
+    fs.writeFileSync(adrFile, `# ADR-9876: Доставка\nФича: [задача](../${name}/spec.md)\n\n## Контекст\nFR-2\n`);
+    fs.mkdirSync(path.join(dir, 'slices'));
+    fs.writeFileSync(path.join(dir, 'slices/001-one.md'), slice('001', { basis: 'FR-3', why: 'Р1 — ADR-9876' }, ...ac('AC-001-B1', 'FR-3')));
+    act(dir, 'add', { ...input(), refs: ['ADR-9876'] });
+    const m = loadFeature(dir);
+    assert.throws(() => draftWork(m, ['FR-2']), /Q1/);
+    assert.throws(() => draftWork(m, ['AC-001-B1']), /Q1/);
+    assert.match(draftWork(m, ['FR-4']), /Можно/);
+    fs.writeFileSync(path.join(dir, 'slices/002-two.md'), slice('002', { basis: 'FR-4', deps: '003' }));
+    assert.throws(() => draftWork(loadFeature(dir), ['FR-4']), /Неизвестная зависимость/);
+  } finally { fs.unlinkSync(adrFile); }
+});
+
+test('ключи, совпадающие со свойствами Object, остаются обычными ключами идемпотентности', () => {
+  const dir = setup();
+  const first = act(dir, 'add', input('toString'));
+  assert.equal(first.id, 'Q1');
+  assert.equal(act(dir, 'add', input('toString')).id, 'Q1');
+  assert.equal(act(dir, 'defer', { key: '__proto__', id: 'Q1' }).fields.Статус, 'deferred');
+  assert.equal(state(dir).next.Q, 2);
+});
+
+test('уточнение known → unknown удаляет старые связи, но сохраняет контекст и блокировку', () => {
+  const dir = setup();
+  act(dir, 'add', input());
+  act(dir, 'scope', { key: 'unknown', id: 'Q1', impact: 'unknown', refs: [] });
+  assert.doesNotMatch(text(dir), /Элементы:/);
+  assert.match(text(dir), /Контекст: Анна/);
+  assert.throws(() => draftWork(loadFeature(dir), ['FR-2']), /неизвестна/);
+});
+
+test('конкурирующая внешняя правка и сбой fsync staging-файла не теряют документ', () => {
+  const dir = setup();
+  act(dir, 'add', input());
+  const file = path.join(dir, 'questions.md');
+  const before = text(dir);
+  const fsync = fs.fsyncSync;
+  let calls = 0;
+  const external = mock.method(fs, 'fsyncSync', (fd) => {
+    fsync(fd);
+    fs.writeFileSync(file, before + 'Внешняя правка\n');
+  });
+  try { assert.throws(() => act(dir, 'defer', { key: 'conflict', id: 'Q1' }), /изменился/); }
+  finally { external.mock.restore(); }
+  assert.equal(text(dir), before + 'Внешняя правка\n');
+  const failure = mock.method(fs, 'fsyncSync', (fd) => {
+    if (++calls === 2) throw new Error('staging failure');
+    fsync(fd);
+  });
+  try { assert.throws(() => act(dir, 'defer', { key: 'staging', id: 'Q1' }), /staging failure/); }
+  finally { failure.mock.restore(); }
+  assert.equal(text(dir), before + 'Внешняя правка\n');
+  assert.equal(fs.existsSync(`${file}.writing`), false);
+  assert.equal(fs.existsSync(`${file}.pending`), false);
 });
