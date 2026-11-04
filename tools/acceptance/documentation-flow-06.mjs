@@ -1,9 +1,11 @@
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 // Детерминированная репетиция: тексты задаёт fixture, целевые модели не вызываются.
 const root = path.resolve(process.argv[2] || '.');
 const before = process.argv.includes('--before');
+const verify = process.argv.includes('--verify');
 const mod = (name) => import(`${root}/skills/sdd-lint/scripts/sdd-lint/${name}.mjs`);
 const { run } = await mod('run');
 const { initTestFlow, reserveFlowId } = await mod('flow-state');
@@ -16,14 +18,20 @@ function story(name, complex = false) {
   const dir = `docs/${name}`;
   fs.mkdirSync(dir, { recursive: true }); initTestFlow(path.resolve(dir));
   const calls = [];
+  const outputs = [];
   const call = (...args) => {
     const start = performance.now();
     const r = run(args); const text = r.chunks.map((c) => c[1]).join('');
+    outputs.push({ args, text, code: r.code });
     calls.push({ command: args.slice(0, 3).join(' '), code: r.code, chars: text.length,
       ms: Math.round((performance.now() - start) * 100) / 100 });
     if (r.code && args[0] !== 'approve') console.error(args.slice(0,3).join(' '),text.slice(0,700));
     return text;
   };
+  if (verify) {
+    const initial = call('gate', 'slices', dir);
+    assert.match(initial, /spec|требован/i);
+  }
   call('prompt', 'sdd-grill', name);
   fs.writeFileSync(`${dir}/brainstorming.md`, '# Обсуждение\nСтатус: готов\n\n## Решения\n| # | Ветка | Вопрос | Рекомендация агента | Решение |\n|---|---|---|---|---|\n| 1 | Продукт | Поведение | — | Анна видит результат |\n');
   call('ask', dir);
@@ -68,6 +76,42 @@ function story(name, complex = false) {
   if (simple) {
     call('approve', 'spec', dir);
     call('gate', 'slices', dir);
+  }
+  if (verify) {
+    const find = (cmd) => outputs.find((o) => o.args.join(' ').startsWith(cmd));
+    const required = (cmd, code) => {
+      const item = find(cmd);
+      assert.ok(item, `Нет вызова ${cmd}`);
+      assert.equal(item.code, code, `Код ${cmd}`);
+      return item.text;
+    };
+    assert.ok(required('prompt sdd-spec', 0).includes(
+      fs.readFileSync(`${root}/skills/sdd-spec/SKILL.md`, 'utf8')
+        .replace(/^---\\n[\\s\\S]*?\\n---\\n/, '').trim()));
+    if (simple) {
+      required('approve spec', 0);
+      required('gate slices', 3); // первый вызов: до создания spec
+      assert.equal(fs.existsSync(`${dir}/scenarios.md`), false);
+      assert.equal(fs.existsSync('docs/adr'), false);
+    } else {
+      required('approve spec', 3);
+      required('questions answer', 0);
+      assert.match(required('questions resume', 0), /SC-1|Q1/);
+      if (complex) {
+        required('scenarios move', 0);
+        required('approve adr', 0);
+        assert.equal(fs.existsSync(`${dir}/scenarios.md`), true);
+        assert.match(required('trace', 0), /SC-1/);
+      }
+    }
+    const registry = fs.readFileSync(`${root}/skills/sdd-grill/references/registry.md`, 'utf8').trim();
+    console.error('BASELINE_VERIFY ' + JSON.stringify({
+      story: name, calls: outputs.length,
+      outputChars: outputs.reduce((n, o) => n + o.text.length, 0),
+      maxActionChars: Math.max(...outputs.map((o) => o.text.length)),
+      registryLoads: outputs.filter((o) => o.text.includes(registry)).length,
+      actualModelCalls: 0, actualUserActions: 0,
+    }));
   }
   const reads = ['brainstorming.md', 'spec.md', 'tech.md', ...(complex ? ['scenarios.md'] : [])].map((file) => ({
     file, chars: fs.readFileSync(`${dir}/${file}`, 'utf8').length,
