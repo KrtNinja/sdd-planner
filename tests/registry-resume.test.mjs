@@ -131,3 +131,17 @@ test('контекст SC содержит только выбранную ве�
   assert.doesNotMatch(selected.text, /SC-2|Другая ветка/);
   assert.match(questionContext(loadFeature(dir), ['SC-2'])[0].text, /Другая ветка/);
 });
+
+test('R-01: прямой gate decide направляет ответ Q и обычный текст в реестр даже до spec', () => {
+  const dir = setup();
+  fs.unlinkSync(path.join(dir, 'spec.md'));
+  const withId = run(['gate', 'decide', dir, 'По Q1: разрешаем']);
+  assert.equal(withId.code, 0);
+  assert.match(withId.chunks.map((c) => c[1]).join(''), /"questions","resume"/);
+  assert.match(withId.chunks.map((c) => c[1]).join(''), /Q1/);
+  const plain = run(['gate', 'decide', dir, 'Разрешаем']);
+  assert.equal(plain.code, 0);
+  assert.match(plain.chunks.map((c) => c[1]).join(''), /"\{\}"/);
+  fs.unlinkSync(path.join(dir, 'questions.md'));
+  assert.match(resumeQuestion(loadFeature(dir), {}), /создайте новый Q/);
+});

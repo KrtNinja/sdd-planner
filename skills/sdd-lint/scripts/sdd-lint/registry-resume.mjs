@@ -39,10 +39,13 @@ function matchQuestions(m, candidates) {
   const qs = registryQuestions(m).filter((q) => !['resolved', 'excluded'].includes(q.fields.Статус));
   const selected = candidates ? qs.filter((q) => candidates.includes(q.id)) : qs;
   if (candidates?.some((id) => !selected.some((q) => q.id === id))) throw new Error('Неизвестный кандидат Q');
+  if (!selected.length) return 'Нерешённых Q нет. Для новых сведений создайте новый Q через questions add; ' +
+    'старые ID и протокол не восстанавливайте. Уточните только недостающий контекст.\n' + requiredRules('sdd-grill/references/registry.md');
   const instruction = selected.length === 1
     ? 'Предложение сопоставления покажи в составе обработки. Только после смысловой проверки передай один точный Q-ID в answer.'
     : 'Неоднозначность: уточни у человека один Q-ID до записи ответа и изменения документов. Несколько Q предположением не закрывай.';
-  return `${instruction}\n${selected.map((q) => `${questionCard(q)}\nКонтекст: ${q.fields.Контекст}`).join('\n\n')}`;
+  return `${instruction}\n${selected.map((q) => `${questionCard(q)}\nКонтекст: ${q.fields.Контекст}`).join('\n\n')}\n` +
+    requiredRules('sdd-grill/references/registry.md');
 }
 
 /** @param {string} stage */
