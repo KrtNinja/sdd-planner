@@ -83,7 +83,13 @@ function transition(q, verb, input) {
 /** @param {FlowQuestion} q @param {Input} input */
 function recordAnswer(q, input) {
   const answer = /** @type {string} */ (input.answer);
+  const history = JSON.parse(q.fields.ОтветыJSON || '[]');
+  if (!history.length && q.fields.Ответ) history.push({ answer: q.fields.ОтветJSON ? JSON.parse(q.fields.ОтветJSON) : q.fields.Ответ });
+  history.push({ answer, origin: input.origin || 'unconfirmed' });
+  q.fields.ОтветыJSON = JSON.stringify(history);
   q.fields.ОтветJSON = JSON.stringify(answer);
+  delete q.fields.Исключение;
+  delete q.fields.Последствия;
   q.fields.Ответ = /[\r\n]/.test(answer) ? 'Дословный ответ в ОтветJSON' : answer;
   q.fields.Происхождение = input.origin || 'unconfirmed';
 }
@@ -100,7 +106,7 @@ export function applyQuestion(dir, verb, input) {
     if (before?.fields.Пакет) throw new Error('Сначала завершите проведение сохранённого пакета');
     const q = changedQuestion(verb, input, before);
     q.fields.Действия = JSON.stringify({ ...questionActions(q), [input.key]: digest });
-    validateChange(dir, q);
+    validateChange(dir, q, verb);
     if (['add', 'scope'].includes(verb)) {
       const m = loadFeature(dir);
       q.fields.Снимок = JSON.stringify(questionContext(m, input.refs || []).map((c) => ({ id: c.id, file: c.file, hash: c.hash })));
@@ -110,9 +116,14 @@ export function applyQuestion(dir, verb, input) {
   });
 }
 
-/** @param {string} dir @param {FlowQuestion} q */
-function validateChange(dir, q) {
+/** @param {string} dir @param {FlowQuestion} q @param {string} verb */
+function validateChange(dir, q, verb) {
   const m = loadFeature(dir, (file) => file.endsWith('questions.md.pending') ? null : read(file));
+  if (['answer', 'exclude'].includes(verb)) {
+    if (m.flow.problems.length) throw new Error(m.flow.problems.map((p) => p.message).join('; '));
+    registryRecords(replaceQuestion('', q, null));
+    return;
+  }
   requireDocumentationFlow(m);
   registryRecords(replaceQuestion('', q, null));
   if (!['known', 'unknown'].includes(q.fields.Влияние)) throw new Error('Влияние: known или unknown');

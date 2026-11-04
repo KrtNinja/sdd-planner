@@ -1,5 +1,6 @@
 // Служебная команда для GigaCode; человеку — карточка, модели — следующий шаг.
 // @ts-check
+import { recoverDecisionWrites } from './decision-files.mjs';
 import { decisionAction } from './decision-actions.mjs';
 import { resumeQuestion, questionHistory } from './registry-resume.mjs';
 import { loadFeature } from './feature.mjs';
@@ -33,6 +34,7 @@ function questionOperation(m, verb, input) {
   if (verb === 'work') return draftWork(m, input.refs || []);
   if (verb === 'recover') {
     recoverRegistry(m.dir);
+    recoverDecisionWrites(loadFeature(m.dir));
     return 'Запись реестра восстановлена. Проверьте сводку вопросов.';
   }
   if (['prepare', 'accept', 'apply', 'revise'].includes(verb)) return decisionAction(m.dir, verb, input);

@@ -86,6 +86,7 @@ export function checkDecisionMeaning(before, after, obligations) {
     if (!after.flow.graph?.byId.has(id)) throw new Error(`Пакет удаляет существующий ID ${id}`);
   }
   checkProtocolAppend(before, after);
+  checkProtocolScope(before, after);
 }
 
 /** @param {Feature} before @param {Feature} after */
@@ -130,4 +131,23 @@ export function decisionLinks(dir, changes) {
   m = candidateFeature(dir, [...drafts.values()]);
   if (m.spec) for (const sl of m.slices.values()) linkSlice(sl, m.spec, collect);
   return [...drafts.values()];
+}
+
+// Вызывается явно после остановки писателей и восстановления questions.md.pending.
+/** @param {Feature} m */
+export function recoverDecisionWrites(m) {
+  for (const q of m.flow.records.filter((r) => r.kind === 'question' && r.fields.Пакет)) {
+    const pack = /** @type {{changes: Change[]}} */ (JSON.parse(q.fields.Пакет));
+    for (const c of pack.changes) {
+      const temp = `${decisionPath(m, c.file)}.decision-writing`;
+      if (fs.existsSync(temp)) fs.unlinkSync(temp);
+    }
+  }
+}
+
+/** @param {Feature} before @param {Feature} after */
+function checkProtocolScope(before, after) {
+  if (!before.protocol || !after.protocol) return;
+  const scope = new Set(after.protocol.outScope.map((x) => x.text));
+  if (before.protocol.outScope.some((x) => !scope.has(x.text))) throw new Error('Согласованные исключения протокола нельзя удалять');
 }

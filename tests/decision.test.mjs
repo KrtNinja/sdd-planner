@@ -168,3 +168,41 @@ test('пакет можно исправить до проведения; час
   assert.throws(() => act(dir, 'revise', { key: 'second-revise', packageHash: hash(dir) }), /частично проведён/);
   assert.ok(question(dir).fields.Пакет);
 });
+
+test('R-10: аварийный pending и временный документ восстанавливаются явно, Q не закрывается раньше записи', async () => {
+  const { run } = await import('../skills/sdd-lint/scripts/sdd-lint/run.mjs');
+  const dir = setup();
+  act(dir, 'prepare', proposal(dir));
+  accept(dir);
+  fs.writeFileSync(path.join(dir, 'questions.md.pending'), '{');
+  fs.writeFileSync(path.join(dir, 'spec.md.decision-writing'), 'часть документа');
+  assert.throws(() => act(dir, 'apply', { packageHash: hash(dir) }), /EEXIST/);
+  assert.equal(run(['questions', 'recover', dir, '{}']).code, 0);
+  assert.equal(fs.existsSync(path.join(dir, 'spec.md.decision-writing')), false);
+  assert.equal(question(dir).fields.Статус, 'answered');
+  act(dir, 'apply', { packageHash: hash(dir) });
+  assert.equal(question(dir).fields.Статус, 'resolved');
+});
+
+test('R-11: ответ после настоящего close, без восстановления протокола', async () => {
+  const { run } = await import('../skills/sdd-lint/scripts/sdd-lint/run.mjs');
+  const dir = setup();
+  fs.writeFileSync(path.join(dir, 'brainstorming.md'), '# Обсуждение\nСтатус: идёт\n');
+  const version = read(dir, '.sdd-flow.json');
+  run(['close', dir, '--yes']);
+  assert.equal(fs.existsSync(path.join(dir, 'brainstorming.md')), false);
+  assert.equal(read(dir, '.sdd-flow.json'), version);
+  assert.equal(question(dir).fields.Ответ, 'разрешаем');
+  act(dir, 'prepare', proposal(dir));
+  accept(dir);
+  act(dir, 'apply', { packageHash: hash(dir) });
+  assert.equal(question(dir).fields.Статус, 'resolved');
+  assert.equal(fs.existsSync(path.join(dir, 'brainstorming.md')), false);
+});
+
+test('подготовка пакета не мигрирует legacy даже при оставшемся questions.md', () => {
+  const dir = setup();
+  fs.unlinkSync(path.join(dir, '.sdd-flow.json'));
+  assert.throws(() => act(dir, 'prepare', proposal(dir)), /только в новом/);
+  assert.equal(read(dir, 'spec.md'), SPEC);
+});

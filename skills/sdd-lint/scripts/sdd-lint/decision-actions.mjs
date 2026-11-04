@@ -1,6 +1,7 @@
 // Журнал проведения находится в самой Q. Закрытие — последний шаг после записи и проверок.
 // @ts-check
 import path from 'node:path';
+import { questionCard } from './registry-view.mjs';
 import { loadFeature } from './feature.mjs';
 import { read } from './md.mjs';
 import { requireDocumentationFlow } from './flow.mjs';
@@ -22,7 +23,8 @@ const unlockedFeature = (dir) => loadFeature(dir, (file) => file.endsWith('quest
 
 /** @param {string} dir @param {string} verb @param {Input} input */
 export function decisionAction(dir, verb, input) {
-  if (!input || !/^[\w.-]{1,120}$/.test(input.key)) throw new Error('Нужен постоянный ключ действия key');
+  if (!loadFeature(dir).flow.state) throw new Error('Пакет доступен только в новом процессе');
+  if (!input || typeof input.key !== 'string' || !/^[\w.-]{1,120}$/.test(input.key)) throw new Error('Нужен постоянный ключ действия key');
   return writeRegistry(dir, (md) => {
     const { records, previous, digest } = questionRequest(md, verb, input);
     if (previous) return { md, result: decisionCard(previous) };
@@ -121,7 +123,7 @@ function checkUnchangedContext(m, pack) {
 function decisionCard(q) {
   if (!q.fields.Пакет) return `${q.id}: ответ требует обработки; подготовьте исправленный пакет.`;
   const p = /** @type {Package} */ (JSON.parse(q.fields.Пакет));
-  return `${q.id}: ${q.fields.Статус}\nЧто меняется и почему: ${p.summary}\n` +
+  return `${questionCard(q)}\nЧто меняется и почему: ${p.summary}\n` +
     `Компромиссы: ${p.tradeoffs}\nОставшиеся вопросы: ${p.remaining}\n` +
     `Файлы: ${p.changes.map((c) => c.file).join(', ')}\npackageHash: ${questionDigest(q.fields.Пакет)}`;
 }

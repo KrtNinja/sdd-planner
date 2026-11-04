@@ -87,3 +87,47 @@ test('продолжение существующей записи без сни
   assert.match(text, /Ответ человека \(JSON, дословно\): ""/);
   assert.match(resumeQuestion(loadFeature(dir), {}), /Предложение сопоставления/);
 });
+
+test('R-07: ответ сохраняется и при удалённой связи; конфликт остаётся видимым', () => {
+  const dir = setup();
+  fs.unlinkSync(path.join(dir, 'spec.md'));
+  applyQuestion(dir, 'answer', { key: 'late', id: 'Q1', answer: 'Разрешаем' });
+  assert.equal(originalAnswer(q(dir)), 'Разрешаем');
+  assert.match(resumeQuestion(loadFeature(dir), { id: 'Q1' }), /"file":null/);
+  assert.equal(q(dir).fields.Статус, 'answered');
+});
+
+test('дополнение частичного ответа сохраняет все дословные сообщения без повторов', () => {
+  const dir = setup();
+  applyQuestion(dir, 'answer', { key: 'first', id: 'Q1', answer: '  разрешаем\n' });
+  applyQuestion(dir, 'answer', { key: 'more', id: 'Q1', answer: 'Ждём не дольше 1 минуты', origin: 'analyst' });
+  applyQuestion(dir, 'answer', { key: 'more', id: 'Q1', answer: 'Ждём не дольше 1 минуты', origin: 'analyst' });
+  assert.deepEqual(JSON.parse(q(dir).fields.ОтветыJSON).map((r) => r.answer), ['  разрешаем\n', 'Ждём не дольше 1 минуты']);
+  assert.match(resumeQuestion(loadFeature(dir), { id: 'Q1' }), /История ответов/);
+});
+
+test('исходные этапы используют актуальные правила; отсутствующие Q и legacy не угадываются', () => {
+  const dir = setup();
+  const file = path.join(dir, 'questions.md');
+  const before = fs.readFileSync(file, 'utf8');
+  for (const stage of ['spec', 'scenarios', 'tech', 'slices', 'adr', 'review', 'decide']) {
+    fs.writeFileSync(file, before.replace('Этап: grill', `Этап: ${stage}`));
+    assert.match(resumeQuestion(loadFeature(dir), { id: 'Q1' }), new RegExp(`Исходный этап: ${stage}`));
+  }
+  fs.unlinkSync(path.join(dir, '.sdd-flow.json'));
+  assert.throws(() => resumeQuestion(loadFeature(dir), { id: 'Q1' }), /только в новом/);
+});
+
+test('контекст SC содержит только выбранную ветку и сохраняет блоки кода', async () => {
+  const { reserveFlowId } = await import('../skills/sdd-lint/scripts/sdd-lint/flow-state.mjs');
+  const { questionContext } = await import('../skills/sdd-lint/scripts/sdd-lint/registry-context.mjs');
+  const dir = setup();
+  reserveFlowId(dir, 'SC');
+  reserveFlowId(dir, 'SC');
+  fs.appendFileSync(path.join(dir, 'spec.md'), '\n## SC-1 — Экспорт\nТребования: FR-1\n```text\n## Не заголовок\n```\n## SC-2 — Поиск\nДругая ветка\n');
+  const selected = questionContext(loadFeature(dir), ['SC-1'])[0];
+  assert.match(selected.text, /## SC-1 — Экспорт/);
+  assert.match(selected.text, /```text\n## Не заголовок\n```/);
+  assert.doesNotMatch(selected.text, /SC-2|Другая ветка/);
+  assert.match(questionContext(loadFeature(dir), ['SC-2'])[0].text, /Другая ветка/);
+});

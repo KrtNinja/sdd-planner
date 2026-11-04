@@ -23,8 +23,7 @@ export function resumeQuestion(m, input) {
   const q = registryQuestions(m, { id: input.id })[0];
   if (!q) throw new Error(`Вопрос ${input.id} не найден; похожий вопрос не подставляется`);
   const context = contextChanges(m, q);
-  return [questionCard(q), `Ответ человека (JSON, дословно): ${JSON.stringify(originalAnswer(q))}`,
-    `Происхождение: ${q.fields.Происхождение || 'unconfirmed'}.`,
+  return [questionCard(q), answerDetails(q),
     `Контекст: ${q.fields.Контекст}\nПродолжить: ${q.fields.Продолжить}`,
     `Предполагаемые уточнения: ${q.fields.Уточнения || 'не сохранены; выяви новые развилки'}`,
     context.baseline ? 'Снимок контекста сохранён.' : 'Снимка до откладывания нет; явно проверь актуальность ответа.',
@@ -68,4 +67,16 @@ export function questionHistory(m) {
   }
   if (!result.length) throw new Error('В Git нет сохранённого обсуждения; ревизия не выдумывается');
   return result.join('\n');
+}
+
+/** @param {import('./flow-format.mjs').FlowRecord} q */
+function exclusionText(q) {
+  return q.fields.Исключение ? `Исключение: ${q.fields.Исключение}\nПоследствия: ${q.fields.Последствия}` : '';
+}
+
+/** @param {import('./flow-format.mjs').FlowRecord} q */
+function answerDetails(q) {
+  return [`Ответ человека (JSON, дословно): ${JSON.stringify(originalAnswer(q))}`,
+    `Происхождение: ${q.fields.Происхождение || 'unconfirmed'}.`,
+    `История ответов (JSON): ${q.fields.ОтветыJSON || '[]'}`, exclusionText(q)].join('\n');
 }
