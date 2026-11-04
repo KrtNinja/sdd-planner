@@ -78,7 +78,7 @@ const SECTION_NAMES = new Map([
   ['Покрытие требований', 'Покрытие Dev Spec'],
 ]);
 /** @param {string} title */
-const sectionName = (title) => SECTION_NAMES.get(title) ?? title;
+const sectionName = (title) => SECTION_NAMES.get(title) || title;
 
 export class SectionConflict extends Error {}
 
