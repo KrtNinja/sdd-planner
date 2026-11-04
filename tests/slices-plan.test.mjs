@@ -120,7 +120,7 @@ test('gate slices: путь фичи из любого вида аргумент
   assert.match(r.out, /\n⚙ sdd: ворота slices открыты · фича docs\/comments · /);
   assert.match(r.out, /^- \*\*FR-10\*\* Уведомление может прийти с задержкой/m);
   assert.match(r.out, /^Сервисы: frontend, tasks-core, notify-service/m);
-  assert.match(r.out, /ADR фичи:\n- `docs\/adr\/0001-mention-notifications\.md` «предложено»/);
+  assert.match(r.out, /Архитектурные решения \(ADR\) задачи:\n- `docs\/adr\/0001-mention-notifications\.md` «предложено»/);
   assert.match(r.out, / · плана нет — начни с него: docs\/comments\/_work\/plan\.md · /);
 });
 test('gate slices: ADR без названия и без статуса — в брифе «без названия» и «—»', () => {
@@ -130,12 +130,12 @@ test('gate slices: ADR без названия и без статуса — в �
   edit(cwd, adr, 'Статус: предложено\n', '');
   const r = run(cwd, 'gate', 'slices', 'docs/comments');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /ADR фичи:\n- `docs\/adr\/0001-mention-notifications\.md` «—» — без названия/);
+  assert.match(r.out, /Архитектурные решения \(ADR\) задачи:\n- `docs\/adr\/0001-mention-notifications\.md` «—» — без названия/);
 });
 test('plan: чистый план — без ошибок, латинская P в причине не ошибка', () => {
   const r = run(planWorkspace(), 'plan', 'docs/comments');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /План нарезки без ошибок: 3 slices\./);
+  assert.match(r.out, /План разбиения работы без ошибок\. Частей работы: 3\./);
   assert.match(r.out, /\n⚙ sdd: вызови \["ask","docs\/comments"\]\n$/);
 });
 test('plan: покрытие, причины, зависимости, сервисы — ошибки с номером строки; лимит прогонов', () => {
@@ -172,14 +172,14 @@ test('plan: Р1 по принятому ADR, требование в двух sl
 });
 test('ask: план — человеку списком до вопроса, «Да» рекомендовано, других вопросов нет', () => {
   const a = ask(planWorkspace());
-  assert.equal(a.stage, 'План нарезки ждёт согласия (docs/comments/_work/plan.md)');
+  assert.equal(a.stage, 'План разбиения работы ждёт согласования (docs/comments/_work/plan.md)');
   assert.ok(a.card.startsWith(a.preview));
   assert.match(a.preview, /^- 003 Уведомления об упоминаниях — поведение, после 001, 002$/m);
   assert.match(a.preview, /Основание: FR-1…FR-7, NFR-1, NFR-2/);
   assert.match(a.preview, /Почему отдельно: Р1 — ждёт ADR-0001 \(ADR-0001 «предложено»\)/);
   assert.match(a.preview, /Покрыты все 13 требований/);
   assert.deepEqual(ids(a), ['plan:yes', 'plan:edit']);
-  assert.equal(a.questions[0].options[0].label, 'Да, создать файлы slices');
+  assert.equal(a.questions[0].options[0].label, 'Да, создать файлы частей работы');
   assert.equal(a.questions[0].options[0].recommended, true);
   assert.match(a.questions[0].options[0].description, /создаст 3 файла/);
 });
@@ -205,7 +205,7 @@ test('choose plan:yes — файлы по плану с заготовками, 
   assert.ok(rules(res).includes('SL-37'));
   assert.ok(!rules(res).some((x) => ['SL-07', 'SL-14', 'SL-16', 'SL-19'].includes(x)), `заготовки не дают шума: ${rules(res).join(', ')}`);
   const a = ask(cwd);
-  assert.match(a.stage, /^Slices созданы по плану, заготовок «<…>» не заполнено: \d+$/);
+  assert.match(a.stage, /^Части работы созданы по плану, заготовок «<…>» не заполнено: \d+$/);
   assert.deepEqual(ids(a), ['here:sdd-slices', 'window:sdd-slices']); // продолжение этапа — здесь
 });
 test('gen slices: не создаёт файлы, если в плане ошибки или slices уже есть', () => {
@@ -234,7 +234,7 @@ test('done: заполненные slices — номера, «на ревью»,
   assert.match(r.out, /AC-002-B\? → AC-002-B6/);
   assert.match(r.out, /Этап готов: ошибок 0, предупреждений 0\. Статус «на ревью»: docs\/comments\/slices\/README\.md\./);
   const json = JSON.parse(r.out.slice(r.out.indexOf('{')));
-  assert.equal(json.stage, 'Slices на ревью');
+  assert.equal(json.stage, 'Части работы ожидают проверки');
   assert.match(read(cwd, 'comments/slices/README.md'), /^Статус: на ревью$/m);
   assert.ok(fs.readdirSync(path.join(cwd, '.tmp', 'sdd-lint-snapshots')).length > 0);
 });
@@ -281,7 +281,7 @@ test('MCP: ответ сервера всегда с кодом выхода —
   const input = ['{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}', '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"sdd_lint","arguments":{"args":["plan","comments"]}}}'].join('\n');
   const out = execFileSync('node', [MCP], { cwd, input, encoding: 'utf8', env: { ...process.env, TMPDIR: path.join(cwd, '.tmp') } });
   const res = out.trim().split('\n').map((l) => JSON.parse(l)).find((x) => x.id === 2);
-  assert.match(res.result.content[0].text, /^Плана нарезки ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: запиши docs\/comments\/_work\/plan\.md по шаблону assets\/plan\.md скилла sdd-slices · затем \["plan","docs\/comments"\] · код 2$/);
+  assert.match(res.result.content[0].text, /^Плана разбиения работы ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: запиши docs\/comments\/_work\/plan\.md по шаблону assets\/plan\.md скилла sdd-slices · затем \["plan","docs\/comments"\] · код 2$/);
   // Команда без своей строки ⚙ (check) — сервер добавляет её с кодом.
   const chk = execFileSync('node', [MCP], {
     cwd,
@@ -320,7 +320,7 @@ test('MCP: вызов sdd_lint в процессе — вывод экрана �
   const before = process.env.SDD_VIEW;
   const call = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'sdd_lint', arguments: { args: ['plan', 'comments'] } } });
   const text = inDir(cwd, {}, () => JSON.parse(replyTo(call)).result.content[0].text);
-  assert.match(text, /^Плана нарезки ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: .* · код 2$/);
+  assert.match(text, /^Плана разбиения работы ещё нет: docs\/comments\/_work\/plan\.md\.\n\n⚙ sdd: .* · код 2$/);
   assert.equal(process.env.SDD_VIEW, before);
   // Без аргументов — список фич (args по умолчанию []).
   const all = inDir(cwd, {}, () => JSON.parse(replyTo(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'sdd_lint' } }))));
@@ -337,10 +337,10 @@ test('Р1 — ADR: <тема>: вопрос «Нужен ADR», ворота bui
   edit(cwd, 'adr/0001-mention-notifications.md', 'Затрагивает slices: 003\n', '');
   run(cwd, 'fix', 'docs/comments');
   assert.ok(ids(ask(cwd)).includes('adr-here:003'));
-  assert.match(run(cwd, 'docs/comments').out, /написать ADR «дедупликация уведомлений» \(slice 003\): `\/sdd-adr comments "дедупликация уведомлений"`/);
+  assert.match(run(cwd, 'docs/comments').out, /написать ADR «дедупликация уведомлений» \(часть работы 003\): `\/sdd-adr comments "дедупликация уведомлений"`/);
   assert.equal(run(cwd, 'approve', 'adr', 'docs/comments', '0001').code, 0);
   assert.equal(run(cwd, 'approve', 'slices', 'docs/comments').code, 0);
   const g = run(cwd, 'gate', 'build', 'docs/comments');
   assert.equal(g.code, 3, g.out);
-  assert.match(g.out, /нет ADR: «дедупликация уведомлений» \(slice 003\)/);
+  assert.match(g.out, /нет ADR: «дедупликация уведомлений» \(часть работы 003\)/);
 });

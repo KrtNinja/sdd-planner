@@ -13,11 +13,11 @@ const plan = (basis = 'FR-1', result = 'поиск') => [
 test('PL-01: неправильный заголовок и пустой план; корректный и отсутствующий план', () => {
   const bad = feature({ [FILE]: '# План\n## Не slice' });
   expectRules(bad, checkPlan(bad), ['PL-01'], [
-    ['PL-01', 'err', FILE, 2, '«## Не slice» — не заголовок slice'],
-    ['PL-01', 'err', FILE, null, 'нет ни одного slice'],
+    ['PL-01', 'err', FILE, 2, '«## Не slice» — не заголовок части работы'],
+    ['PL-01', 'err', FILE, null, 'нет ни одной части работы'],
   ]);
   const mixed = feature({ [FILE]: plan() + '\n## Ошибка' });
-  expectRules(mixed, checkPlan(mixed), ['PL-01'], [['PL-01', 'err', FILE, 8, '«## Ошибка» — не заголовок slice']]);
+  expectRules(mixed, checkPlan(mixed), ['PL-01'], [['PL-01', 'err', FILE, 8, '«## Ошибка» — не заголовок части работы']]);
   for (const text of [null, plan()]) {
     const m = feature({ [FILE]: text });
     expectRules(m, checkPlan(m), ['PL-01'], []);

@@ -29,18 +29,20 @@ const cellOf = (t, r, re) => (t.header.some((h) => re.test(h)) ? cell(r, col(t, 
 /** @param {import('./model.mjs').Table} t @param {Map<string, import('./model.mjs').TableRow>} rows @param {string} f */
 const rowProblems = (t, rows, f) => (/** @type {[string, import('./model.mjs').Slice]} */ [num, sl]) => {
   const r = rows.get(num);
-  if (!r) return [finding('RM-02', f, t.start, `в таблице нет slice ${num}`)];
+  if (!r) return [finding('RM-02', f, t.start, `в таблице нет части работы ${num}`)];
   const basis = cellOf(t, r, /основани/i);
   const deps = cellOf(t, r, /завис/i);
   return [
-    ...(basis !== null && !sameSet(reqIds(basis), sl.basis) ? [finding('RM-02', f, r.n, `${num}: «Основание» в README не совпадает со slice`)] : []),
-    ...(deps !== null && !sameSet(uniq(nums3(deps)), sl.deps) ? [finding('RM-02', f, r.n, `${num}: «Зависит от» в README не совпадает со slice`)] : []),
+    ...(basis !== null && !sameSet(reqIds(basis), sl.basis) ?
+      [finding('RM-02', f, r.n, `${num}: «Основание» в README не совпадает с файлом части работы`)] : []),
+    ...(deps !== null && !sameSet(uniq(nums3(deps)), sl.deps) ?
+      [finding('RM-02', f, r.n, `${num}: «Зависит от» в README не совпадает с файлом части работы`)] : []),
   ];
 };
 /** @param {ReadmeContext} c */
 function sliceTable({ m, f, sc }) {
   const t = tables(sc.lines.filter((l) => !l.inCode)).find((x) => /^slice$/i.test(x.header[0] || ''));
-  if (!t) return [finding('RM-02', f, null, 'нет таблицы slices')];
+  if (!t) return [finding('RM-02', f, null, 'нет таблицы частей работы')];
   /** @type {Map<string, import('./model.mjs').TableRow>} */
   const rows = new Map();
   for (const r of t.rows) {
@@ -49,7 +51,7 @@ function sliceTable({ m, f, sc }) {
   }
   return [
     ...[...m.slices].flatMap(rowProblems(t, rows, f)),
-    ...[...rows].filter(([num]) => !m.slices.has(num)).map(([num, r]) => finding('RM-02', f, r.n, `в таблице slice ${num}, файла нет`)),
+    ...[...rows].filter(([num]) => !m.slices.has(num)).map(([num, r]) => finding('RM-02', f, r.n, `в таблице есть часть работы ${num}, но её файла нет`)),
   ];
 }
 
@@ -98,7 +100,7 @@ const README = [
       return [...covered]
         .map(([id, nums]) => /** @type {[string, string[]]} */ ([id, sharing(m, nums)]))
         .filter(([id, beh]) => beh.length > 1 && !cross.includes(id))
-        .map(([id, beh]) => finding('RM-03', f, null, `${id} в slices ${beh.join(', ')}, в «Пересечения» не описан`));
+        .map(([id, beh]) => finding('RM-03', f, null, `${id} в частях работы ${beh.join(', ')}, в «Пересечения» не описан`));
     },
   },
   {
@@ -116,7 +118,7 @@ const README = [
 
 /** @param {Feature} m @returns {Finding[]} */
 export function checkReadme(m) {
-  if (m.readme == null) return [finding('RM-01', m.readmeFile, null, 'нет README со списком slices, покрытием и порядком')];
+  if (m.readme == null) return [finding('RM-01', m.readmeFile, null, 'нет README со списком частей работы, покрытием и порядком')];
   // readmeSc есть, когда есть README.
   const c = { m, f: m.readmeFile, sc: /** @type {import('./model.mjs').Scan} */ (m.readmeSc), covered: coverage(m) };
   return README.flatMap((r) => r.check(c));

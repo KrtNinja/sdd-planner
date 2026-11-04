@@ -42,7 +42,8 @@ const short = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 /** @param {Feature} m @param {string} ref @param {string} decision @param {string[]} [next] @returns {Action} */
 function decideAction(m, ref, decision, next, note = '') {
   const args = ['prompt', 'sdd-decide', m.name, ref, decision];
-  const say = `Провожу решение по ${/:R\d+$/.test(ref) ? ref.split(':')[1] : 'вопросу'} через ${skillCode('sdd-decide')} в сабагенте: протокол → FR → AC. ` +
+  const say = `Обновляю документы по решению для ${/:R\d+$/.test(ref) ? ref.split(':')[1] : 'вопроса'} через ${skillCode('sdd-decide')} отдельным агентом: ` +
+    'протокол, требования и критерии приёмки. ' +
     `В конце покажу, что изменилось.`;
   return { subagent: [...args, '--sub', ...(note.trim() ? ['--note', note.trim()] : [])], here: args, next, say };
 }
@@ -55,11 +56,11 @@ const OWN_OF = {
   spec: (m) => ({
     target: rel(m.specFile),
     files: rel(m.specFile),
-    name: 'Dev Spec',
-    of: 'спеки',
+    name: 'Требования',
+    of: 'требований',
     status: /** @type {import('./model.mjs').Spec} */ (m.spec).status,
   }),
-  slices: (m, dir) => ({ target: dir, files: `каждому файлу в ${dir}/slices/`, name: 'Slices', of: 'slices', status: m.slicesStatus }),
+  slices: (m, dir) => ({ target: dir, files: `каждому файлу в ${dir}/slices/`, name: 'Части работы', of: 'частей работы', status: m.slicesStatus }),
   adr: (m, _dir, num) => {
     const a = /** @type {import('./model.mjs').Adr} */ (m.featureAdrs.find((x) => x.num === num));
     return { target: rel(a.file), files: rel(a.file), name: `ADR ${num}`, of: `ADR ${num}`, status: a.status };
@@ -81,13 +82,13 @@ function artifact(m, what, num) {
 /** @param {Feature} m @param {Artifact} x @param {boolean} again @returns {Option} */
 const reviewOption = (m, x, again) => ({
   id: `review-here:${x.key}`,
-  label: again ? 'Повторить ревью в сабагенте' : 'Ревью в сабагенте',
-  description: `свежий контекст, находки — в ${x.dir}/_work/review/${x.key}.md`,
+  label: again ? 'Повторить проверку отдельным агентом' : 'Проверить отдельным агентом',
+  description: `новая сессия, результаты — в ${x.dir}/_work/review/${x.key}.md`,
   action: {
     subagent: ['prompt', 'sdd-review', m.name, ...x.rest],
-    say: `Запускаю ревью ${x.of} в сабагенте, в чистом контексте. Находки придут таблицей, затем разберём их по одной.`,
+    say: `Запускаю проверку ${x.of} отдельным агентом. Выявленные проблемы будут в таблице, затем разберём их по одной.`,
     fallback: blocks(
-      `Сабагентов нет — запустите ревью в новом окне: ${code(skill('sdd-review', m.name, ...x.rest))}`,
+      `Отдельный агент недоступен — запустите проверку в новой сессии: ${code(skill('sdd-review', m.name, ...x.rest))}`,
       showCmd(skill('sdd-review', m.name, ...x.rest))
         .split('\n\n')
         .slice(1),
@@ -97,7 +98,7 @@ const reviewOption = (m, x, again) => ({
 /** @param {Feature} m @param {Artifact} x @returns {Option} */
 const windowOption = (m, x) => ({
   id: `review-window:${x.key}`,
-  label: 'Ревью в новом контексте/окне',
+  label: 'Проверить в новой сессии',
   description: 'вы запускаете команду сами',
   action: { show: showCmd(skill('sdd-review', m.name, ...x.rest)) },
 });
@@ -110,13 +111,13 @@ function humanizeHow(x) {
 /** @param {Artifact} x @returns {Option} */
 const humanizeOption = (x) => ({
   id: `humanize:${x.key}`,
-  label: `Убрать AI стиль из ${x.of}`,
-  description: 'humanizer в сабагенте, затем guard',
+  label: `Упростить формулировки ${x.of}`,
+  description: 'упростить текст и проверить сохранность структуры',
   action: {
     snapshot: x.target,
     subagent: ['prompt', 'humanize', x.target],
-    say: `Убираю AI стиль из ${x.of} в сабагенте, затем проверю скриптом, что ID, таблицы и тексты на месте.`,
-    fallback: `Сабагентов нет — сделайте сами: ${humanizeHow(x)}, затем ${code(lintCmd('guard', x.target))}`,
+    say: `Упрощаю формулировки ${x.of} отдельным агентом, затем проверю скриптом, что ID, таблицы и тексты на месте.`,
+    fallback: `Отдельный агент недоступен — запустите сами: ${humanizeHow(x)}, затем ${code(lintCmd('guard', x.target))}`,
   },
 });
 // Одобрение держат открытые вопросы (SP-06, SL-10): сначала они — по одному, ответ человека проводит decide,
@@ -148,7 +149,7 @@ const KIND = { блокер: 'Блокер', замечание: 'Замечан
 /** @param {Artifact} x */
 const findingBlock = (x) => (/** @type {ReviewRow} */ r, /** @type {number} */ left) =>
   itemBlock(
-    `${bold(`${KIND[r.level] || r.level} ${r.id}`)} · ревью ${x.of}${left > 1 ? ` · ${r.blocker ? 'блокеров' : 'замечаний'} к разбору: ${left}` : ''}`,
+    `${bold(`${KIND[r.level] || r.level} ${r.id}`)} · проверка ${x.of}${left > 1 ? ` · ${r.blocker ? 'блокеров' : 'замечаний'} к разбору: ${left}` : ''}`,
     [
       ['Где', r.where],
       ['Что не так', r.what],
@@ -186,8 +187,10 @@ function findingOptions(m, x, r) {
       : null,
     {
       id: id('ignore'),
-      label: 'Игнорировать',
-      description: m.protocol ? 'снять: в протоколе — «Снято на ревью», повторное ревью не поднимет' : 'снять: «отклонено» в файле ревью',
+      label: `Отклонить ${r.level}`,
+      description: m.protocol
+        ? 'сохранить как отклонённое в проверке и протоколе; повторно не предлагать'
+        : 'сохранить как отклонённое в файле проверки; убрать из очереди разбора',
       action: { lint: ['triage', x.dir, ref, 'ignore'] },
     },
   ].filter((o) => o !== null);
@@ -201,7 +204,7 @@ function remarksQuestion(m, x, rows) {
     header: 'Замечания',
     question: 'Пройдёмся по замечаниям?',
     preview: blocks(
-      `${bold(`Замечания ревью ${x.of}`)} · ${rows.length}`,
+      `${bold(`Замечания проверки ${x.of}`)} · ${rows.length}`,
       list(rows.map((r) => `${bold(r.id)} · ${codePaths(short(r.where || '—', 40))} · ${short(r.what, 90)}`)),
     ),
     options: [
@@ -215,17 +218,19 @@ function remarksQuestion(m, x, rows) {
       {
         id: some,
         label: 'Давай только …',
-        description: 'напишу номера пунктов, остальные снять',
+        description: 'разобрать указанные номера; остальные сохранить как отклонённые',
         action: {
-          wait: `Напишите номера замечаний, которые разберём, — например: ${ids.slice(0, 2).join(', ')}. Остальные сниму.`,
+          wait: `Напишите номера замечаний, которые разберём, — например: ${ids.slice(0, 2).join(', ')}. Остальные сохраню как отклонённые.`,
           then: ['choose', x.dir, some, ANSWER],
           answer: (text) => ({ lint: ['triage', x.dir, x.key, 'remarks', text], retry: true }),
         },
       },
       {
         id: `remarks:${x.key}:none`,
-        label: 'Игнорировать',
-        description: m.protocol ? 'снять все: в протоколе — «Снято на ревью», повторное ревью не поднимет' : 'снять все: «отклонено» в файле ревью',
+        label: 'Отклонить все эти замечания',
+        description: m.protocol
+        ? 'сохранить все как отклонённые в проверке и протоколе; повторно не предлагать'
+        : 'сохранить все как отклонённые в файле проверки; убрать из очереди разбора',
         action: { lint: ['triage', x.dir, x.key, 'remarks', 'none'] },
       },
     ],
@@ -257,5 +262,5 @@ export function artifactQuestion(m, what, num) {
     ? [approve, humanizeOption(x), ...(changedByReview(rv) ? [reviewOption(m, x, true)] : [])]
     : [reviewOption(m, x, false), windowOption(m, x), humanizeOption(x), approve];
   options[0].recommended = true;
-  return { header: x.name, question: `${x.name} «${x.status || '—'}»${rv ? ': ревью разобрано' : ''}. Что дальше?`, options };
+  return { header: x.name, question: `${x.name} «${x.status || '—'}»${rv ? ': результаты проверки разобраны' : ''}. Что дальше?`, options };
 }

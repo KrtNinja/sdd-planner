@@ -65,11 +65,11 @@ export function cmdTriage(ctx) {
   };
   const m = loadFeature(needDir(ctx, pos[0]));
   const [ref, verb, ...rest] = pos.slice(1);
-  if (!ref || !verb) usage(ctx, 'Укажи находку и решение: ' +
+  if (!ref || !verb) usage(ctx, 'Укажите пункт проверки и решение: ' +
     'triage docs/<feature> <ревью>:R<n> open|ignore|П<n>|исправлено или triage docs/<feature> <ревью> remarks all|none|<номера>');
   const [key, rid] = ref.split(':');
   const rv = m.reviews.get(key);
-  if (!rv) fail(`Ревью «${key}» нет. Есть: ${[...m.reviews.keys()].join(', ') || 'файлов ревью нет'}.`);
+  if (!rv) fail(`Проверки «${key}» нет. Есть: ${[...m.reviews.keys()].join(', ') || 'файлов проверки нет'}.`);
   const file = rel(rv.file);
 
   if (verb === 'remarks') {
@@ -78,7 +78,7 @@ export function cmdTriage(ctx) {
   }
 
   const r = findRow(rv, rid);
-  if (!r) fail(`Находки ${rid || '—'} в ${file} нет. Есть: ${rv.rows.map((x) => x.id).join(', ') || 'нет'}.`);
+  if (!r) fail(`Пункта ${rid || '—'} в ${file} нет. Есть: ${rv.rows.map((x) => x.id).join(', ') || 'нет'}.`);
   triageFinding(m, rv, { key, r, verb, say, fail });
   ctx.io.exit(0);
 }
@@ -100,8 +100,8 @@ function triageRemarks(m, rv, { key, rest, say, fail }) {
   const out = [];
   if (take.length) out.push(`К разбору: ${take.join(', ')} — по одному.`);
   if (drop.length) {
-    const inProtocol = logged ? `, ${plural(drop.length, 'строка', 'строки', 'строк')} в «${DROPPED_TITLE}» протокола: повторное ревью их не поднимет` : '';
-    out.push(`Сняты: ${drop.map((r) => r.id).join(', ')} — «отклонено» в ${file}${inProtocol}.`);
+    const inProtocol = logged ? `, ${plural(drop.length, 'строка', 'строки', 'строк')} в «${DROPPED_TITLE}» протокола: повторная проверка их не предложит` : '';
+    out.push(`Отклонены: ${drop.map((r) => r.id).join(', ')} — «отклонено» в ${file}${inProtocol}.`);
   }
   say(out.join('\n\n'));
 }
@@ -126,7 +126,7 @@ function triageFinding(m, rv, { key, r, verb, say, fail }) {
   const file = rel(rv.file);
   if (verb === 'open') {
     const target = openTarget(m, key, r);
-    if (!target) return fail(`Не понял, в какой файл записать вопрос по ${r.id}: в «Где» нет slice, AC или FR. Куда его записать?`);
+    if (!target) return fail(`Не понял, в какой файл записать вопрос по ${r.id}: в «Где» нет части работы, AC или FR. Куда его записать?`);
     const n = addOpenQuestion(target, openText(r, target.adr));
     save(rv, new Map([[r.id, DECISION.open]]));
     say(
@@ -136,7 +136,7 @@ function triageFinding(m, rv, { key, r, verb, say, fail }) {
   } else if (verb === 'ignore') {
     save(rv, new Map([[r.id, DECISION.ignore]]));
     const logged = addDropped(m, key, [r]);
-    say(`${r.id} снят: «отклонено» в ${file}${logged ? `, строка в «${DROPPED_TITLE}» протокола — повторное ревью его не поднимет` : ''}.`);
+    say(`${r.id} отклонён: «отклонено» в ${file}${logged ? `, строка в «${DROPPED_TITLE}» протокола — повторная проверка его не предложит` : ''}.`);
   } else if (/^П\d+$/.test(verb) || verb === 'исправлено') {
     save(rv, new Map([[r.id, verb]]));
     say(`${r.id}: «Решение» — ${verb} (${file}).`);

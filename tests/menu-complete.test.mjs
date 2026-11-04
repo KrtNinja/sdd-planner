@@ -14,7 +14,7 @@ test('complete: пути, скрытые файлы, неизвестные фи
       [['approve', 'adr', 'missing', ''], []],
       [['next', 'FR', 'one', ''], []],
       [['next', 'AC', 'missing', ''], []],
-      [['next', 'AC', 'one', '001', ''], ['B\tAC сервисной половины', 'F\tAC frontend-половины']],
+      [['next', 'AC', 'one', '001', ''], ['B\tAC серверной части', 'F\tAC пользовательского интерфейса']],
       [['diff', '--base', ''], ['HEAD']],
       [['diff', '--base', 'HEAD', '--'], ['--json', '--base']],
       [['choose', 'missing', ''], []],
@@ -31,6 +31,6 @@ test('menu: закрытая фича не предлагает несущест
   const menu = run(cwd);
   assert.equal(menu.code, 0, menu.out);
   assert.deepEqual(menu.out.split('\n').filter((l) => l.startsWith('- **comments**')), [
-    '- **comments** — Планирование завершено: slices одобрены, ADR приняты, временные артефакты убраны',
+    '- **comments** — Планирование завершено: части работы одобрены, ADR приняты, временные файлы убраны',
   ]);
 });

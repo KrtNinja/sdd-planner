@@ -85,11 +85,11 @@ function sourcesQuestion(m) {
   // Есть код или несколько документов — изучить их и не мучить человека; почти пусто — попросить источники.
   const options = sourceOptions(inv, { repo, give, fresh });
   options[0].recommended = true;
-  const seen = inv.empty ? 'В этой папке, кроме фичи, ничего нет.' : `В этой папке уже вижу:\n${list(inv.items.map(codePaths))}`;
+  const seen = inv.empty ? 'В этой папке, кроме задачи, ничего нет.' : `В этой папке уже вижу:\n${list(inv.items.map(codePaths))}`;
   return {
     header: 'Источники',
     question: 'Есть дополнительная документация или код, которые помогут понять, как устроен проект?',
-    preview: blocks(`Папка фичи: \`${d}\` (другое имя — напишите, какое).`, seen),
+    preview: blocks(`Папка задачи: \`${d}\` (другое имя — напишите, какое).`, seen),
     options,
   };
 }

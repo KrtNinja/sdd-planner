@@ -42,13 +42,13 @@ export function pickFeature(ctx, why, n) {
   if (!known.length) {
     ctx.io.error(
       isDir(DOCS)
-        ? `${why}. В ${DOCS}/ пока нет фич. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.`
+        ? `${why}. В ${DOCS}/ пока нет задач. Новая начинается с ${skillCode('sdd-grill')} — он спросит задачу.`
         : `${why}. Нет папки ${DOCS}/ — запускайте из корня репозитория с доками.`,
     );
     ctx.io.exit(2);
   }
   const lines = known.map((f) => `- ${lintCode(...callPrefix(ctx.args, n), f)}`);
-  ctx.io.error(`${why}. Фичи в ${code(`${DOCS}/`)}:\n\n${lines.join('\n')}`);
+  ctx.io.error(`${why}. Задачи в ${code(`${DOCS}/`)}:\n\n${lines.join('\n')}`);
   return ctx.io.exit(2);
 }
 // Нет варианта (approve без spec|slices|adr) — показать варианты готовыми командами.
@@ -78,7 +78,7 @@ export function choiceOf(ctx, name) {
 }
 /** @param {Ctx} ctx @param {string | undefined} d @returns {string} */
 export function needDir(ctx, d, n = 0) {
-  if (!d) pickFeature(ctx, 'Укажи фичу', n);
+  if (!d) pickFeature(ctx, 'Укажите задачу', n);
   const found = resolveFeature(d);
   if (found) return found;
   const parent = path.dirname(path.resolve(d));
@@ -94,8 +94,8 @@ export function needDir(ctx, d, n = 0) {
   ctx.io.error(
     [
       `Нет папки ${d}.`,
-      known.length ? `Фичи в ${rel(parent)}/: ${known.join(', ')}.` : `В ${rel(parent)}/ пока нет фич.`,
-      `Новая фича начинается с ${skillCode('sdd-grill', slug)}.`,
+      known.length ? `Задачи в ${rel(parent)}/: ${known.join(', ')}.` : `В ${rel(parent)}/ пока нет задач.`,
+      `Новая задача начинается с ${skillCode('sdd-grill', slug)}.`,
     ].join(' '),
   );
   return ctx.io.exit(2);

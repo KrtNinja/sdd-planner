@@ -85,7 +85,7 @@ const acsSettled = (/** @type {Slice} */ sl) => !sl.pending && sl.acs.every((a) 
 /** @param {Slice} sl @param {SliceContext} c */
 function behaviourCovered(sl, c) {
   if (!isBehaviour(sl)) return [];
-  if (!sl.acs.length && !sl.pending) return [finding('SL-07', sl.file, null, 'slice типа «поведение» без AC')];
+  if (!sl.acs.length && !sl.pending) return [finding('SL-07', sl.file, null, 'часть работы типа «поведение» без AC')];
   if (!acsSettled(sl)) return [];
   const checked = new Set(live(sl).flatMap((a) => a.refs));
   return [...sl.basis]
@@ -100,7 +100,7 @@ function boundsRefs(sl, c) {
     ...[...bounds.matchAll(/\(\d{3}(?:\s*(?:,|и)\s*\d{3})*\)/g)].flatMap(([x]) => matched(x, /\d{3}/g)),
     ...[...bounds.matchAll(/slice\s+(\d{3})/gi)].map((x) => x[1]),
   ];
-  return uniq(refs).filter((r) => !c.slices.has(r)).map((r) => finding('SL-25', sl.file, null, `«Границы»: slice ${r} нет`));
+  return uniq(refs).filter((r) => !c.slices.has(r)).map((r) => finding('SL-25', sl.file, null, `«Границы»: части работы ${r} нет`));
 }
 
 /** @type {SliceRule[]} */
@@ -119,8 +119,8 @@ const SLICE_TAIL = [
     check: (sl, c) => {
       const open = sectionText(sl.sc, /^Открытые вопросы/);
       if (!open || noneText(open)) return [];
-      if (approved(c.m.slicesStatus)) return [finding('SL-10', sl.file, null, 'slices одобрены, но в slice есть открытые вопросы')];
-      return [finding('SL-09', sl.file, null, 'есть открытые вопросы к Dev Spec')];
+      if (approved(c.m.slicesStatus)) return [finding('SL-10', sl.file, null, 'части работы одобрены, но в одной из них есть открытые вопросы')];
+      return [finding('SL-09', sl.file, null, 'есть открытые вопросы к требованиям')];
     },
   },
   { ids: ['SL-25'], check: boundsRefs },
@@ -131,7 +131,8 @@ function depsExist(c) {
   return [...c.slices.entries()].flatMap(([num, sl]) =>
     sl.deps
       .filter((d) => d === num || !c.slices.has(d))
-      .map((d) => finding('SL-11', sl.file, headerLine(sl.md, 'Зависимости'), d === num ? 'slice зависит сам от себя' : `зависимость ${d} — такого slice нет`)),
+      .map((d) => finding('SL-11', sl.file, headerLine(sl.md, 'Зависимости'),
+        d === num ? 'часть работы зависит сама от себя' : `зависимость ${d} — такой части работы нет`)),
   );
 }
 // SL-12 / SL-13: «Основание» — из spec, и каждое FR spec покрыто каким-то slice.
@@ -145,7 +146,7 @@ function specCovered(c) {
   const covered = coverage(c.m);
   const missing = [...s.reqs.values()]
     .filter((r) => !r.deleted && !covered.has(r.id))
-    .map((r) => finding('SL-13', c.m.slicesDir, null, `${r.id} не покрыт ни одним slice`));
+    .map((r) => finding('SL-13', c.m.slicesDir, null, `${r.id} не покрыт ни одной частью работы`));
   return [...unknown, ...missing];
 }
 // SL-27: ссылки на AC в spec, README, slices и ADR фичи ведут на существующие AC.
@@ -171,7 +172,8 @@ const FEATURE = [
     check: (c) => dependencyCycles(c.slices).map(({ num, path }) => finding('SL-11', c.slices.get(num)?.file, null, `цикл зависимостей: ${path.join(' → ')}`)),
   },
   { ids: ['SL-12', 'SL-13'], check: specCovered },
-  { ids: ['SL-26'], check: (c) => (c.slices.size > 6 ? [finding('SL-26', c.m.slicesDir, null, `${c.slices.size} slices — больше ориентира 3–6`)] : []) },
+  { ids: ['SL-26'], check: (c) =>
+     (c.slices.size > 6 ? [finding('SL-26', c.m.slicesDir, null, `Частей работы: ${c.slices.size} — больше ориентира 3–6`)] : []) },
   { ids: ['SL-27'], check: acLinks },
 ];
 

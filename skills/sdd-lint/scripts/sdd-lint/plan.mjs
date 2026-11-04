@@ -171,7 +171,7 @@ function previewSlice(m, s) {
   const out = [`- ${s.num} ${s.title} — ${s.type}${s.deps.length ? `, после ${s.deps.join(', ')}` : ''}`];
   if (s.basis.size) out.push(`  - Основание: ${compactIds([...s.basis])}`);
   const svc = parseHalves(s.halves).services;
-  out.push(`  - Половины: ${svc.length ? svc.join(' + ') : s.halves || '—'}`);
+  out.push(`  - Задействованные части системы: ${svc.length ? svc.join(' + ') : s.halves || '—'}`);
   if (s.result) out.push(`  - Результат: ${s.result}`);
   if (reason(s.why)) out.push(whyLine(m, /** @type {string} */ (s.why)));
   return out;
@@ -192,7 +192,7 @@ export function planPreview(m) {
   const order = layers(m, new Map(p.slices.map((s) => [s.num, s])))
     .map((l) => l.join(', '))
     .join(' → ');
-  const out = [`План нарезки (${rel(p.file)}): ${p.slices.length} slices, порядок ${order}`, ''];
+  const out = [`План разбиения работы (${rel(p.file)}): частей работы ${p.slices.length}, порядок ${order}`, ''];
   for (const s of p.slices) out.push(...previewSlice(m, s));
   const all = m.spec ? [...m.spec.reqs.values()].filter((r) => !r.deleted).map((r) => r.id) : [];
   const covered = new Set(p.slices.flatMap((s) => [...s.basis]));
@@ -204,15 +204,16 @@ export function planPreview(m) {
         : `Не покрыты: ${all.filter((id) => !covered.has(id)).join(', ')}.`,
     );
   const notes = [
-    ...sharedReqs(p).map(([id, ns]) => `${id} — в ${ns.join(' и ')}: склеить или описать границу`),
-    ...p.slices.filter(nfrOnly).map((s) => `${s.num} — только NFR: склеить с путём, к которому он относится?`),
-    ...p.slices.filter((s) => reason(s.why) === '1' && adrTopic(s.why)).map((s) => `${s.num} ждёт ADR «${adrTopic(s.why)}» — предложу написать после нарезки`),
+    ...sharedReqs(p).map(([id, ns]) => `${id} — в ${ns.join(' и ')}: объединить или описать границу`),
+    ...p.slices.filter(nfrOnly).map((s) => `${s.num} — только NFR: объединить с частью работы, к которой относится требование?`),
+    ...p.slices.filter((s) => reason(s.why) === '1' && adrTopic(s.why)).map((s) =>
+      `${s.num} ждёт ADR «${adrTopic(s.why)}» — предложу подготовить после разбиения работы`),
     ...p.slices
       .filter((s) => reason(s.why) === '1')
       .flatMap((s) => adrNums(s.why).map((num) => /** @type {const} */ ([s, m.adrs.find((a) => a.num === num)])))
       .filter(/** @returns {x is readonly [PlanSlice, import('./model.mjs').Adr]} */ (x) => !!x[1] && approved(x[1].status))
-      .map(([s, a]) => `${s.num} отделён по Р1, но ADR-${a.num} уже принят — часть его не ждёт: склеить?`),
-    ...(p.slices.length > 6 ? [`${p.slices.length} slices — больше ориентира 3–6`] : []),
+      .map(([s, a]) => `Часть ${s.num} выделена по Р1, но ADR-${a.num} уже принят — часть его не ждёт: объединить?`),
+    ...(p.slices.length > 6 ? [`Частей работы: ${p.slices.length} — больше ориентира 3–6`] : []),
   ];
   if (notes.length) out.push('', 'Обратите внимание:', ...notes.map((x) => `- ${x}`));
   return out.join('\n');

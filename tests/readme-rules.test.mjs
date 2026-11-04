@@ -30,8 +30,8 @@ test('RM-02: строки таблицы, «Покрытие» (номера —
   const rows = table(['Slice', 'Тип', 'Основание', 'Зависит от'], ['001', 'подготовка', 'FR-1', '—'], ['002', 'поведение', 'FR-1, FR-3', '001'], ['003', 'поведение', 'FR-3', '002']);
   const m = feature({ ...SLICES, 'slices/README.md': README(rows) });
   assert.deepEqual(brief(m, checkReadme(m), ['RM-02']), [
-    'RM-02 slices/README.md:8 002: «Основание» в README не совпадает со slice',
-    'RM-02 slices/README.md:9 003: «Зависит от» в README не совпадает со slice',
+    'RM-02 slices/README.md:8 002: «Основание» в README не совпадает с файлом части работы',
+    'RM-02 slices/README.md:9 003: «Зависит от» в README не совпадает с файлом части работы',
     'RM-02 slices/README.md:15 «Покрытие» FR-2: в README —, по «Основание» 002',
   ]);
 });
@@ -46,8 +46,8 @@ test('RM-02: без колонок «Основание» и «Зависит о
   const rows = table(['Slice', 'Тип'], ['001', 'подготовка'], ['002', 'поведение'], ['004', 'поведение']);
   const m = feature({ ...SLICES, 'slices/README.md': README(rows) });
   assert.deepEqual(brief(m, checkReadme(m), ['RM-02']), [
-    'RM-02 slices/README.md:5 в таблице нет slice 003',
-    'RM-02 slices/README.md:9 в таблице slice 004, файла нет',
+    'RM-02 slices/README.md:5 в таблице нет части работы 003',
+    'RM-02 slices/README.md:9 в таблице есть часть работы 004, но её файла нет',
     'RM-02 slices/README.md:15 «Покрытие» FR-2: в README —, по «Основание» 002',
   ]);
 });

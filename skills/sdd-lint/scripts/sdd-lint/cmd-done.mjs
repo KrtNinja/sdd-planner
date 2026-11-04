@@ -42,7 +42,8 @@ export function cmdPlan(ctx) {
   const dir = rel(m.dir);
   if (!m.plan) {
     ctx.io.log(
-      screen(`Плана нарезки ещё нет: ${rel(m.planFile)}.`, `запиши ${rel(m.planFile)} по шаблону assets/plan.md скилла sdd-slices`, G.then(['plan', dir])),
+      screen(`Плана разбиения работы ещё нет: ${rel(m.planFile)}.`,
+        `запиши ${rel(m.planFile)} по шаблону assets/plan.md скилла sdd-slices`, G.then(['plan', dir])),
     );
     ctx.io.exit(2);
   }
@@ -59,15 +60,15 @@ export function cmdPlan(ctx) {
       dir: m.dir,
       kind: 'plan',
       runs,
-      what: `План нарезки не готов: ошибок ${c.err}`,
+      what: `План разбиения работы не готов: ошибок ${c.err}`,
       fix: `исправь ${rel(m.planFile)}`,
       then: ['plan', dir],
-      stuck: 'Ошибки в плане нарезки',
+      stuck: 'Ошибки в плане разбиения работы',
       ask: 'Как быть: поправить план вместе или вы поправите сами?',
     });
   reset(m.dir, 'plan');
   const warn = c.warn ? `предупреждений ${c.warn} — повод склеить slices: поправь план или оставь, человек увидит их рядом с планом` : null;
-  ctx.io.log(`\n${screen(`План нарезки без ошибок: ${m.plan.slices.length} slices.`, warn, G.call(['ask', dir]))}`);
+  ctx.io.log(`\n${screen(`План разбиения работы без ошибок. Частей работы: ${m.plan.slices.length}.`, warn, G.call(['ask', dir]))}`);
   ctx.io.exit(0);
 }
 

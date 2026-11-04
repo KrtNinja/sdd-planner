@@ -65,9 +65,9 @@ function unfinishedPlanning(m) {
   /** @type {string[]} */
   const unfinished = [];
   if (!m.spec) unfinished.push('нет spec.md');
-  else if (!approved(m.spec.status)) unfinished.push(`Dev Spec «${m.spec.status || '—'}»`);
-  if (!m.slices.size) unfinished.push('slices нет');
-  else if (!approved(m.slicesStatus)) unfinished.push('slices не одобрены');
+  else if (!approved(m.spec.status)) unfinished.push(`Требования «${m.spec.status || '—'}»`);
+  if (!m.slices.size) unfinished.push('частей работы нет');
+  else if (!approved(m.slicesStatus)) unfinished.push('части работы не одобрены');
   const pending = pendingAdrs(m);
   if (pending.length) unfinished.push(`ADR не приняты: ${pending.map((a) => a.num).join(', ')}`);
   return unfinished;
@@ -76,7 +76,7 @@ function unfinishedPlanning(m) {
 /** @param {string[] | null} dirty @param {{ file: string }[]} rows */
 function lostReview(dirty, rows) {
   if (!dirty) return 'пропадут совсем: не git-репозиторий';
-  return rows.some((x) => dirty.includes(x.file)) ? 'пропадут совсем: файл ревью не закоммичен' : null;
+  return rows.some((x) => dirty.includes(x.file)) ? 'пропадут совсем: файл проверки не сохранён в коммите' : null;
 }
 /** @param {Feature} m @param {(rv: import('./model.mjs').Review) => import('./model.mjs').ReviewRow[]} pick */
 function reviewRows(m, pick) {
@@ -89,10 +89,10 @@ function reviewRisks(m, dirty) {
   const blockers = reviewRows(m, openBlockers);
   if (blockers.length) {
     const after = lostReview(dirty, blockers) || 'останутся только в истории git';
-    risks.push(`Блокеры ревью без решения: ${listed(blockers.map((x) => x.id))} — в FR и AC их нет, после удаления ${after}.`);
+    risks.push(`Блокеры проверки без решения: ${listed(blockers.map((x) => x.id))} — в FR и AC их нет, после удаления ${after}.`);
   }
   const notes = reviewRows(m, (rv) => rv.rows.filter((r) => !r.blocker && undecided(r)));
-  if (notes.length) risks.push(`Замечания ревью без решения: ${listed(notes.map((x) => x.id))} — ${lostReview(dirty, notes) || 'уйдут в историю git'}.`);
+  if (notes.length) risks.push(`Замечания проверки без решения: ${listed(notes.map((x) => x.id))} — ${lostReview(dirty, notes) || 'уйдут в историю git'}.`);
   return risks;
 }
 
@@ -100,7 +100,7 @@ function reviewRisks(m, dirty) {
 function uncommittedRisks(dirty, files) {
   const risks = [];
   if (dirty === null && files.length) risks.push('Не git-репозиторий: удалённое не восстановить.');
-  else if (dirty?.length) risks.push(`Не закоммичено: ${listed(dirty)} — удалится без следа, в истории git этого не будет.`);
+  else if (dirty?.length) risks.push(`Не сохранено в коммите: ${listed(dirty)} — удалится без следа, в истории git этого не будет.`);
   return risks;
 }
 
@@ -118,12 +118,13 @@ export function closeSummary(m) {
   const unfinished = unfinishedPlanning(m);
   const risks = [];
   if (unfinished.length)
-    risks.push(`Планирование не закончено (${unfinished.join('; ')}): протокол и ревью — основа для доработки, после удаления они будут только в истории git.`);
+    risks.push(`Планирование не закончено (${unfinished.join('; ')}): ` +
+      'протокол и результаты проверки нужны для доработки; после удаления останутся только в Git.');
   const dirty = uncommitted(m, files);
   risks.push(...reviewRisks(m, dirty), ...uncommittedRisks(dirty, files));
 
   const errs = findings.filter((x) => x.level === 'err' && !doomed(path.resolve(x.file)));
-  if (errs.length) risks.push(`Ошибок lint в постоянных документах: ${errs.length} — close их не исправит. Список: ${lintCode(dir)}.`);
+  if (errs.length) risks.push(`Ошибок автоматической проверки в постоянных документах: ${errs.length} — close их не исправит. Список: ${lintCode(dir)}.`);
 
   return { dir, files, effects, risks };
 }
@@ -144,8 +145,8 @@ export function closePreview(s) {
 export function closeQuestion(m, s) {
   const clean = !s.risks.length;
   return {
-    header: 'Закрыть фичу',
-    question: clean ? `Удалить временные артефакты ${s.dir}?` : `Удалить временные артефакты ${s.dir}, несмотря на последствия выше?`,
+    header: 'Завершить задачу',
+    question: clean ? `Удалить временные файлы ${s.dir}?` : `Удалить временные файлы ${s.dir}, несмотря на последствия выше?`,
     preview: closePreview(s),
     options: closeOptions(m, clean),
   };
@@ -157,7 +158,7 @@ export function closeOptions(m, clean = true) {
   const yes = {
     id: 'close:yes',
     label: 'Удалить',
-    description: 'скрипт удалит перечисленное и проверит фичу',
+    description: 'скрипт удалит перечисленное и проверит документы задачи',
     recommended: clean,
     action: { lint: ['close', rel(m.dir), '--yes'], after: G.stop },
   };

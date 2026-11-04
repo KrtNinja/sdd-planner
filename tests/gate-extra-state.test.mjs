@@ -9,7 +9,7 @@ import { feature } from './helpers.mjs';
 
 test('reviewStep: ADR отсутствует, неоднозначен или явно выбран', () => {
   const m = feature({});
-  assert.deepEqual(reviewStep(m, 'adr'), { stop: true, text: screen('У фичи нет ADR — ревьюить нечего.', G.stop) });
+  assert.deepEqual(reviewStep(m, 'adr'), { stop: true, text: screen('У задачи нет ADR для проверки. Подготовить архитектурное решение: `/sdd-adr search`.', G.stop) });
   m.featureAdrs = [{ num: '0001', status: null }, { num: '0002', status: 'проект' }];
   const expected = { stop: true, text: pickText(null, {
     header: 'ADR', question: 'Какой ADR смотрим?', options: [
@@ -31,7 +31,7 @@ test('findingStep: полная карточка без ссылок и с ре�
   const m = feature({});
   const row = { id: 'R1', n: 8, where: 'Экран', what: 'Неясно поведение', proposal: 'Уточнить', decision: '—' };
   m.reviews.set('spec', { file: m.dir + '/review.md', rows: [row] });
-  const head = `**Находка R1** · ревью spec · \`${rel(m.dir)}/review.md:8\``;
+  const head = `**Выявленная проблема R1** · проверка spec · \`${rel(m.dir)}/review.md:8\``;
   assert.deepEqual(findingStep(m, 'r1'), {
     card: head + '\n\n- **Где:** Экран\n- **Что не так:** Неясно поведение\n- **Предложение:** Уточнить',
     parts: ['находка spec:R1', 'решение в ревью впишешь на шаге «Источник»'],
@@ -39,7 +39,7 @@ test('findingStep: полная карточка без ссылок и с ре�
   row.where = 'FR-1'; row.what = 'Проверить AC-001-B1'; row.decision = 'исправлено';
   assert.deepEqual(findingStep(m, 'spec:R1'), {
     card: head + '\n\n- **Где:** FR-1\n- **Что не так:** Проверить AC-001-B1\n- **Предложение:** Уточнить\n- **Решение уже есть:** «исправлено»' +
-      '\n\nЧто на ней держится:\n- **FR-1** — нет в spec.md\n- **AC-001-B1** — нет в slices',
+      '\n\nСвязанные требования и критерии приёмки:\n- **FR-1** — нет в spec.md\n- **AC-001-B1** — нет в частях работы',
     parts: ['находка spec:R1', 'решение уже есть — спроси человека, менять ли его'],
   });
 });

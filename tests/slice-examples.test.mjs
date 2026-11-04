@@ -49,8 +49,8 @@ test('SL-09, SL-10: открытый вопрос меняет уровень п
       m.slicesStatus = status;
       const approved = status === 'одобрено';
       expectRules(m, checkSlices(m), ['SL-09', 'SL-10'], question !== 'Какой срок?' ? [] : [approved
-        ? ['SL-10', 'err', FILE, null, 'slices одобрены, но в slice есть открытые вопросы']
-        : ['SL-09', 'info', FILE, null, 'есть открытые вопросы к Dev Spec']]);
+        ? ['SL-10', 'err', FILE, null, 'части работы одобрены, но в одной из них есть открытые вопросы']
+        : ['SL-09', 'info', FILE, null, 'есть открытые вопросы к требованиям']]);
     }
   }
 });
@@ -73,6 +73,6 @@ test('SL-26: 0, 6 и 7 slices; README не добавляет slice', () => {
     }));
     const m = feature({ ...files, 'slices/README.md': '# Slices' });
     expectRules(m, checkSlices(m), ['SL-26'], count === 7
-      ? [['SL-26', 'info', 'slices', null, '7 slices — больше ориентира 3–6']] : []);
+      ? [['SL-26', 'info', 'slices', null, 'Частей работы: 7 — больше ориентира 3–6']] : []);
   }
 });

@@ -27,7 +27,7 @@ export function cmdClose(ctx) {
   const m = loadFeature(needDir(ctx, target));
   const dir = rel(m.dir);
   if (!tempArtifacts(m).length) {
-    ctx.io.log(screen(`Временных артефактов нет: ${dir} уже закрыта.`, G.stop));
+    ctx.io.log(screen(`Временных файлов нет: ${dir} уже закрыта.`, G.stop));
     ctx.io.exit(0);
   }
   const s = closeSummary(m);
@@ -44,9 +44,9 @@ export function cmdClose(ctx) {
   ctx.io.log(
     (findings.length ? '\n' : '') +
     blocks(
-      `Удалено: ${gone.map(codePaths).join(', ')}. В spec нет ссылок на протокол, ссылки на FR в slices обновлены.`,
+      `Удалено: ${gone.map(codePaths).join(', ')}. В требованиях нет ссылок на протокол, ссылки на FR в частях работы обновлены.`,
       s.risks.length ? `Закрыто с последствиями:\n${list(s.risks.map(codePaths))}` : null,
-      `Закоммитьте удаление вместе с остальными документами. Решения дальше — ${skillCode('sdd-decide', m.name)}: правит FR и AC напрямую.`,
+      `Сохраните удаление в коммите вместе с остальными документами. Решения дальше — ${skillCode('sdd-decide', m.name)}: правит FR и AC напрямую.`,
     ),
   );
   ctx.io.exit(c.err ? 1 : 0);

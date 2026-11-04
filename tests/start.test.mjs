@@ -131,7 +131,7 @@ test('задача фразой и имя: протокол из шаблона,
   assert.match(json(r.out).gear, / · другое имя папки → \["start","docs\/user-settings","--rename","<имя>"\]$/);
   const q = json(r.out);
   assert.equal(q.questions[0].question, 'Есть дополнительная документация или код, которые помогут понять, как устроен проект?');
-  assert.match(q.preview, /Папка фичи: `docs\/user-settings`/);
+  assert.match(q.preview, /Папка задачи: `docs\/user-settings`/);
   assert.match(q.preview, /^- `services\/` — README: 2/m);
   assert.deepEqual(optionIds(r.out), ['src:repo', 'src:give', 'src:new']);
   assert.equal(recommended(r.out), 'src:repo');
@@ -139,7 +139,7 @@ test('задача фразой и имя: протокол из шаблона,
 test('вопрос об источниках: в папке ничего нет — «пришлю» рекомендуется, «хватит того, что здесь» не предлагается', () => {
   const r = run(repo(), 'start', 'добавить панель настроек', '--slug', 'settings');
   assert.deepEqual(optionIds(r.out), ['src:give', 'src:new']);
-  assert.match(json(r.out).preview, /кроме фичи, ничего нет/);
+  assert.match(json(r.out).preview, /кроме задачи, ничего нет/);
 });
 test('имя папки проверяет скрипт: кириллица, занято, «adr»', () => {
   const cwd = repo();
@@ -231,7 +231,7 @@ test('choose src:new — изучать нечего, старт готов: «�
   const cwd = repo(SERVICES);
   run(cwd, 'start', 'панель настроек пользователя', '--slug', 'settings');
   const r = run(cwd, 'choose', 'docs/settings', 'src:new');
-  assert.match(r.out, /^Начинаем brainstorming `docs\/settings`/);
+  assert.match(r.out, /^Начинаем обсуждение задачи `docs\/settings`/);
   assert.match(r.out, /\n⚙ sdd: старт готов · фича docs\/settings · контекста нет, новый проект: спрашивай, как должно быть/);
   assert.match(r.out, / · дальше по скиллу со 2-го шага\n$/);
   assert.equal(r.out.split('\n').filter((l) => l.startsWith('⚙ sdd:')).length, 1);

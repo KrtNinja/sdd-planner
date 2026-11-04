@@ -48,8 +48,8 @@ function handoff(m, what) {
   const review = skill('sdd-review', m.name, what);
   const approve = lintCmd('approve', what, dir);
   const steps = [
-    `по желанию убрать AI стиль: ${human}, затем ${guard}`,
-    rv ? `ревью уже было: ${code(rel(rv.file))}; повторить в чистом контексте — ${code(review)}` : `ревью в чистом контексте: ${code(review)}`,
+    `по желанию упростить формулировки: ${human}, затем ${guard}`,
+    rv ? `проверка ИИ уже была: ${code(rel(rv.file))}; повторить в новой сессии — ${code(review)}` : `проверка ИИ в новой сессии: ${code(review)}`,
     ...(open.length ? [blockersStep(m, /** @type {Review} */ (rv), open)] : []),
     `одобрить: ${code(approve)}`,
   ];
@@ -59,7 +59,7 @@ function handoff(m, what) {
 /** @param {Feature} m @param {Review} rv @param {ReviewRow[]} open */
 function blockersStep(m, rv, open) {
   const ids = open.map((r) => r.id);
-  return `закрыть блокеры ревью ${ids.join(', ')} (${code(rel(rv.file))}): по одному — вопрос этапа (${code(lintCmd('ask', rel(m.dir)))}); ` +
+  return `закрыть блокеры проверки ${ids.join(', ')} (${code(rel(rv.file))}): по одному — вопрос этапа (${code(lintCmd('ask', rel(m.dir)))}); ` +
     `решение — ${code(skill('sdd-decide', m.name, ids[0], '"<решение>"'))}, правка — исправьте файл и впишите «исправлено» в колонку «Решение»`;
 }
 /** @param {Feature} m @returns {Steps} */
@@ -73,7 +73,9 @@ function adrSteps(m) {
     const approve = lintCmd('approve', 'adr', rel(m.dir), a.num);
     tip ??= reviewTip(m, rv, open, review, approve);
     return [
-      rv ? `ADR ${a.num} «${a.status || '—'}» — ревью уже было: ${code(rel(rv.file))}` : `ADR ${a.num} «${a.status || '—'}» — ревью: ${code(review)}`,
+      rv
+        ? `ADR ${a.num} «${a.status || '—'}» — проверка ИИ уже была: ${code(rel(rv.file))}`
+        : `ADR ${a.num} «${a.status || '—'}» — проверка ИИ: ${code(review)}`,
       ...(open.length ? [blockersStep(m, /** @type {Review} */ (rv), open)] : []),
       `ADR ${a.num} — принять: ${code(approve)}`,
     ];
@@ -84,7 +86,7 @@ function adrSteps(m) {
 /** @param {Feature} m @returns {Steps} */
 function newAdrSteps(m) {
   const need = neededAdrs(m).map((x) => ({ x, cmd: skill('sdd-adr', m.name, `"${x.topic}"`) }));
-  return { steps: need.map(({ x, cmd }) => `написать ADR «${x.topic}» (slice ${x.num}): ${code(cmd)}`), tip: need[0]?.cmd ?? null };
+  return { steps: need.map(({ x, cmd }) => `написать ADR «${x.topic}» (часть работы ${x.num}): ${code(cmd)}`), tip: need[0]?.cmd ?? null };
 }
 // next — все шаги для чтения; tip — одна рекомендуемая команда для строки Tip (подсказка в строке ввода).
 /** @param {string} cmd @returns {Steps} */
@@ -100,13 +102,13 @@ function completedStage(m) {
   const pending = pendingAdrs(m);
   if (pending.length) {
     const a = adrSteps(m);
-    return { now: `Slices одобрены. Перед реализацией примите ADR: ${pending.map((x) => x.num).join(', ')}`, next: a.steps, tip: a.tip };
+    return { now: `Части работы одобрены. Перед реализацией примите ADR: ${pending.map((x) => x.num).join(', ')}`, next: a.steps, tip: a.tip };
   }
   if (tempArtifacts(m).length) {
-    const c = one(skill('sdd-close', m.name), `перед merge убрать временные артефакты (${tempArtifacts(m).map(code).join(', ')})`);
-    return { now: 'Slices одобрены, ADR приняты', next: c.steps, tip: c.tip };
+    const c = one(skill('sdd-close', m.name), `перед слиянием ветки убрать временные файлы (${tempArtifacts(m).map(code).join(', ')})`);
+    return { now: 'Части работы одобрены, ADR приняты', next: c.steps, tip: c.tip };
   }
-  return { now: 'Планирование завершено: slices одобрены, ADR приняты, временные артефакты убраны', next: [], tip: null };
+  return { now: 'Планирование завершено: части работы одобрены, ADR приняты, временные файлы убраны', next: [], tip: null };
 }
 
 /** @param {Feature} m @returns {Stage} */
@@ -117,32 +119,32 @@ function slicesStage(m) {
     return stageWithAdrs(
       m,
       approved(m.slicesStatus)
-        ? `Dev Spec «${m.spec.status || '—'}», а slices уже есть — после одобрения spec проверьте и одобрите slices заново`
-        : `Dev Spec «${m.spec.status || '—'}» — slices ждут его одобрения`,
+        ? `Требования «${m.spec.status || '—'}», а части работы уже есть — после одобрения требований проверьте и одобрите части заново`
+        : `Требования «${m.spec.status || '—'}» — части работы ждут их одобрения`,
       handoff(m, 'spec'),
     );
   if (approved(m.slicesStatus)) return completedStage(m);
   const stubs = stubCount(m);
   if (stubs) return stageWithAdrs(
-    m, `Slices созданы по плану, заготовок «<…>» не заполнено: ${stubs}`, one(skill('sdd-slices', m.name), 'заполнить заготовки'),
+    m, `Части работы созданы по плану, заготовок «<…>» не заполнено: ${stubs}`, one(skill('sdd-slices', m.name), 'заполнить заготовки'),
   );
-  return stageWithAdrs(m, 'Slices на ревью', handoff(m, 'slices'));
+  return stageWithAdrs(m, 'Части работы ожидают проверки', handoff(m, 'slices'));
 }
 
 /** @param {Feature} m @returns {Stage} */
 function specStage(m) {
   if (m.plan && m.spec && approved(m.spec.status))
-    return stageWithAdrs(m, `План нарезки ждёт согласия (${rel(m.planFile)})`, one(skill('sdd-slices', m.name), 'согласовать нарезку'));
-  if (m.spec && approved(m.spec.status)) return stageWithAdrs(m, 'Dev Spec одобрен', one(skill('sdd-slices', m.name)));
-  if (m.spec) return stageWithAdrs(m, `Dev Spec «${m.spec.status || '—'}»`, handoff(m, 'spec'));
+    return stageWithAdrs(m, `План разбиения работы ждёт согласования (${rel(m.planFile)})`, one(skill('sdd-slices', m.name), 'согласовать разбиение работы'));
+  if (m.spec && approved(m.spec.status)) return stageWithAdrs(m, 'Требования одобрены', one(skill('sdd-slices', m.name)));
+  if (m.spec) return stageWithAdrs(m, `Требования «${m.spec.status || '—'}»`, handoff(m, 'spec'));
   return protocolStage(m);
 }
 
 /** @param {Feature} m @returns {Stage} */
 function protocolStage(m) {
   if (m.protocol && /готов/i.test(m.protocol.status || '')) return stageWithAdrs(m, 'Протокол готов', one(skill('sdd-spec', m.name)));
-  if (m.protocol) return stageWithAdrs(m, 'Brainstorming идёт', one(skill('sdd-grill', m.name), 'продолжить'));
-  return stageWithAdrs(m, 'Brainstorming не начат', one(skill('sdd-grill', m.name)));
+  if (m.protocol) return stageWithAdrs(m, 'Идёт обсуждение задачи', one(skill('sdd-grill', m.name), 'продолжить'));
+  return stageWithAdrs(m, 'Обсуждение задачи не начато', one(skill('sdd-grill', m.name)));
 }
 
 /** @param {Feature} m @returns {Stage} */

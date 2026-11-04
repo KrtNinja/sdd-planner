@@ -35,7 +35,7 @@ export function reportFeature(ctx, m, found, extra = {}) {
   if (!ctx.args.flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
     ctx.io.log(`\n${stageText(st)}`);
-    ctx.io.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, slices: ${m.slices.size}, AC: ${acs}`);
+    ctx.io.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, частей работы: ${m.slices.size}, AC: ${acs}`);
     if (!c.err) printTip(ctx, st);
   }
   ctx.io.exit(c.err ? 1 : 0);
@@ -52,26 +52,27 @@ export function gateClosed(m, stage, found) {
   if (stage === 'slices') return slicesGate(m, found);
   if (stage === 'build') return buildGate(m, found);
   if (['adr', 'decide', 'review'].includes(stage) && !m.spec)
-    return ['нет spec.md', `Сначала соберите Dev Spec: ${skillCode('sdd-spec', m.name)}`];
+    return ['нет spec.md', `Сначала подготовьте требования: ${skillCode('sdd-spec', m.name)}`];
   return null;
 }
 
 /** @param {Feature} m @param {Finding[]} found @returns {[string, string] | null} */
 function specGate(m, found) {
-  if (!m.protocol) return ['нет brainstorming.md', `Сначала проведите brainstorming: ${skillCode('sdd-grill', m.name)}`];
+  if (!m.protocol) return ['нет brainstorming.md', `Сначала обсудите задачу: ${skillCode('sdd-grill', m.name)}`];
   else if (!/готов/i.test(m.protocol.status || ''))
-    return [`статус протокола «${m.protocol.status || '—'}»`, `Сначала закончите brainstorming: ${skillCode('sdd-grill', m.name)}`];
-  else if (errorsIn(found, [m.protocolFile]).length) return ['ошибки в протоколе', `В протоколе ошибки lint — поправьте его, список: ${lintCode(rel(m.dir))}`];
+    return [`статус протокола «${m.protocol.status || '—'}»`, `Сначала закончите обсуждение задачи: ${skillCode('sdd-grill', m.name)}`];
+  else if (errorsIn(found, [m.protocolFile]).length)
+    return ['ошибки в протоколе', `Автоматическая проверка нашла ошибки в протоколе — поправьте его, список: ${lintCode(rel(m.dir))}`];
   return null;
 }
 
 /** @param {Feature} m @param {Finding[]} found @returns {[string, string] | null} */
 function slicesGate(m, found) {
   const dir = rel(m.dir);
-  if (!m.spec) return ['нет spec.md', `Сначала соберите Dev Spec: ${skillCode('sdd-spec', m.name)}`];
-  else if (!approved(m.spec.status)) return [`статус spec «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCode('approve', 'spec', dir)}`];
+  if (!m.spec) return ['нет spec.md', `Сначала подготовьте требования: ${skillCode('sdd-spec', m.name)}`];
+  else if (!approved(m.spec.status)) return [`статус требований «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCode('approve', 'spec', dir)}`];
   else if (errorsIn(found, [m.protocolFile, m.specFile]).length)
-    return ['ошибки в протоколе или spec', `В spec ошибки lint — исправьте и одобрите заново, список: ${lintCode(dir)}`];
+    return ['ошибки в протоколе или требованиях', `Исправьте ошибки в протоколе или требованиях и одобрите требования заново, список: ${lintCode(dir)}`];
   return null;
 }
 
@@ -80,10 +81,10 @@ function buildGate(m, found) {
   const dir = rel(m.dir);
   const pending = pendingAdrs(m);
   const need = neededAdrs(m);
-  if (!m.slices.size || !approved(m.slicesStatus)) return ['slices не одобрены', `Сначала одобрите slices: ${lintCode('approve', 'slices', dir)}`];
+  if (!m.slices.size || !approved(m.slicesStatus)) return ['части работы не одобрены', `Сначала одобрите части работы: ${lintCode('approve', 'slices', dir)}`];
   else if (need.length)
     return [
-      `нет ADR: ${need.map((x) => `«${x.topic}» (slice ${x.num})`).join(', ')}`,
+      `нет ADR: ${need.map((x) => `«${x.topic}» (часть работы ${x.num})`).join(', ')}`,
       `Сначала напишите ADR: ${need.map((x) => skillCode('sdd-adr', m.name, `"${x.topic}"`)).join('; ')}`,
     ];
   else if (pending.length)
@@ -91,7 +92,7 @@ function buildGate(m, found) {
       `ADR не приняты: ${pending.map((a) => a.num).join(', ')}`,
       `Сначала примите ADR: ${pending.map((a) => lintCode('approve', 'adr', dir, a.num)).join('; ')}`,
     ];
-  else if (hasErrors(found)) return ['есть ошибки lint', `Исправьте ошибки lint, список: ${lintCode(dir)}`];
+  else if (hasErrors(found)) return ['автоматическая проверка нашла ошибки', `Исправьте ошибки, список: ${lintCode(dir)}`];
   return null;
 }
 

@@ -29,10 +29,10 @@ function adrToApprove(m, num, pending) {
 // Почему ADR не выбран — и как указать его.
 /** @param {Feature} m @param {string | undefined} num @param {Adr[]} pending */
 function noAdrText(m, num, pending) {
-  if (num) return `ADR ${num} не найден среди ADR фичи ${m.name}`;
-  if (!pending.length) return `у фичи ${m.name} нет ADR, ждущих «принято»`;
+  if (num) return `ADR ${num} не найден среди ADR задачи ${m.name}`;
+  if (!pending.length) return `у задачи ${m.name} нет ADR, ждущих «принято»`;
   const list = pending.map((a) => lintCode('approve', 'adr', rel(m.dir), a.num));
-  return `у фичи ${pending.length} ADR без «принято» — укажите номер: ${list.join('; ')}`;
+  return `у задачи ${pending.length} ADR без «принято» — укажите номер: ${list.join('; ')}`;
 }
 // Статус артефакта после проверки отпечатка; артефакт есть — его наличие проверено раньше.
 /** @type {Record<Kind, (m: Feature, file: string) => string | null>} */
@@ -84,7 +84,7 @@ export function cmdApprove(ctx) {
   if (findings.length) {
     report(ctx, findings);
     const hg = findings.some((x) => x.rule === 'HG-01');
-    ctx.io.log(`\nНЕ ОДОБРЕНО: ${rel(target)} остаётся «${cur}».`);
+    ctx.io.log(`\nНЕ ОДОБРЕНО: ${rel(target)} остаётся «${cur}». Устраните перечисленные выше причины и повторите одобрение.`);
     if (hg)
       ctx.io.log(
         `\nЕсли защищённые части поменяли вы сами — ` +
@@ -114,8 +114,8 @@ function approvalTarget(m, what, { num, refuse }) {
     target = m.specFile;
     scope = [m.protocolFile, m.specFile];
   } else if (what === 'slices') {
-    if (!m.slices.size || m.readme == null) refuse(`нет slices или slices/README.md. Сначала: ${skillCode('sdd-slices', m.name)}`);
-    if (!m.spec || !approved(m.spec.status)) refuse(`Dev Spec не одобрен — slices опираются на него. Сначала: ${lintCode('approve', 'spec', dir)}`);
+    if (!m.slices.size || m.readme == null) refuse(`нет частей работы или slices/README.md. Сначала: ${skillCode('sdd-slices', m.name)}`);
+    if (!m.spec || !approved(m.spec.status)) refuse(`Требования не одобрены — части работы опираются на них. Сначала: ${lintCode('approve', 'spec', dir)}`);
     target = m.readmeFile;
     scope = [m.protocolFile, m.specFile, m.readmeFile, ...[...m.slices.values()].map((x) => x.file)];
   } else {

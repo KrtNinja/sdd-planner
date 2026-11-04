@@ -7,7 +7,7 @@
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint fix comments`
 ~~~~
@@ -17,7 +17,7 @@
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint fix comments`
 ~~~~
@@ -29,13 +29,13 @@
 ~~~~text
 Скрипту поправлять нечего.
 
-Slices на ревью. Следующий шаг:
+Части работы ожидают проверки. Следующий шаг:
 
-1. по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
-2. ревью в чистом контексте: `/sdd-review comments slices`
+1. по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
+2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
-Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14
+Ошибок: 0, предупреждений: 0. FR/NFR: 13, частей работы: 3, AC: 14
 
 Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~
@@ -53,10 +53,10 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
     "warn": 0,
     "info": 0
   },
-  "stage": "Slices на ревью",
+  "stage": "Части работы ожидают проверки",
   "next": [
-    "по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`",
-    "ревью в чистом контексте: `/sdd-review comments slices`",
+    "по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`",
+    "проверка ИИ в новой сессии: `/sdd-review comments slices`",
     "одобрить: `/sdd-lint approve slices docs/comments`"
   ],
   "tip": "Tip: Введите /sdd-review comments slices чтобы продолжить",
@@ -70,7 +70,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint done comments`
 ~~~~
@@ -84,14 +84,14 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 
 Этап готов: ошибок 0, предупреждений 0.
 
-**Slices «на ревью». Что дальше?**
+**Части работы «на ревью». Что дальше?**
 
-1. **Ревью в сабагенте** (рекомендую) — свежий контекст, находки — в `docs/comments/_work/review/slices.md`
-2. **Ревью в новом контексте/окне** — вы запускаете команду сами
-3. **Убрать AI стиль из slices** — humanizer в сабагенте, затем guard
+1. **Проверить отдельным агентом** (рекомендую) — новая сессия, результаты — в `docs/comments/_work/review/slices.md`
+2. **Проверить в новой сессии** — вы запускаете команду сами
+3. **Упростить формулировки частей работы** — упростить текст и проверить сохранность структуры
 4. **Одобрить** — `/sdd-lint approve slices docs/comments`
 
-⚙ sdd: вопрос «Slices» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices
+⚙ sdd: вопрос «Части работы» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices
 ~~~~
 
 ### `sdd-lint approve`
@@ -101,8 +101,8 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~text
 approve — выбери вариант:
 
-- `/sdd-lint approve spec comments` — одобрить Dev Spec
-- `/sdd-lint approve slices comments` — одобрить slices
+- `/sdd-lint approve spec comments` — одобрить требования
+- `/sdd-lint approve slices comments` — одобрить части работы
 - `/sdd-lint approve adr comments` — принять ADR
 ~~~~
 
@@ -111,7 +111,7 @@ approve — выбери вариант:
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint approve spec comments`
 ~~~~
@@ -129,7 +129,7 @@ docs/comments/spec.md: уже «одобрено <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint approve slices comments`
 ~~~~
@@ -141,7 +141,7 @@ docs/comments/spec.md: уже «одобрено <ДАТА>».
 ~~~~text
 docs/comments/slices/README.md: Статус: одобрено <ДАТА> · <ОТПЕЧАТОК>
 
-Slices одобрены, ADR приняты. Следующий шаг: перед merge убрать временные артефакты (`docs/comments/brainstorming.md`): `/sdd-close comments`
+Части работы одобрены, ADR приняты. Следующий шаг: перед слиянием ветки убрать временные файлы (`docs/comments/brainstorming.md`): `/sdd-close comments`
 
 Tip: Введите /sdd-close comments чтобы продолжить
 ~~~~
@@ -151,7 +151,7 @@ Tip: Введите /sdd-close comments чтобы продолжить
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint approve adr comments`
 ~~~~
@@ -161,7 +161,7 @@ Tip: Введите /sdd-close comments чтобы продолжить
 код 2
 
 ~~~~text
-НЕ ОДОБРЕНО: у фичи comments нет ADR, ждущих «принято»
+НЕ ОДОБРЕНО: у задачи comments нет ADR, ждущих «принято»
 ~~~~
 
 ### `sdd-lint approve adr comments 0001`
@@ -177,7 +177,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи файл или фичу. Фичи в `docs/`:
+Укажи файл или фичу. Задачи в `docs/`:
 
 - `/sdd-lint guard comments`
 ~~~~
@@ -187,7 +187,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи файл или фичу. Фичи в `docs/`:
+Укажи файл или фичу. Задачи в `docs/`:
 
 - `/sdd-lint guard comments`
 ~~~~
@@ -223,7 +223,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи файл или фичу. Фичи в `docs/`:
+Укажи файл или фичу. Задачи в `docs/`:
 
 - `/sdd-lint snapshot comments`
 ~~~~
@@ -241,7 +241,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint diff comments`
 ~~~~
@@ -251,7 +251,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint diff comments`
 ~~~~
@@ -294,7 +294,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 - `docs/comments/spec.md`: уберутся ссылки на протокол («Из протокола: П<n>»)
 
 Последствия:
-- Планирование не закончено (slices не одобрены): протокол и ревью — основа для доработки, после удаления они будут только в истории git.
+- Планирование не закончено (части работы не одобрены): протокол и результаты проверки нужны для доработки; после удаления останутся только в Git.
 
 Подтвердить: `/sdd-lint close docs/comments --yes`
 ~~~~
@@ -311,14 +311,14 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 - `docs/comments/spec.md`: уберутся ссылки на протокол («Из протокола: П<n>»)
 
 Последствия:
-- Планирование не закончено (slices не одобрены): протокол и ревью — основа для доработки, после удаления они будут только в истории git.
+- Планирование не закончено (части работы не одобрены): протокол и результаты проверки нужны для доработки; после удаления останутся только в Git.
 
-**Удалить временные артефакты docs/comments, несмотря на последствия выше?**
+**Удалить временные файлы docs/comments, несмотря на последствия выше?**
 
 1. **Не удалять** (рекомендую) — ничего не делать
-2. **Удалить** — скрипт удалит перечисленное и проверит фичу
+2. **Удалить** — скрипт удалит перечисленное и проверит документы задачи
 
-⚙ sdd: вопрос «Закрыть фичу» → ["choose","docs/comments","<id>"] · варианты: 1=close:no, 2=close:yes
+⚙ sdd: вопрос «Завершить задачу» → ["choose","docs/comments","<id>"] · варианты: 1=close:no, 2=close:yes
 ~~~~
 
 ### `sdd-lint close comments`
@@ -333,7 +333,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 - `docs/comments/spec.md`: уберутся ссылки на протокол («Из протокола: П<n>»)
 
 Последствия:
-- Планирование не закончено (slices не одобрены): протокол и ревью — основа для доработки, после удаления они будут только в истории git.
+- Планирование не закончено (части работы не одобрены): протокол и результаты проверки нужны для доработки; после удаления останутся только в Git.
 
 Подтвердить: `/sdd-lint close docs/comments --yes`
 ~~~~
@@ -350,14 +350,14 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 - `docs/comments/spec.md`: уберутся ссылки на протокол («Из протокола: П<n>»)
 
 Последствия:
-- Планирование не закончено (slices не одобрены): протокол и ревью — основа для доработки, после удаления они будут только в истории git.
+- Планирование не закончено (части работы не одобрены): протокол и результаты проверки нужны для доработки; после удаления останутся только в Git.
 
-**Удалить временные артефакты docs/comments, несмотря на последствия выше?**
+**Удалить временные файлы docs/comments, несмотря на последствия выше?**
 
 1. **Не удалять** (рекомендую) — ничего не делать
-2. **Удалить** — скрипт удалит перечисленное и проверит фичу
+2. **Удалить** — скрипт удалит перечисленное и проверит документы задачи
 
-⚙ sdd: вопрос «Закрыть фичу» → ["choose","docs/comments","<id>"] · варианты: 1=close:no, 2=close:yes
+⚙ sdd: вопрос «Завершить задачу» → ["choose","docs/comments","<id>"] · варианты: 1=close:no, 2=close:yes
 ~~~~
 
 ### `sdd-lint ask`
@@ -365,7 +365,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint ask comments`
 ~~~~
@@ -375,14 +375,14 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 0
 
 ~~~~text
-**Slices «на ревью». Что дальше?**
+**Части работы «на ревью». Что дальше?**
 
-1. **Ревью в сабагенте** (рекомендую) — свежий контекст, находки — в `docs/comments/_work/review/slices.md`
-2. **Ревью в новом контексте/окне** — вы запускаете команду сами
-3. **Убрать AI стиль из slices** — humanizer в сабагенте, затем guard
+1. **Проверить отдельным агентом** (рекомендую) — новая сессия, результаты — в `docs/comments/_work/review/slices.md`
+2. **Проверить в новой сессии** — вы запускаете команду сами
+3. **Упростить формулировки частей работы** — упростить текст и проверить сохранность структуры
 4. **Одобрить** — `/sdd-lint approve slices docs/comments`
 
-⚙ sdd: вопрос «Slices» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices
+⚙ sdd: вопрос «Части работы» → ["choose","docs/comments","<id>"] · варианты: 1=review-here:slices, 2=review-window:slices, 3=humanize:slices, 4=approve:slices
 ~~~~
 
 ### `sdd-lint choose`
@@ -390,7 +390,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 2
 
 ~~~~text
-Укажи фичу. Фичи в `docs/`:
+Укажите задачу. Задачи в `docs/`:
 
 - `/sdd-lint choose comments`
 ~~~~
@@ -410,7 +410,7 @@ docs/adr/0001-mention-notifications.md: уже «принято <ДАТА>».
 код 0
 
 ~~~~text
-Запускаю ревью slices в сабагенте, в чистом контексте. Находки придут таблицей, затем разберём их по одной.
+Запускаю проверку частей работы отдельным агентом. Выявленные проблемы будут в таблице, затем разберём их по одной.
 
 ⚙ sdd: сабагент ["prompt","sdd-review","comments","slices"] · отчёт сабагента — человеку · затем ["ask","docs/comments"] · без сабагентов — вызови ["choose","docs/comments","review-here:slices","--fallback"]
 ~~~~
@@ -432,7 +432,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 код 0
 
 ~~~~text
-Убираю AI стиль из slices в сабагенте, затем проверю скриптом, что ID, таблицы и тексты на месте.
+Упрощаю формулировки частей работы отдельным агентом, затем проверю скриптом, что ID, таблицы и тексты на месте.
 
 ⚙ sdd: сабагент ["prompt","humanize","docs/comments"] · отчёт сабагента — человеку · затем ["ask","docs/comments"] · без сабагентов — вызови ["choose","docs/comments","humanize:slices","--fallback"]
 ~~~~
@@ -444,7 +444,7 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~text
 docs/comments/slices/README.md: Статус: одобрено <ДАТА> · <ОТПЕЧАТОК>
 
-Slices одобрены, ADR приняты. Следующий шаг: перед merge убрать временные артефакты (`docs/comments/brainstorming.md`): `/sdd-close comments`
+Части работы одобрены, ADR приняты. Следующий шаг: перед слиянием ветки убрать временные файлы (`docs/comments/brainstorming.md`): `/sdd-close comments`
 
 Tip: Введите /sdd-close comments чтобы продолжить
 
@@ -457,13 +457,13 @@ Tip: Введите /sdd-close comments чтобы продолжить
 
 ~~~~text
 
-Slices на ревью. Следующий шаг:
+Части работы ожидают проверки. Следующий шаг:
 
-1. по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
-2. ревью в чистом контексте: `/sdd-review comments slices`
+1. по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
+2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
-Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14
+Ошибок: 0, предупреждений: 0. FR/NFR: 13, частей работы: 3, AC: 14
 
 Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~
@@ -481,10 +481,10 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
     "warn": 0,
     "info": 0
   },
-  "stage": "Slices на ревью",
+  "stage": "Части работы ожидают проверки",
   "next": [
-    "по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`",
-    "ревью в чистом контексте: `/sdd-review comments slices`",
+    "по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`",
+    "проверка ИИ в новой сессии: `/sdd-review comments slices`",
     "одобрить: `/sdd-lint approve slices docs/comments`"
   ],
   "tip": "Tip: Введите /sdd-review comments slices чтобы продолжить"
@@ -497,13 +497,13 @@ Tip: Введите /sdd-review comments slices чтобы продолжить
 
 ~~~~text
 
-Slices на ревью. Следующий шаг:
+Части работы ожидают проверки. Следующий шаг:
 
-1. по желанию убрать AI стиль: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
-2. ревью в чистом контексте: `/sdd-review comments slices`
+1. по желанию упростить формулировки: `/humanizer` по каждому файлу в `docs/comments/slices/`, затем `/sdd-lint guard docs/comments`
+2. проверка ИИ в новой сессии: `/sdd-review comments slices`
 3. одобрить: `/sdd-lint approve slices docs/comments`
 
-Ошибок: 0, предупреждений: 0. FR/NFR: 13, slices: 3, AC: 14
+Ошибок: 0, предупреждений: 0. FR/NFR: 13, частей работы: 3, AC: 14
 
 Tip: Введите /sdd-review comments slices чтобы продолжить
 ~~~~

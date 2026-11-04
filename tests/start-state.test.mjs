@@ -14,7 +14,7 @@ test('renameFeature: spec, нет протокола и готовый прот�
   ]) {
     const cwd = repo(Object.fromEntries(Object.entries(files).map(([f, s]) => [`docs/old/${f}`, s])));
     inDir(cwd, JSON_ENV, () => assert.equal(renameFeature('docs/old', 'new'),
-      'Переименовать `docs/old` можно только пока идёт brainstorming.\n\n⚙ sdd: стоп'));
+      'Переименовать `docs/old` можно только пока идёт обсуждение задачи. Продолжить работу можно под текущим именем.\n\n⚙ sdd: стоп'));
     assert.deepEqual(fs.readdirSync(path.join(cwd, 'docs')), ['old']);
     for (const [f, s] of Object.entries(files)) assert.equal(fs.readFileSync(path.join(cwd, 'docs/old', f), 'utf8'), s);
   }
@@ -31,7 +31,7 @@ test('renameFeature: занятое точное имя остаётся цел�
 test('startFrom: закрытый brainstorming со spec не запускается заново', () => {
   const cwd = repo({ 'docs/old/spec.md': '# Spec\n' });
   inDir(cwd, JSON_ENV, () => assert.equal(startFrom('old'),
-    'Brainstorming `docs/old` пройден и закрыт: есть spec.md. Поменять поведение — `/sdd-decide old "<вопрос>" "<решение>"`; ' +
-      'что дальше по фиче — `node scripts/sdd-lint.mjs old`.\n\n⚙ sdd: стоп'));
+    'Обсуждение задачи `docs/old` завершено: есть spec.md. Поменять поведение — `/sdd-decide old "<вопрос>" "<решение>"`; ' +
+      'что дальше по задаче — `node scripts/sdd-lint.mjs old`.\n\n⚙ sdd: стоп'));
   assert.deepEqual(fs.readdirSync(path.join(cwd, 'docs/old')), ['spec.md']);
 });
