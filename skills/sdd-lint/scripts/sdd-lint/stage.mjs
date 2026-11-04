@@ -1,6 +1,8 @@
 // Текущий этап фичи и блок «Следующий шаг».
 // @ts-check
 import fs from 'node:fs';
+import { flowDraftStep, progressText } from './flow-progress.mjs';
+import { registryQuestions, questionPending } from './registry-view.mjs';
 
 import { pendingAdrs } from './adr.mjs';
 import { code, skill, lintCmd, tipLine } from './config.mjs';
@@ -149,6 +151,13 @@ function protocolStage(m) {
 
 /** @param {Feature} m @returns {Stage} */
 export function stageOf(m) {
+  if (m.flow.state && registryQuestions(m).some(questionPending)) return {
+    now: /** @type {string} */ (progressText(m)),
+    next: ['обработать ответы или выбрать независимый черновик через вопрос этапа'], tip: lintCmd('ask', rel(m.dir)),
+  };
+  const draft = flowDraftStep(m);
+  if (draft) return { now: 'Продолжаем подготовку поведения и обеспечения',
+    next: [draft.label], tip: skill(draft.skill, m.name) };
   return m.slices.size ? slicesStage(m) : specStage(m);
 }
 /** @param {Pick<Stage, 'now' | 'next'>} st */

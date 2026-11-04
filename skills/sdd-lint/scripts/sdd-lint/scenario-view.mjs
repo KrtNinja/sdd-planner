@@ -1,5 +1,6 @@
 // Представление одного логического набора сценариев.
 // @ts-check
+import { relatedIds, registryQuestions } from './registry-view.mjs';
 import { READ_LIMIT, visibleLength } from './read-size.mjs';
 import { stripProtocol } from './sources.mjs';
 import { scenarioFiles } from './scenario-section.mjs';
@@ -35,12 +36,24 @@ export function scenarioTrace(m, ids) {
   const problems = checkDocumentationFlow(m);
   if (problems.length) throw new SectionConflict(problems.map((p) => p.msg).join('; '));
   const graph = m.flow.graph;
-  const connected = new Set(ids);
-  for (const edge of graph.edges) if (ids.includes(edge.from) || ids.includes(edge.to)) {
-    connected.add(edge.from); connected.add(edge.to);
-  }
+  for (const id of ids) if (!graph.byId.has(id)) throw new SectionConflict(`Неизвестный ID ${id}`);
+  const connected = traceIds(m, ids);
   return [...connected].flatMap((id) => {
     const a = graph.byId.get(id);
     return a ? [`${id}: ${rel(a.file)}:${a.n}`] : [];
-  }).join('\n');
+  }).join('\n') + '\nСвязанные материалы для пересмотра; структурная достижимость не доказывает смысловую достаточность. ' +
+    'Они не исправлены и не согласованы автоматически.';
+}
+
+/** @param {Feature} m @param {string[]} ids */
+function traceIds(m, ids) {
+  const roots = ids.flatMap((id) => {
+    const q = registryQuestions(m, { id })[0];
+    return q ? q.refs.map((r) => r.id) : [id];
+  });
+  const connected = relatedIds(m, roots);
+  for (const q of registryQuestions(m)) {
+    if (q.refs.some((r) => connected.has(r.id)) || ids.includes(q.id)) connected.add(q.id);
+  }
+  return connected;
 }

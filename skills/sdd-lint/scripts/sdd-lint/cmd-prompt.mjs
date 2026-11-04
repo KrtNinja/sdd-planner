@@ -17,9 +17,11 @@ import { DOCS, isDir, pickFeature, needDir } from './pick.mjs';
 // Точка входа lint — по месту этого модуля, а не по process.argv: тот же файл, что запущен (и через симлинк).
 export const SELF = fileURLToPath(new URL('../sdd-lint.mjs', import.meta.url));
 export const SKILLS_DIR = path.resolve(path.dirname(SELF), '..', '..');
-export const promptSkills = () =>
+/** @param {boolean} [flow] */
+export const promptSkills = (flow = false) =>
   isDir(SKILLS_DIR)
     ? fs.readdirSync(SKILLS_DIR).filter((x) => /^sdd-[a-z]+$/.test(x) && x !== 'sdd-lint' && fs.existsSync(path.join(SKILLS_DIR, x, 'SKILL.md')))
+      .filter((x) => flow || !['sdd-scenarios', 'sdd-tech'].includes(x))
     : [];
 // Аргументы с пробелами — в кавычках: у /sdd-decide вопрос и решение не должны слиться в одну строку.
 /** @param {string[]} args */
@@ -79,7 +81,7 @@ export function skillPrompt(ctx, name, args) {
     '---',
     '',
     body,
-    registryPrompt(args),
+    registryPrompt(name, args),
     ...links.flatMap((f) => {
       const t = read(path.join(dir, f));
       return t == null ? [] : ['', '---', '', `Файл скилла ${f}:`, '', t.trim()];
@@ -97,7 +99,7 @@ export function cmdPrompt(ctx) {
     ctx.io.log(humanizeTask(pos[1]));
     ctx.io.exit(0);
   }
-  if (!known.includes(name)) {
+  if (!promptSkills(true).includes(name)) {
     ctx.io.error(`${name ? `Нет скилла «${name}»` : 'Укажи скилл'}. Скиллы: ${known.join(', ')}`);
     ctx.io.exit(2);
   }
@@ -130,11 +132,14 @@ function reviewArgs(ctx, m, args) {
   }
 }
 
-/** @param {string[]} args */
-function registryPrompt(args) {
+/** @param {string} name @param {string[]} args */
+function registryPrompt(name, args) {
   const dir = path.join(DOCS, args[0] || '');
   if (!fs.existsSync(path.join(dir, '.sdd-flow.json'))) return null;
-  return ['sdd-grill/references/registry.md', 'sdd-spec/references/scenarios.md', 'sdd-spec/references/tech.md'].map((relative) => {
+  const rules = ['sdd-grill/references/registry.md'];
+  if (['sdd-scenarios', 'sdd-review', 'sdd-decide'].includes(name)) rules.push('sdd-spec/references/scenarios.md');
+  if (['sdd-tech', 'sdd-review', 'sdd-decide'].includes(name)) rules.push('sdd-spec/references/tech.md');
+  return rules.map((relative) => {
     const text = read(path.join(SKILLS_DIR, relative));
     if (text === null) throw new Error(`Не найдены правила ${relative}; переустановите расширение sdd-planner`);
     return text;

@@ -1,5 +1,6 @@
 // Команда diff: проверки DF-* по git.
 // @ts-check
+import { relatedIds } from './registry-view.mjs';
 import { usage } from './cli.mjs';
 import { skillCode } from './config.mjs';
 import { loadFeature } from './feature.mjs';
@@ -18,7 +19,9 @@ export function cmdDiff(ctx) {
   const g = gitInfo(dir);
   if (!g) usage(ctx, 'diff работает только в git-репозитории');
   const ref = flags.base || 'HEAD';
-  const c = report(ctx, diffChecks(dir, g, ref), { base: ref });
+  const review = changedRequirementScope(dir, g, ref);
+  const c = report(ctx, diffChecks(dir, g, ref), { base: ref, ...(review ? { review } : {}) });
+  if (!flags.json && review) ctx.io.log(`Связанные материалы для пересмотра: ${JSON.stringify(review)}`);
   if (!flags.json) ctx.io.log(`\nСверка с ${ref}. Ошибок: ${c.err}, предупреждений: ${c.warn}`);
   ctx.io.exit(c.err ? 1 : 0);
 }
@@ -62,4 +65,17 @@ function changedProtocolRows(cur, base, add) {
   const scope = new Set(cur.protocol.outScope.map((x) => norm(x.text)));
   for (const x of base.outScope)
     if (!scope.has(norm(x.text))) add('DF-01', cur.file, null, `«Вне scope»: пункт изменён или удалён: «${x.text.slice(0, 60)}»`);
+}
+
+/** @param {string} dir @param {import('./git.mjs').GitInfo} g @param {string} ref */
+function changedRequirementScope(dir, g, ref) {
+  const cur = loadFeature(dir);
+  if (!cur.flow.state) return null;
+  const base = loadFeature(dir, (f) => gitShow(g, ref, f), (d) => gitList(g, ref, d));
+  if (!base.flow.state || !base.spec || !approved(base.spec.status)) return null;
+  const changed = [...base.spec.reqs.values()].filter((r) => cur.spec?.reqs.get(r.id)?.text !== r.text).map((r) => r.id);
+  if (!changed.length) return null;
+  const ids = new Set([...relatedIds(base, changed), ...relatedIds(cur, changed)]);
+  return { changed, related: [...ids], meaning: 'Требуется пересмотр; связи не доказывают смысловую достаточность. ' +
+    'Материалы не исправлены и не согласованы автоматически.' };
 }

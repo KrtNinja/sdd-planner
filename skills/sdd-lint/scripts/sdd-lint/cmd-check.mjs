@@ -1,5 +1,6 @@
 // Команды check и gate.
 // @ts-check
+import { flowProgress } from './flow-progress.mjs';
 import { draftWork } from './registry-view.mjs';
 import { checkDocumentationFlow } from './flow.mjs';
 import { checkRegistry } from './registry-rules.mjs';
@@ -35,7 +36,9 @@ export function cmdCheck(ctx) {
 /** @param {Ctx} ctx @param {Feature} m @param {Finding[]} found @param {Record<string, unknown>} [extra] */
 export function reportFeature(ctx, m, found, extra = {}) {
   const st = stageOf(m);
-  const c = report(ctx, found, { stage: st.now, next: st.next, tip: hasErrors(found) ? null : tipLine(st.tip), ...extra });
+  const progress = flowProgress(m);
+  const c = report(ctx, found, { ...(progress ? { continuation: progress } : {}), stage: st.now, next: st.next,
+    tip: hasErrors(found) ? null : tipLine(st.tip), ...extra });
   if (!ctx.args.flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
     ctx.io.log(`\n${stageText(st)}`);
@@ -117,6 +120,7 @@ export function cmdGate(ctx) {
   const { target, note } = gateTarget(ctx, stage);
   const m = loadFeature(needDir(ctx, target, 1));
   maybeResumeGate(ctx, m, stage);
+  maybeFlowTaskGate(ctx, m, stage);
   const found = runChecks(m);
   maybeDraftGate(ctx, m, stage);
   const closed = gateClosed(m, stage, found);
@@ -193,5 +197,18 @@ function maybeResumeGate(ctx, m, stage) {
   const text = resumeGateStep(m, ctx.args.pos[2] || '');
   if (text === null) return;
   ctx.io.log(text);
+  ctx.io.exit(0);
+}
+
+/** @param {Ctx} ctx @param {Feature} m @param {string} stage */
+function maybeFlowTaskGate(ctx, m, stage) {
+  const task = ctx.args.pos[2];
+  if (stage !== 'spec' || !['scenarios', 'tech'].includes(task)) return;
+  if (!m.flow.state || !m.spec) {
+    ctx.io.log(screen('Этот шаг требует spec.md нового процесса; legacy остаётся на прежнем маршруте.', G.stop));
+    ctx.io.exit(3);
+  }
+  ctx.io.log(screen(`Продолжаем ${task}: черновая работа, без отдельного согласования.`,
+    `фича ${rel(m.dir)}`, 'открытые Q сохраняют блокировку зависимого согласования; не подставляй ответы', G.skill));
   ctx.io.exit(0);
 }

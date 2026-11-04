@@ -1,5 +1,6 @@
 // Вопрос человеку на этапе: варианты с рекомендацией и задания для них (ask / choose).
 // @ts-check
+import { flowDraftStep, progressText } from './flow-progress.mjs';
 import { scenarioMoveQuestion } from './scenario-view.mjs';
 import { registryQuestions, questionPending, independentDrafts } from './registry-view.mjs';
 import { decisionQuestion } from './decision-view.mjs';
@@ -156,6 +157,7 @@ function slicesQuestions(m, now) {
 /** @param {Feature} m @param {string} now @returns {Question[]} */
 function specQuestions(m, now) {
   if (!m.spec) return protocolQuestions(m, now);
+
   if (!approved(m.spec.status)) return [artifactQuestion(m, 'spec'), ...adrQuestions(m)];
   if (m.plan) return [planQuestion(/** @type {Feature & { plan: import('./model.mjs').Plan }} */ (m))];
   return [nextSkillQuestion(m, now, 'sdd-slices', 'Разбить работу на части'), ...adrQuestions(m)];
@@ -184,13 +186,14 @@ export function askOf(m) {
       { id: 'questions:list', label: 'Посмотреть сводку', action: { lint: ['questions', 'list', rel(m.dir)] } },
       ...independentDrafts(m).slice(0, 2).map((r) => ({
         id: `questions:work:${r.id}`, label: `Продолжить черновик: ${r.title}`,
-        action: { here: ['prompt', 'sdd-spec', m.name, `draft:${r.id}`] },
+        action: { here: ['prompt', r.id.startsWith('SC-') ? 'sdd-scenarios' : 'sdd-spec', m.name, `draft:${r.id}`] },
       })),
       { id: 'questions:later', label: 'Вернуться позже', action: { none: true } },
     ],
   }] };
 
-  let qs = m.slices.size ? slicesQuestions(m, st.now) : specQuestions(m, st.now);
+  const draft = flowDraftStep(m);
+  let qs = draft ? [nextSkillQuestion(m, st.now, draft.skill, draft.label)] : questionsForStage(m, st.now);
   // Разбор находок и открытых вопросов идёт по одному пункту: соседние вопросы этапа — после него.
   const walk = qs.find((q) => q.walk);
   if (walk) qs = [walk];
@@ -203,11 +206,16 @@ export function askOf(m) {
 /** @param {Feature} m */
 export function askView(m) {
   const { stage, questions } = askOf(m);
-  return questionsView(rel(m.dir), stage, questions);
+  return questionsView(rel(m.dir), stage, questions, { lead: progressText(m) });
 }
 
 /** @param {Feature} m @param {import('./flow-format.mjs').FlowRecord} q */
 function answerOption(m, q) {
   return { id: `questions:resume:${q.id}`, label: `Обработать ответ: ${q.title}`,
     action: { lint: ['questions', 'resume', rel(m.dir), JSON.stringify({ id: q.id })] } };
+}
+
+/** @param {Feature} m @param {string} now */
+function questionsForStage(m, now) {
+  return m.slices.size ? slicesQuestions(m, now) : specQuestions(m, now);
 }
