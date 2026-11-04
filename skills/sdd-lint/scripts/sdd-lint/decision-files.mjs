@@ -54,7 +54,7 @@ function reviewStatus(md) {
 /** @param {Feature} m @param {Change[]} changes */
 export function decisionReviews(m, changes) {
   const changed = new Set(changes.map((c) => path.resolve(m.dir, c.file)));
-  const dependencies = [...m.featureAdrs.map((a) => a.file), m.readmeFile,
+  const dependencies = [...m.featureAdrs.map((a) => a.file), ...[...m.slices.values()].map((s) => s.file), m.readmeFile,
     path.join(m.dir, 'tech.md'), path.join(m.dir, 'scenarios.md')];
   if (!changes.some((c) => c.file !== 'brainstorming.md')) return changes;
   const extra = dependencies.filter((f) => !changed.has(f)).flatMap((file) => {
@@ -63,7 +63,7 @@ export function decisionReviews(m, changes) {
     const after = reviewStatus(before);
     return before === after ? [] : [{ file: path.relative(m.dir, file), before, after }];
   });
-  return [...changes, ...extra];
+  return [...changes, ...extra].map((c) => ({ ...c, after: c.file === 'brainstorming.md' ? c.after : reviewStatus(c.after) }));
 }
 
 /** @param {string} dir @param {Change[]} changes */

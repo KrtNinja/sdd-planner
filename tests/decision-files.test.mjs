@@ -28,6 +28,7 @@ test('подготовка пересчитывает ссылки AC тем ж�
   assert.match(c.after, /Проверяет: \[FR-1\]\(\.\.\/spec.md#L10\)/);
   const reviewed = decisionReviews(loadFeature(dir), changes);
   assert.match(reviewed.find((p) => p.file === 'slices/README.md').after, /на ревью/);
+  assert.match(reviewed.find((p) => p.file === 'slices/001-search.md').after, /Статус: на ревью/);
   assert.equal(fs.readFileSync(path.join(dir, 'slices/README.md'), 'utf8').includes('одобрено'), true);
   fs.writeFileSync(path.join(dir, 'spec.md'), after);
   fs.writeFileSync(file, c.after);
@@ -56,4 +57,18 @@ test('изменение протокола не удаляет согласов
   assert.doesNotThrow(() => checkDecisionMeaning(before, loadFeature(dir), 'unchanged'));
   fs.writeFileSync(protocol, '# Обсуждение\nСтатус: идёт\n');
   assert.throws(() => checkDecisionMeaning(before, loadFeature(dir), 'unchanged'), /исключения протокола/);
+});
+
+
+test('изменение FR без сдвига ссылок отправляет существующие AC на пересмотр', () => {
+  const dir = setup();
+  const file = path.join(dir, 'slices/001-search.md');
+  const before = fs.readFileSync(file, 'utf8');
+  fs.writeFileSync(file, before.replace('\n', '\nСтатус: одобрено\n'));
+  const changes = decisionReviews(loadFeature(dir), [{ file: 'spec.md', before: SPEC,
+    after: SPEC.replace('Статус: черновик', 'Статус: на ревью') }]);
+  const dependent = changes.find((c) => c.file === 'slices/001-search.md');
+  assert.ok(dependent);
+  assert.match(dependent.after, /Статус: на ревью/);
+  assert.equal(fs.readFileSync(file, 'utf8'), dependent.before);
 });
