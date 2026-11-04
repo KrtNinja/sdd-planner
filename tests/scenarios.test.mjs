@@ -84,6 +84,10 @@ test('S-07: конфликт файла и дубликат SC не переза
   assert.equal(read(dir, 'scenarios.md'), 'Чужой текст');
   write(dir, 'scenarios.md', section);
   assert.match(cmd(dir, 'move').text, /Дубликат ID SC-1/);
+  assert.match(cmd(dir, 'find', 'SC-1').text, /Дубликат ID SC-1/);
+  const trace = run(['trace', dir, 'SC-1']);
+  assert.notEqual(trace.code, 0);
+  assert.match(trace.chunks.map((c) => c[1]).join(''), /Дубликат ID SC-1/);
   assert.ok(runChecks(loadFeature(dir)).some((f) => f.rule === 'FL-01'));
 });
 

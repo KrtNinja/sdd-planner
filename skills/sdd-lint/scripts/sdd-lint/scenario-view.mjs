@@ -3,7 +3,8 @@
 import { READ_LIMIT, visibleLength } from './read-size.mjs';
 import { stripProtocol } from './sources.mjs';
 import { scenarioFiles } from './scenario-section.mjs';
-import { rel } from './md.mjs';
+import { rel, SectionConflict } from './md.mjs';
+import { checkDocumentationFlow } from './flow.mjs';
 /** @typedef {import('./model.mjs').Feature} Feature */
 /** @param {Feature} m */
 export function scenarioStatus(m) {
@@ -31,6 +32,8 @@ export function scenarioMoveQuestion(m) {
 /** @param {Feature} m @param {string[]} ids */
 export function scenarioTrace(m, ids) {
   if (!m.flow.graph) return '';
+  const problems = checkDocumentationFlow(m);
+  if (problems.length) throw new SectionConflict(problems.map((p) => p.msg).join('; '));
   const graph = m.flow.graph;
   const connected = new Set(ids);
   for (const edge of graph.edges) if (ids.includes(edge.from) || ids.includes(edge.to)) {
