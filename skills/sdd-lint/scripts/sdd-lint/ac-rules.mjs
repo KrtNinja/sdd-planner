@@ -94,7 +94,7 @@ function refsInBasis(ac, sl, c) {
     if (c.s && !c.s.reqs.has(id)) return [finding('SL-17', sl.file, ac.n, `${ac.id} ссылается на ${id}, его нет в spec.md`)];
     if (sl.basis.has(id)) return [];
     if (deps.has(id)) return [finding('SL-18', sl.file, ac.n, `${ac.id} проверяет ${id} из зависимости`)];
-    return [finding('SL-17', sl.file, ac.n, `${ac.id} ссылается на ${id}, а в «Основание» slice его нет`)];
+    return [finding('SL-17', sl.file, ac.n, `${ac.id} ссылается на ${id}, а в «Основание» части работы его нет`)];
   });
 }
 // SL-23 / SL-24: «тексты» и персонажи — из Dev Spec.
@@ -104,7 +104,7 @@ function fromSpec(ac, sl, c) {
   const specFlat = c.s.md.replace(/\s+/g, ' ');
   const texts = quotes(ac.text)
     .filter((q) => !q.includes('<') && !specFlat.includes(q))
-    .map((q) => finding('SL-23', sl.file, ac.n, `${ac.id}: «${q}» нет в Dev Spec`));
+    .map((q) => finding('SL-23', sl.file, ac.n, `${ac.id}: «${q}» нет в требованиях`));
   const names = unknownNames(ac.text, c.s.data).map((nm) => finding('SL-24', sl.file, ac.n, `${ac.id}: «${nm}» нет в «Данные для примеров»`));
   return [...texts, ...names];
 }
