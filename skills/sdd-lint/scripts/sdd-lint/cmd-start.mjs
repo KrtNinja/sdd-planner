@@ -77,7 +77,7 @@ export function cmdResearch(ctx) {
 // После закрытия протокола задача берётся из контекста, заголовка spec или имени.
 /** @param {import('./model.mjs').Feature} m @param {import('./context.mjs').Context | null} context */
 function researchTitle(m, context) {
-  const title = m.spec ? (m.spec.md.match(/^#\s+(.+?)(?:\s+—\s+Dev Spec)?\s*$/m) || [])[1] : null;
+  const title = m.spec ? (m.spec.md.match(/^#\s+(.+?)(?:\s+—\s+(?:Dev Spec|Спецификация требований))?\s*$/m) || [])[1] : null;
   const line = header(context?.md, 'Задача') || (title ? `«${title}»` : m.name);
   return line;
 }

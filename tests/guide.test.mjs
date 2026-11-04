@@ -134,7 +134,7 @@ test('research fact после slices: этап в задании, источн�
   let r = run(cwd, 'research', 'fact', 'comments', 'Какие поля у события task.updated?');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /ведёт этап «slices»/);
-  assert.match(r.out, /документы фичи — docs\/comments\/ и docs\/adr\//);
+  assert.match(r.out, /документы задачи — docs\/comments\/ и docs\/adr\//);
   fs.rmSync(path.join(cwd, 'docs/comments/brainstorming.md'));
   fs.rmSync(path.join(cwd, 'docs/comments/_work'), { recursive: true, force: true });
   r = run(cwd, 'research', 'fact', 'comments', 'Какие поля у события task.updated?');
