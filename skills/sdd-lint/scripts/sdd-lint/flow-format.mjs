@@ -16,6 +16,11 @@ const IDS = [
 ];
 const FIELDS = ['Этап', 'Тема', 'Статус', 'Элементы', 'Родитель', 'Требования', 'Связи'];
 const STAGES = ['grill', 'spec', 'scenarios', 'tech', 'slices', 'adr', 'review', 'decide'];
+/** @type {Record<string, string[]>} */
+const RECORD_FIELDS = {
+  question: ['Этап', 'Тема', 'Статус', 'Элементы', 'Родитель'],
+  scenario: ['Требования'], step: ['Требования'], tech: ['Связи'],
+};
 const STATUSES = ['open', 'deferred', 'answered', 'resolved', 'excluded'];
 /** @type {Record<string, RefKind[]>} */
 const TARGETS = {
@@ -59,6 +64,9 @@ function questionFields(record, problems) {
 
 /** @param {FlowRecord} record @param {FormatProblem[]} problems */
 function validateRecord(record, problems) {
+  for (const key of Object.keys(record.fields)) {
+    if (!RECORD_FIELDS[record.kind].includes(key)) problem(record, problems, `поле ${key} недопустимо для ${record.kind}`);
+  }
   if (!record.title) problem(record, problems, 'нет названия');
   if (record.kind === 'question') questionFields(record, problems);
   if (record.kind === 'step') record.parent = record.id.replace(/-S\d+$/, '');
@@ -96,7 +104,11 @@ export function parseFlowDocument(file, md) {
 /** @param {string} file @param {import('./model.mjs').Line} line @param {FormatProblem[]} problems @returns {FlowRecord | null} */
 function recordHeading(file, line, problems) {
   const match = line.text.match(/^#{2,4}\s+((?:Q|SC-|TECH)\S*)\s+—\s*(.*)$/u);
-  if (!match) return null;
+  if (!match) {
+    if (/^#{1,6}\s+(?:Q[\d?]|SC-|TECH\b)/u.test(line.text))
+      problems.push({ file, n: line.n, message: 'Ожидается заголовок уровня 2–4: ID — название' });
+    return null;
+  }
   const [, id, title] = match;
   const ref = flowRef(id);
   if (!ref) {

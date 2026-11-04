@@ -33,7 +33,7 @@ test('формат: необязательные поля отсутствуют
 test('формат: неизвестный этап/статус, пустая тема, неверные ссылки и повтор поля диагностируются', () => {
   const result = parse('## Q1 — \nЭтап: unknown\nСтатус: closed\nРодитель: SC-1\n' +
     'Элементы: BAD\nТребования: Q1\nТребования: TECH\n## SC-0 — неверный номер');
-  assert.equal(result.problems.length, 9);
+  assert.equal(result.problems.length, 10);
   assert.ok(result.problems.every((p) => p.file === '/docs/test/spec.md'));
   assert.match(result.problems.map((p) => p.message).join('\n'), /Некорректный ID SC-0/);
   const valid = parse(`${question}\nЭлементы: AC-001-B1, ADR-0002\n`);
@@ -45,4 +45,11 @@ test('тип ссылки не зависит от пути файла или п
     assert.deepEqual(flowRef(id), { id, kind });
   for (const id of ['Q0', 'Q-1', 'SC-01', 'SC-1-S0', 'ADR-1', 'contract:x', 'contract:x#', 'OTHER'])
     assert.equal(flowRef(id), null);
+});
+
+
+test('схема не принимает поля другого вида и заголовки без разделителя', () => {
+  const result = parse('## Q1\n# TECH — Реализация\n## SC-1 — Путь\nЭлементы: FR-1');
+  assert.equal(result.problems.length, 3);
+  assert.match(result.problems[2].message, /недопустимо для scenario/);
 });
