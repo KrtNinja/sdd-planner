@@ -34,8 +34,9 @@ export function resumeQuestion(m, input) {
     `Актуальные связанные элементы: ${JSON.stringify(context.current)}`,
     q.fields.Влияние === 'unknown' ? 'Область неизвестна: явно расширь контекст до выяснения влияния.' : '',
     q.fields.Пакет ? `Сохранённый пакет: ${q.fields.Пакет}\nНе создавай заново FR, строки протокола или Q; продолжи apply.` : '',
-    branchRules(q.fields.Этап),
-    stageRules(q.fields.Этап), requiredRules('sdd-grill/references/resume.md')].join('\n\n');
+    `Исходный скилл: ${sourceSkill(q.fields.Этап)}. Полный текст не загружен: ` +
+      'если не хватает смысловых правил, запроси его через sdd_lint prompt или прямо в GigaCode CLI.',
+    requiredRules('sdd-grill/references/resume.md')].join('\n\n');
 }
 
 /** @param {Feature} m @param {string[] | undefined} candidates */
@@ -44,22 +45,21 @@ function matchQuestions(m, candidates) {
   const selected = candidates ? qs.filter((q) => candidates.includes(q.id)) : qs;
   if (candidates?.some((id) => !selected.some((q) => q.id === id))) throw new Error('Неизвестный кандидат Q');
   if (!selected.length) return 'Нерешённых Q нет. Для новых сведений создайте новый Q через questions add; ' +
-    'старые ID и протокол не восстанавливайте. Уточните только недостающий контекст.\n' + requiredRules('sdd-grill/references/registry.md');
+    'старые ID и протокол не восстанавливайте. Уточните только недостающий контекст.';
   const instruction = selected.length === 1
     ? 'Предложение сопоставления покажи в составе обработки. Только после смысловой проверки передай один точный Q-ID в answer.'
     : 'Неоднозначность: уточни у человека один Q-ID до записи ответа и изменения документов. Несколько Q предположением не закрывай.';
-  return `${instruction}\n${selected.map((q) => `${questionCard(q)}\nКонтекст: ${q.fields.Контекст}`).join('\n\n')}\n` +
-    requiredRules('sdd-grill/references/registry.md');
+  return `${instruction}\n${selected.map((q) => `${questionCard(q)}\nКонтекст: ${q.fields.Контекст}`).join('\n\n')}`;
 }
 
 /** @param {string} stage */
-function stageRules(stage) {
-  if (stage === 'grill') return [requiredRules('sdd-grill/SKILL.md'),
-    requiredRules('grilling/SKILL.md'), requiredRules('sdd-grill/references/questions.md')].join('\n\n');
-  const skill = { spec: 'sdd-spec', scenarios: 'sdd-scenarios', tech: 'sdd-tech', slices: 'sdd-slices',
-    adr: 'sdd-adr', review: 'sdd-review', decide: 'sdd-decide' }[stage];
+function sourceSkill(stage) {
+  const skills = { grill: 'sdd-grill', spec: 'sdd-spec', scenarios: 'sdd-scenarios',
+    tech: 'sdd-tech', slices: 'sdd-slices', adr: 'sdd-adr',
+    review: 'sdd-review', decide: 'sdd-decide' };
+  const skill = skills[stage];
   if (!skill) throw new Error(`Неизвестный исходный этап ${stage}`);
-  return `Исходный этап: ${stage}. Продолжи только сохранённую ветку.\n${requiredRules(`${skill}/SKILL.md`)}`;
+  return skill;
 }
 
 /** @param {Feature} m */
@@ -89,10 +89,3 @@ function answerDetails(q) {
     `История ответов (JSON): ${q.fields.ОтветыJSON || '[]'}`, exclusionText(q)].join('\n');
 }
 
-/** @param {string} stage */
-function branchRules(stage) {
-  const rules = [];
-  if (['scenarios', 'review', 'decide'].includes(stage)) rules.push('sdd-spec/references/scenarios.md');
-  if (['tech', 'adr', 'review', 'decide'].includes(stage)) rules.push('sdd-spec/references/tech.md');
-  return rules.map(requiredRules).join('\n\n');
-}
