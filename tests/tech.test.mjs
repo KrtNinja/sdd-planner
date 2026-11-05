@@ -117,7 +117,7 @@ for (const stage of ['tech', 'adr']) {
     question(dir, stage);
     const text = resumeQuestion(loadFeature(dir), { id: 'Q1' });
     assert.match(text, new RegExp(`Исходный этап: ${stage}`));
-    assert.match(text, /Техническое обеспечение/);
+    assert.match(text, /Исходный скилл: sdd-/);
     assert.match(text, /tech.md/);
     applyQuestion(dir, 'answer', { key: 'answer', id: 'Q1', answer: 'Прогон подтверждает профиль', origin: 'colleague' });
     decisionAction(dir, 'prepare', proposal(dir, simple + '\nФакт: прогон подтвердил профиль — [результат](load.md).\n'));
