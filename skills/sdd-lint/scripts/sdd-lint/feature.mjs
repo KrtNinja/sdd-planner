@@ -1,8 +1,5 @@
 // Фича целиком: загрузка артефактов и запуск всех проверок.
 // @ts-check
-import { checkTech, techFiles } from './tech.mjs';
-import { scenarioFiles } from './scenario-section.mjs';
-import { checkRegistry } from './registry-rules.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -12,7 +9,6 @@ import { verifyApprovals, checkApprovals } from './approval.mjs';
 import { checkCodeRefs } from './code-refs.mjs';
 import { WORK_DIR } from './config.mjs';
 import { checkCut } from './cut.mjs';
-import { loadDocumentationFlow, indexDocumentationFlow, checkDocumentationFlow } from './flow.mjs';
 import { checkEditMarks } from './edit-marks.mjs';
 import { read, scan, header } from './md.mjs';
 import { checkPlan } from './plan-rules.mjs';
@@ -74,7 +70,6 @@ export function loadFeature(dir, readFn = read, listFn = null) {
   const reviews = new Map(load(reviewDir, /\.md$/, parseReview).map(([f, x]) => [f.replace(/\.md$/, ''), x]));
   /** @type {Feature} */
   const m = {
-    flow: loadDocumentationFlow(featureDir, readFn),
     workDir,
     reviewDir,
     reviews,
@@ -97,15 +92,13 @@ export function loadFeature(dir, readFn = read, listFn = null) {
     specFile,
     approvals: [],
   };
-  indexDocumentationFlow(m, readFn);
   verifyApprovals(m);
   return m;
 }
 
 /** @param {Feature} m */
 export const featureFiles = (m) =>
-  [...new Set([...techFiles(m).map((d) => d.file), ...scenarioFiles(m).map((d) => d.file), m.protocolFile, m.specFile, m.readmeFile,
-    ...[...m.slices.values()].map((s) => s.file), ...m.featureAdrs.map((a) => a.file)])].filter((f) =>
+  [m.protocolFile, m.specFile, m.readmeFile, ...[...m.slices.values()].map((s) => s.file), ...m.featureAdrs.map((a) => a.file)].filter((f) =>
     fs.existsSync(f),
   );
 
@@ -113,9 +106,6 @@ export const featureFiles = (m) =>
 /** @param {Feature} m @returns {import('./model.mjs').Finding[]} */
 export function runChecks(m) {
   return [
-    ...checkDocumentationFlow(m),
-    ...checkRegistry(m),
-    ...checkTech(m),
     ...checkProtocol(m),
     ...checkSpec(m),
     ...checkSlices(m),

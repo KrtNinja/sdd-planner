@@ -275,7 +275,6 @@
  * @property {string} adrDir docs/adr/ — общая для всех фич
  * @property {Adr[]} adrs все ADR
  * @property {Adr[]} featureAdrs ADR, которые ссылаются на фичу
- * @property {import('./flow.mjs').DocumentationFlow} flow
  * @property {Approval[]} approvals заполняет verifyApprovals
  */
 

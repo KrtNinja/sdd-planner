@@ -1,8 +1,5 @@
 // Вопрос человеку на этапе: варианты с рекомендацией и задания для них (ask / choose).
 // @ts-check
-import { scenarioMoveQuestion } from './scenario-view.mjs';
-import { registryQuestions, questionPending, independentDrafts } from './registry-view.mjs';
-import { decisionQuestion } from './decision-view.mjs';
 import { pendingAdrs } from './adr.mjs';
 import { showCmd, skill } from './config.mjs';
 import { neededAdrs, stubCount } from './cut.mjs';
@@ -172,24 +169,6 @@ function protocolQuestions(m, now) {
 /** @param {Feature} m @returns {{ stage: string, questions: Question[] }} */
 export function askOf(m) {
   const st = stageOf(m);
-  const pending = registryQuestions(m).filter(questionPending);
-  const prepared = pending.find((q) => q.fields.Пакет);
-  if (prepared) return { stage: st.now, questions: [decisionQuestion(m.dir, prepared)] };
-  const moving = scenarioMoveQuestion(m);
-  if (moving) return { stage: st.now, questions: [moving] };
-  if (pending.length) return { stage: st.now, questions: [{
-    header: 'Работа продолжается', question: `Нерешённых вопросов: ${pending.length}. Что делаем дальше?`,
-    options: [
-      ...pending.filter((q) => q.fields.Статус === 'answered').slice(0, 1).map((q) => answerOption(m, q)),
-      { id: 'questions:list', label: 'Посмотреть сводку', action: { lint: ['questions', 'list', rel(m.dir)] } },
-      ...independentDrafts(m).slice(0, 2).map((r) => ({
-        id: `questions:work:${r.id}`, label: `Продолжить черновик: ${r.title}`,
-        action: { here: ['prompt', 'sdd-spec', m.name, `draft:${r.id}`] },
-      })),
-      { id: 'questions:later', label: 'Вернуться позже', action: { none: true } },
-    ],
-  }] };
-
   let qs = m.slices.size ? slicesQuestions(m, st.now) : specQuestions(m, st.now);
   // Разбор находок и открытых вопросов идёт по одному пункту: соседние вопросы этапа — после него.
   const walk = qs.find((q) => q.walk);
@@ -204,10 +183,4 @@ export function askOf(m) {
 export function askView(m) {
   const { stage, questions } = askOf(m);
   return questionsView(rel(m.dir), stage, questions);
-}
-
-/** @param {Feature} m @param {import('./flow-format.mjs').FlowRecord} q */
-function answerOption(m, q) {
-  return { id: `questions:resume:${q.id}`, label: `Обработать ответ: ${q.title}`,
-    action: { lint: ['questions', 'resume', rel(m.dir), JSON.stringify({ id: q.id })] } };
 }

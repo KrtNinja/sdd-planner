@@ -10,7 +10,7 @@ import { stripProtocol } from './sources.mjs';
 // адресов ссылок, HTML-комментариев и тегов, разметки (```, #, **, `, |, строки-разделители
 // таблиц) и следов протокола в spec. Текст внутри блоков кода (FR, AC) считается.
 // Протокол и ревью — временные артефакты этапа, их не меряем.
-export const READ_LIMIT = 10000;
+const READ_LIMIT = 10000;
 /** @param {string | null | undefined} md */
 export function visibleLength(md) {
   let inCode = false;
@@ -50,7 +50,6 @@ function readSize(rule, file, md) {
 /** @param {Feature} m */
 export function checkReadSize(m) {
   return [
-    ...m.flow.documents.filter((d) => /(?:scenarios|tech)\.md$/.test(d.file)).flatMap((d) => readSize('FL-02', d.file, d.md)),
     ...(m.spec ? readSize('SP-23', m.spec.file, stripProtocol(m.spec.md)) : []),
     ...[...m.slices.values()].flatMap((sl) => readSize('SL-30', sl.file, sl.md)),
     ...(m.readme != null ? readSize('RM-05', m.readmeFile, m.readme) : []),

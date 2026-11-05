@@ -1,6 +1,5 @@
 // Открытые вопросы артефакта: список для обхода перед одобрением и запись вопроса из находки ревью («Затрудняюсь»).
 // @ts-check
-import { fileQuestionBlockers, questionCard } from './registry-view.mjs';
 import fs from 'node:fs';
 
 import { hasSection, inSection, noneText, replaceSection, reqIds, scan } from './md.mjs';
@@ -33,10 +32,6 @@ function sectionItems(file, md, re) {
 // slices — «Открытые вопросы к требованиям» в каждом slice. «Не выяснено» в ADR принятие не держит.
 /** @param {Feature} m @param {string} what */
 export function openQuestions(m, what) {
-  if (m.flow.state) {
-    const files = what === 'spec' ? [m.specFile] : [...m.slices.values()].map((s) => s.file);
-    return fileQuestionBlockers(m, files).map((q) => ({ file: q.file, n: q.n, text: questionCard(q) }));
-  }
   if (what === 'spec') return m.spec ? sectionItems(m.specFile, m.spec.md, SPEC_RE) : [];
   if (what === 'slices') return [...m.slices.values()].sort((a, b) => a.num.localeCompare(b.num)).flatMap((sl) => sectionItems(sl.file, sl.md, SPEC_RE));
   return [];

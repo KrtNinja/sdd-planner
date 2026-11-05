@@ -79,7 +79,6 @@ export function skillPrompt(ctx, name, args) {
     '---',
     '',
     body,
-    registryPrompt(args),
     ...links.flatMap((f) => {
       const t = read(path.join(dir, f));
       return t == null ? [] : ['', '---', '', `Файл скилла ${f}:`, '', t.trim()];
@@ -128,15 +127,4 @@ function reviewArgs(ctx, m, args) {
     }
     args[2] = num;
   }
-}
-
-/** @param {string[]} args */
-function registryPrompt(args) {
-  const dir = path.join(DOCS, args[0] || '');
-  if (!fs.existsSync(path.join(dir, '.sdd-flow.json'))) return null;
-  return ['sdd-grill/references/registry.md', 'sdd-spec/references/scenarios.md', 'sdd-spec/references/tech.md'].map((relative) => {
-    const text = read(path.join(SKILLS_DIR, relative));
-    if (text === null) throw new Error(`Не найдены правила ${relative}; переустановите расширение sdd-planner`);
-    return text;
-  }).join('\n\n');
 }

@@ -226,13 +226,3 @@ function requirementImpact(m, id) {
     `  - AC: ${acs.map(codePaths).join('; ') || '—'}`,
   ];
 }
-
-// Прямой /sdd-decide также попадает в реестр: отсутствие spec на grill не блокирует ответ.
-/** @param {Feature} m @param {string} question */
-export function resumeGateStep(m, question) {
-  if (/^(\w+:)?R\d+$/i.test(question)) return null;
-  const ids = uniq(question.match(/\bQ[1-9]\d*\b/g) || []);
-  const input = ids.length === 1 ? { id: ids[0] } : {};
-  return screen('Продолжим исходную ветку вопроса. Получение ответа ещё не меняет обязательства.',
-    G.call(['questions', 'resume', rel(m.dir), JSON.stringify(input)]));
-}

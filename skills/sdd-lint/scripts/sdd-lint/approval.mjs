@@ -1,8 +1,6 @@
 // Отпечаток одобрения: «одобрено <дата> · xxxxxx», сверка с содержимым, проверки AP-*.
 // @ts-check
 import path from 'node:path';
-import { techFiles } from './tech.mjs';
-import { scenarioFiles } from './scenario-section.mjs';
 import crypto from 'node:crypto';
 
 import { lintCmd } from './config.mjs';
@@ -38,7 +36,7 @@ const sliceMds = (m) => [...m.slices.values()].sort((a, b) => a.num.localeCompar
 export const approvalMds = (m, kind, file) => MDS_OF[kind](m, file);
 /** @type {Record<Approval['kind'], (m: Feature, file: string) => (string | null)[]>} */
 const MDS_OF = {
-  spec: (m) => [/** @type {import('./model.mjs').Spec} */ (m.spec).md, ...scenarioFiles(m).map((d) => d.md), ...techFiles(m).map((d) => d.md)],
+  spec: (m) => [/** @type {import('./model.mjs').Spec} */ (m.spec).md],
   slices: (m) => [m.readme, ...sliceMds(m)],
   adr: (m, file) => [/** @type {import('./model.mjs').Adr} */ (m.adrs.find((a) => a.file === file)).md],
 };

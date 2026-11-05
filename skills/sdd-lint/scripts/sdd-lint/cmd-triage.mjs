@@ -2,8 +2,6 @@
 // @ts-check
 // open — в открытые вопросы артефакта; ignore — снять: «отклонено» в ревью и строка в «Снято на ревью» протокола;
 // П<n> / «исправлено» — решение провёл /sdd-decide; remarks — какие замечания разбирать, остальные снять.
-import { applyQuestion } from './registry-actions.mjs';
-import { questionDigest } from './registry-format.mjs';
 import fs from 'node:fs';
 
 import { usage } from './cli.mjs';
@@ -127,7 +125,6 @@ function selectedRemarks(arg, all, fail) {
 function triageFinding(m, rv, { key, r, verb, say, fail }) {
   const file = rel(rv.file);
   if (verb === 'open') {
-    if (m.flow.state) return registryFinding(m, key, r, say);
     const target = openTarget(m, key, r);
     if (!target) return fail(`Не понял, в какой файл записать вопрос по ${r.id}: в «Где» нет части работы, AC или FR. Куда его записать?`);
     const n = addOpenQuestion(target, openText(r, target.adr));
@@ -144,15 +141,4 @@ function triageFinding(m, rv, { key, r, verb, say, fail }) {
     save(rv, new Map([[r.id, verb]]));
     say(`${r.id}: «Решение» — ${verb} (${file}).`);
   } else fail(`Решение «${verb}» не бывает: open, ignore, П<n> или «исправлено».`);
-}
-
-/** @param {Feature} m @param {string} key @param {ReviewRow} r @param {(text: string) => void} say */
-function registryFinding(m, key, r, say) {
-  const q = applyQuestion(m.dir, 'add', {
-    key: `review-${questionDigest(`${key}:${r.id}:${r.where}:${r.what}`)}`,
-    title: openText(r), stage: 'review', topic: key, context: r.where,
-    resume: `${key}:${r.id}`, impact: 'unknown',
-  });
-  say(`${r.id} → [${q.id}](questions.md#${q.id.toLowerCase()}). Область влияния требует уточнения. ` +
-    'Ответ и решение пока не внесены; исходная находка сохраняется.');
 }
