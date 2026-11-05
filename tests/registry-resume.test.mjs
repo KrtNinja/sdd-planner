@@ -31,7 +31,7 @@ test('R-01/R-03/R-04: Q-ID, дословный многострочный отв
   const resumed = resumeQuestion(loadFeature(dir), { id: 'Q1' });
   assert.match(resumed, /Роли уже согласованы/);
   assert.match(resumed, /Ожидание результата экспорта/);
-  assert.match(resumed, /Не запускай start/);
+  assert.match(resumed, /не запускай заново start/);
   assert.match(resumed, /ограничения и сбои/);
   assert.match(resumed, /Исходный скилл: sdd-grill/);
   assert.doesNotMatch(resumed, /name: grilling/);
