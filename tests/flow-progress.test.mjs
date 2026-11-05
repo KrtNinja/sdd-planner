@@ -52,7 +52,8 @@ test('U-01: отдельные цели scenarios и tech до общего ре
   write(dir, 'spec.md', SPEC + '\n## Пользовательские сценарии\nПрименяется прежний путь.\n');
   assert.equal(flowDraftStep(loadFeature(dir)).skill, 'sdd-tech');
   assert.equal(askOf(loadFeature(dir)).questions[0].options[0].id, 'window:sdd-tech');
-  assert.match(stageOf(loadFeature(dir)).tip, /sdd-tech/);
+  assert.match(stageOf(loadFeature(dir)).tip, /ask/);
+  assert.deepEqual(stageOf(loadFeature(dir)).questions, askOf(loadFeature(dir)).questions);
   write(dir, 'tech.md', '## TECH — Валидация\nСвязи: FR-1\nСуществующий механизм.\n');
   assert.equal(flowDraftStep(loadFeature(dir)), null);
   assert.match(progressText(loadFeature(dir)), /Ответы к обработке: нет/);
@@ -143,4 +144,121 @@ test('U-01/U-04: входы scenarios/tech доступны для v2-черно
   const empty = tmpDir();
   initTestFlow(empty);
   assert.equal(run(['gate', 'spec', empty, 'scenarios']).code, 3);
+});
+
+const PROTOCOL = '# Обсуждение\nСтатус: готов\n\n## Решения\n' +
+  '| # | Ветка | Вопрос | Рекомендация агента | Решение |\n|---|---|---|---|---|\n' +
+  '| 1 | Продукт | Поведение | — | Пустое название не сохраняется |\n';
+const BEHAVIOR = '# Проверка\nСтатус: черновик\n\n## Требования\n```\n' +
+  'FR-1  Пустое название не сохраняется.\nПример: Анна видит ошибку.\n```\nИз протокола: 1\n';
+const SCENARIOS = '\n## Пользовательские сценарии\nПрименяется существующая форма: Анна видит ошибку и исправляет название.\n';
+const TECH = '## TECH — Проверка\nСвязи: FR-1\nСуществующая проверка отклоняет пустое название до сохранения.\n';
+
+function routeCall(args, expected = 0) {
+  const r = run(args);
+  const out = r.chunks.map((c) => c[1]).join('');
+  assert.equal(r.code, expected, out);
+  return out;
+}
+function assertRoute(dir, id) {
+  const m = loadFeature(dir);
+  const options = askOf(m).questions.flatMap((q) => q.options);
+  assert.equal(options.find((o) => o.recommended).id, id);
+  const ask = routeCall(['ask', dir]);
+  const check = run(['check', dir]).chunks.map((c) => c[1]).join('');
+  for (const o of options) {
+    assert.ok(ask.includes(o.id), ask);
+    assert.ok(check.includes(o.id), check);
+  }
+  assert.deepEqual(stageOf(m).questions, askOf(m).questions);
+  const report = JSON.parse(routeCall(['check', dir, '--json']));
+  assert.deepEqual(report.questions, askView(m).questions);
+  return options;
+}
+
+test('блок 4: полный start/done — grill, требования, сценарии, tech и существующее согласование', () => {
+  const root = repo();
+  inDir(root, { ...JSON_ENV, SDD_VIEW: '' }, () => {
+    const dir = 'docs/validation';
+    fs.mkdirSync(dir);
+    initTestFlow(path.resolve(dir));
+    routeCall(['start', 'проверять название', '--slug', 'validation']);
+    const started = routeCall(['start', dir, '--sources', 'нет']);
+    assert.match(started, /старт готов/);
+    assert.ok(fs.existsSync(`${dir}/brainstorming.md`));
+    // Включение нового процесса обычным start относится к блоку 07.
+    assertRoute(dir, 'here:sdd-grill');
+    write(dir, 'brainstorming.md', PROTOCOL);
+    let done = routeCall(['done', dir]);
+    assert.match(done, /window:sdd-spec/);
+    assertRoute(dir, 'window:sdd-spec');
+    routeCall(['gate', 'spec', dir]);
+    assert.equal(fs.existsSync(`${dir}/tech.md`), false);
+    write(dir, 'spec.md', BEHAVIOR);
+    done = routeCall(['done', dir]);
+    assert.match(done, /window:sdd-scenarios/);
+    assertRoute(dir, 'window:sdd-scenarios');
+    assert.match(fs.readFileSync(`${dir}/spec.md`, 'utf8'), /Статус: черновик/);
+    write(dir, 'spec.md', fs.readFileSync(`${dir}/spec.md`, 'utf8') + SCENARIOS);
+    done = routeCall(['done', dir]);
+    assert.match(done, /window:sdd-tech/);
+    assertRoute(dir, 'window:sdd-tech');
+    routeCall(['gate', 'slices', dir], 3);
+    assert.equal(fs.existsSync(`${dir}/scenarios.md`), false);
+    write(dir, 'tech.md', TECH);
+    done = routeCall(['done', dir]);
+    assert.match(done, /approve:spec/);
+    assert.match(fs.readFileSync(`${dir}/spec.md`, 'utf8'), /Статус: на ревью/);
+    routeCall(['gate', 'slices', dir], 3);
+    routeCall(['approve', 'spec', dir]);
+    assertRoute(dir, 'window:sdd-slices');
+    routeCall(['gate', 'slices', dir]);
+    assert.match(routeCall(['done', dir]), /window:sdd-slices/);
+    assert.equal(fs.existsSync(`${dir}/slices`), false);
+  });
+});
+
+test('блок 4: ошибки существующих документов не скрываются будущим шагом', () => {
+  const dir = setup();
+  write(dir, 'brainstorming.md', PROTOCOL.replace('| 1 |', '| 7 |'));
+  fs.unlinkSync(path.join(dir, 'spec.md'));
+  assert.equal(askOf(loadFeature(dir)).questions[0].options[0].id, 'flow:check');
+  routeCall(['gate', 'spec', dir], 3);
+  routeCall(['done', dir], 1);
+  write(dir, 'brainstorming.md', PROTOCOL);
+  write(dir, 'spec.md', BEHAVIOR + SCENARIOS);
+  write(dir, 'tech.md', '## TECH — Пустое решение\n');
+  routeCall(['done', dir], 1);
+  assert.equal(askOf(loadFeature(dir)).questions[0].options[0].id, 'window:sdd-tech');
+  assert.match(routeCall(['done', dir]), /window:sdd-tech/);
+  assert.match(fs.readFileSync(path.join(dir, 'spec.md'), 'utf8'), /Статус: черновик/);
+});
+
+test('блок 4: ошибка протокола после согласования запрещает рекомендацию slices и gate', () => {
+  const dir = setup();
+  write(dir, 'spec.md', BEHAVIOR + SCENARIOS);
+  write(dir, 'brainstorming.md', PROTOCOL);
+  write(dir, 'tech.md', TECH);
+  routeCall(['gen', 'links', dir]);
+  routeCall(['approve', 'spec', dir]);
+  write(dir, 'brainstorming.md', PROTOCOL.replace('| 1 |', '| 7 |'));
+  assert.equal(askOf(loadFeature(dir)).questions[0].options[0].id, 'flow:check');
+  routeCall(['gate', 'slices', dir], 3);
+});
+
+test('блок 4: независимый черновик и возврат к grill не подменяют актуальный маршрут', () => {
+  const dir = setup();
+  write(dir, 'spec.md', SPEC + SCENARIOS);
+  write(dir, 'tech.md', TECH);
+  add(dir, 1, 'defer');
+  let options = askOf(loadFeature(dir)).questions[0].options;
+  assert.equal(options[0].id, 'questions:work:FR-2');
+  assert.equal(options[0].recommended, true);
+  routeCall(['gate', 'spec', dir, 'draft:FR-2']);
+  routeCall(['questions', 'answer', dir, JSON.stringify({ key: 'route-answer', id: 'Q1', answer: 'Разрешено' })]);
+  assert.match(routeCall(['questions', 'resume', dir, '{"id":"Q1"}']), /Исходный этап: grill/);
+  options = askOf(loadFeature(dir)).questions[0].options;
+  assert.equal(options[0].id, 'questions:resume:Q1');
+  assert.ok(options.some((o) => o.id === 'questions:work:FR-2'));
+  assert.ok(!options.some((o) => /sdd-grill|sdd-slices/.test(o.id)));
 });

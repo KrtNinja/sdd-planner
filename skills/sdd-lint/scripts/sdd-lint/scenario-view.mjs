@@ -3,7 +3,7 @@
 import { relatedIds, registryQuestions } from './registry-view.mjs';
 import { READ_LIMIT, visibleLength } from './read-size.mjs';
 import { stripProtocol } from './sources.mjs';
-import { scenarioFiles } from './scenario-section.mjs';
+import { scenarioFiles, scenarioSection } from './scenario-section.mjs';
 import { rel, SectionConflict } from './md.mjs';
 import { checkDocumentationFlow } from './flow.mjs';
 /** @typedef {import('./model.mjs').Feature} Feature */
@@ -21,7 +21,8 @@ export function scenarioStatus(m) {
 
 /** @param {Feature} m @returns {import('./question.mjs').Question | null} */
 export function scenarioMoveQuestion(m) {
-  if (!m.flow.state || scenarioFiles(m).length || visibleLength(stripProtocol(m.spec?.md || '')) <= READ_LIMIT) return null;
+  if (!m.flow.state || !scenarioSection(m.spec?.md || '') || scenarioFiles(m).length ||
+    visibleLength(stripProtocol(m.spec?.md || '')) <= READ_LIMIT) return null;
   return { header: 'Объём требований', question: 'Spec превышает лимит чтения. Как сократим?',
     options: [
       { id: 'scenarios:move', label: 'Вынести раздел сценариев', recommended: true,

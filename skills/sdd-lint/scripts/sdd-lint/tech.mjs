@@ -2,7 +2,7 @@
 // @ts-check
 import path from 'node:path';
 import { finding } from './findings.mjs';
-import { scan } from './md.mjs';
+import { scan, approved } from './md.mjs';
 
 /** @typedef {import('./model.mjs').Feature} Feature */
 /** @param {Feature} m */
@@ -22,4 +22,11 @@ export function checkTech(m) {
     !/^(?:#{1,6} |Связи:|Статус:)/.test(l.text)).map((l) => l.text).join(' ')
     .replace(/\[[^\]]*\]\([^)]*\)/g, '').trim();
   return content ? [] : [finding('TE-01', file, null, 'Объясните применение решения к фиче; одной ссылки недостаточно')];
+}
+
+// Отсутствующий будущий tech не мешает закончить черновую работу. Сам check остаётся полным.
+/** @param {Feature} m @param {import('./model.mjs').Finding[]} found */
+export function currentFindings(m, found) {
+  if (!m.flow.state || m.slices.size || approved(m.spec?.status) || techFiles(m).length) return found;
+  return found.filter((x) => x.rule !== 'TE-01');
 }

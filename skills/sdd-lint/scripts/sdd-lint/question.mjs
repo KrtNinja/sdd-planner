@@ -6,6 +6,7 @@
 // названия. Агенту — строка ⚙: заголовки для инструмента выбора, куда передать выбор и id по номерам.
 // Карточку агент не перепечатывает: она уже на экране. SDD_VIEW=json — тот же вопрос структурой (тесты).
 // Действия (action) в вывод не идут: их выполняет choose по id.
+import { showCmd, skill } from './config.mjs';
 import { A, G, blocks, bold, cmdCode, codePaths, field, gearLine, screen } from './screen.mjs';
 
 /**
@@ -129,4 +130,33 @@ export function walkQuestion({ items, header, block, options, question = 'Как
   if (!items.length) return null;
   const item = items[0];
   return { walk: true, header: header(item, items.length), question, preview: block(item, items.length), options: options(item) };
+}
+
+/** @param {import('./model.mjs').Feature} m @param {string} now @param {string} name @param {string} label @returns {Question} */
+export function nextSkillQuestion(m, now, name, label, cont = false) {
+  /** @type {Option} */
+  const here = { id: `here:${name}`, label: 'В этой сессии', description: skill(name, m.name), action: { here: ['prompt', name, m.name] } };
+  /** @type {Option} */
+  const fresh = {
+    id: `window:${name}`,
+    label: 'В новой сессии',
+    description: `${skill(name, m.name)} — запустите команду сами в новой сессии`,
+    action: { show: showCmd(skill(name, m.name)) },
+  };
+  const options = cont ? [here, fresh] : [fresh, here];
+  options[0].recommended = true;
+  return { header: 'Следующий этап', question: `${now}. ${label}?`,
+    ...(m.flow.state ? { preview: `${stepReason(name)} Выберите сессию; переход начнётся после вашего выбора.` } : {}), options };
+}
+/** @param {string} name */
+function stepReason(name) {
+  /** @type {Record<string, string>} */
+  const reasons = {
+    'sdd-grill': 'Нужно уточнить цель и существенные неизвестные.',
+    'sdd-spec': 'Сведений достаточно, чтобы описать ожидаемое поведение.',
+    'sdd-scenarios': 'Требования есть; следующий шаг — проверить путь пользователя.',
+    'sdd-tech': 'Сценарии описаны; нужно объяснить, как обеспечить поведение.',
+    'sdd-slices': 'Комплект согласован; можно выделить единицы работы с критериями приёмки.',
+  };
+  return reasons[name] || 'Продолжаем текущую работу.';
 }

@@ -1,6 +1,8 @@
 // Команды check и gate.
 // @ts-check
-import { flowProgress } from './flow-progress.mjs';
+import { askView } from './ask.mjs';
+import { viewText } from './question.mjs';
+import { flowProgress, planningGateClosed } from './flow-progress.mjs';
 import { draftWork } from './registry-view.mjs';
 import { checkDocumentationFlow } from './flow.mjs';
 import { checkRegistry } from './registry-rules.mjs';
@@ -37,13 +39,14 @@ export function cmdCheck(ctx) {
 export function reportFeature(ctx, m, found, extra = {}) {
   const st = stageOf(m);
   const progress = flowProgress(m);
-  const c = report(ctx, found, { ...(progress ? { continuation: progress } : {}), stage: st.now, next: st.next,
+  const c = report(ctx, found, { ...(progress ? { continuation: progress, questions: askView(m).questions } : {}),
+    stage: st.now, next: st.next,
     tip: hasErrors(found) ? null : tipLine(st.tip), ...extra });
   if (!ctx.args.flags.json) {
     const acs = [...m.slices.values()].reduce((x, s) => x + s.acs.length, 0);
-    ctx.io.log(`\n${stageText(st)}`);
+    ctx.io.log(`\n${m.flow.state ? viewText(askView(m)) : stageText(st)}`);
     ctx.io.log(`\nОшибок: ${c.err}, предупреждений: ${c.warn}. FR/NFR: ${m.spec ? m.spec.reqs.size : 0}, частей работы: ${m.slices.size}, AC: ${acs}`);
-    if (!c.err) printTip(ctx, st);
+    if (!c.err && !m.flow.state) printTip(ctx, st);
   }
   ctx.io.exit(c.err ? 1 : 0);
 }
@@ -55,31 +58,10 @@ const errorsIn = (found, files) => found.filter((x) => x.level === 'err' && file
 // Ими же пользуется export: зона реализации видит тот же статус build, что и gate.
 /** @param {Feature} m @param {string} stage @param {Finding[]} found @returns {[string, string] | null} */
 export function gateClosed(m, stage, found) {
-  if (stage === 'spec') return specGate(m, found);
-  if (stage === 'slices') return slicesGate(m, found);
+  if (['spec', 'slices'].includes(stage)) return planningGateClosed(m, stage, found);
   if (stage === 'build') return buildGate(m, found);
   if (['adr', 'decide', 'review'].includes(stage) && !m.spec)
     return ['нет spec.md', `Сначала подготовьте требования: ${skillCode('sdd-spec', m.name)}`];
-  return null;
-}
-
-/** @param {Feature} m @param {Finding[]} found @returns {[string, string] | null} */
-function specGate(m, found) {
-  if (!m.protocol) return ['нет brainstorming.md', `Сначала обсудите задачу: ${skillCode('sdd-grill', m.name)}`];
-  else if (!/готов/i.test(m.protocol.status || ''))
-    return [`статус протокола «${m.protocol.status || '—'}»`, `Сначала закончите обсуждение задачи: ${skillCode('sdd-grill', m.name)}`];
-  else if (errorsIn(found, [m.protocolFile]).length)
-    return ['ошибки в протоколе', `Автоматическая проверка нашла ошибки в протоколе — поправьте его, список: ${lintCode(rel(m.dir))}`];
-  return null;
-}
-
-/** @param {Feature} m @param {Finding[]} found @returns {[string, string] | null} */
-function slicesGate(m, found) {
-  const dir = rel(m.dir);
-  if (!m.spec) return ['нет spec.md', `Сначала подготовьте требования: ${skillCode('sdd-spec', m.name)}`];
-  else if (!approved(m.spec.status)) return [`статус требований «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCode('approve', 'spec', dir)}`];
-  else if (errorsIn(found, [m.protocolFile, m.specFile]).length)
-    return ['ошибки в протоколе или требованиях', `Исправьте ошибки в протоколе или требованиях и одобрите требования заново, список: ${lintCode(dir)}`];
   return null;
 }
 

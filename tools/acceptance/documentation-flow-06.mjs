@@ -231,7 +231,61 @@ function verifyDecision(dir, call, outputs, complex) {
   call('approve', 'spec', dir);
   assert.equal(outputs.at(-1).code, 0, outputs.at(-1).text);
   assert.equal(savedQuestion(dir).fields.Статус, 'resolved');
+  assert.match(call('ask', dir), /window:sdd-slices/);
 }
 
+
+// Полный переход start/done отдельно от исторических историй и их числа вызовов.
+function verifyRoute() {
+  const dir = 'docs/route';
+  fs.mkdirSync(dir, { recursive: true });
+  initTestFlow(path.resolve(dir));
+  let calls = 0;
+  const call = (args, code = 0) => {
+    calls++;
+    const result = run(args);
+    const text = result.chunks.map((c) => c[1]).join('');
+    assert.equal(result.code, code, text);
+    return text;
+  };
+  const next = (skill) => {
+    const done = call(['done', dir]);
+    assert.ok(done.includes(`window:${skill}`), done);
+    const ask = call(['ask', dir]);
+    const check = call(['check', dir]);
+    for (const out of [ask, check]) {
+      assert.ok(out.includes(`window:${skill}`), out);
+      assert.ok(out.includes(`here:${skill}`), out);
+    }
+    assert.doesNotMatch(done, /approve:spec/);
+  };
+  call(['start', 'проверять название', '--slug', 'route']);
+  assert.match(call(['start', dir, '--sources', 'нет']), /старт готов/);
+  assert.ok(fs.existsSync(`${dir}/brainstorming.md`));
+  fs.writeFileSync(`${dir}/brainstorming.md`, '# Обсуждение\nСтатус: готов\n\n## Решения\n' +
+    '| # | Ветка | Вопрос | Рекомендация агента | Решение |\n|---|---|---|---|---|\n' +
+    '| 1 | Продукт | Поведение | — | Пустое название не сохраняется |\n');
+  next('sdd-spec');
+  call(['gate', 'spec', dir]);
+  fs.writeFileSync(`${dir}/spec.md`, '# Проверка\nСтатус: черновик\n\n## Требования\n```\n' +
+    'FR-1  Пустое название не сохраняется.\nПример: Анна видит ошибку.\n```\nИз протокола: 1\n');
+  next('sdd-scenarios');
+  assert.match(fs.readFileSync(`${dir}/spec.md`, 'utf8'), /Статус: черновик/);
+  fs.appendFileSync(`${dir}/spec.md`, '\n## Пользовательские сценарии\nАнна видит ошибку и исправляет название.\n');
+  next('sdd-tech');
+  assert.equal(fs.existsSync(`${dir}/scenarios.md`), false);
+  call(['gate', 'slices', dir], 3);
+  fs.writeFileSync(`${dir}/tech.md`, '## TECH — Проверка\nСвязи: FR-1\nСуществующий валидатор проверяет название до сохранения.\n');
+  assert.match(call(['done', dir]), /approve:spec/);
+  assert.match(fs.readFileSync(`${dir}/spec.md`, 'utf8'), /Статус: на ревью/);
+  call(['gate', 'slices', dir], 3);
+  call(['approve', 'spec', dir]);
+  call(['gate', 'slices', dir]);
+  assert.match(call(['ask', dir]), /window:sdd-slices/);
+  assert.equal(fs.existsSync(`${dir}/slices`), false);
+  console.error('ROUTE_VERIFY ' + JSON.stringify({ calls, actualModelCalls: 0, actualUserActions: 0 }));
+}
+
+if (verify) verifyRoute();
 story('validation'); story('export'); story('complex', true);
 console.log(JSON.stringify(result, null, 2));
