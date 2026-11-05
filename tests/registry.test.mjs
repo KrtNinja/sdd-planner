@@ -304,7 +304,7 @@ test('новый prompt содержит контракт; triage сохраня
     '| # | Важность | Где | Что не так | Пункт | Предложение | Решение |\n|---|---|---|---|---|---|---|\n' +
     '| R1 | блокер | FR-1 | Как повторять? | 1 | Уточнить | |\n');
   inDir(cwd, {}, () => {
-    assert.match(output(run(['prompt', 'sdd-grill', 'task'])), /Реестр вопросов/);
+    assert.match(output(run(['prompt', 'sdd-grill', 'task'])), /# Нерешённые вопросы/);
     const result = run(['triage', dir, 'spec:R1', 'open']);
     assert.equal(result.code, 0);
     assert.match(output(result), /Q1/);
@@ -495,7 +495,7 @@ test('ask предлагает конкретный независимый че�
     const result = run(['choose', dir, 'questions:work:FR-2']);
     assert.equal(result.code, 0);
     assert.match(output(result), /draft:FR-2/);
-    assert.match(output(result), /Реестр вопросов/);
+    assert.match(output(result), /# Нерешённые вопросы/);
   });
   act(dir, 'scope', { key: 'unknown', id: 'Q1', impact: 'unknown', refs: [] });
   assert.equal(independentDrafts(loadFeature(dir)).length, 0);
