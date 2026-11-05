@@ -1,27 +1,23 @@
 // Доступные действия и рекомендации из документов; не хранит этап и не выполняет переходы.
 // @ts-check
-import { approved } from './md.mjs';
+import { approved, rel, plural } from './md.mjs';
 import { runChecks } from './feature.mjs';
-import { lintCmd, skillCode, lintCode } from './config.mjs';
-import { registryQuestions, questionPending } from './registry-view.mjs';
-import { checkTech, currentFindings } from './tech.mjs';
-import { scenarioSection, scenarioFiles } from './scenario-section.mjs';
+import { lintCmd, skillCode, lintCode, skill, showCmd } from './config.mjs';
+import { registryQuestions, questionPending, fileQuestionBlockers, independentDrafts } from './registry-view.mjs';
+import { checkTech, currentFindings, techFiles } from './tech.mjs';
+import { scenarioFiles, hasScenarios } from './scenario-section.mjs';
 
 import { scenarioMoveQuestion } from './scenario-view.mjs';
-import { independentDrafts } from './registry-view.mjs';
 import { decisionQuestion } from './decision-view.mjs';
 import { pendingAdrs } from './adr.mjs';
-import { skill, showCmd } from './config.mjs';
 import { neededAdrs, stubCount } from './cut.mjs';
 import { errorsOf } from './findings.mjs';
-import { rel, plural } from './md.mjs';
 import { checkPlan } from './plan-rules.mjs';
-import { planPreview } from './plan.mjs';
+import { planPreview, planChoiceId } from './plan.mjs';
 import { nextSkillQuestion } from './question.mjs';
 import { G } from './screen.mjs';
 import { artifactQuestion } from './review-walk.mjs';
 import { tempArtifacts } from './work.mjs';
-
 /** @typedef {import('./model.mjs').Feature} Feature */
 /** @typedef {import('./question.mjs').Question} Question */
 /** @typedef {import('./question.mjs').Option} Option */
@@ -52,7 +48,7 @@ export function progressText(m) {
 /** @param {import('./model.mjs').Feature} m */
 export function flowDraftStep(m) {
   if (!m.flow.state || !m.spec) return null;
-  if (!scenarioSection(m.spec.md) && !scenarioFiles(m).length)
+  if (!hasScenarios(m))
     return { skill: 'sdd-scenarios', label: 'Описать путь пользователя и применимые развилки' };
   if (checkTech(m).length) return { skill: 'sdd-tech', label: 'Подготовить архитектурное решение' };
   return null;
@@ -67,7 +63,6 @@ function readyResults(m) {
   return ready;
 }
 
-// Согласие с планом нарезки: «Да» создаёт файлы скриптом (gen slices), а не руками агента.
 /** @type {Option} */
 const PLAN_EDIT = {
   id: 'plan:edit',
@@ -103,12 +98,12 @@ function planQuestion(m) {
     preview: planPreview(m),
     options: [
       {
-        id: 'plan:yes',
+        id: planChoiceId(m),
         label: 'Да, создать файлы частей работы',
         description: `скрипт создаст ${plural(n, 'файл', 'файла', 'файлов')} по плану, затем агент заполнит критерии приёмки (AC)`,
         recommended: true,
         action: {
-          lint: ['gen', 'slices', dir],
+          lint: ['gen', 'slices', dir, planChoiceId(m)],
           after: [`${G.skill} sdd-slices с шага «Заполни заготовки»`, `скилла нет в контексте — ${G.call(['prompt', 'sdd-slices', m.name])}`],
         },
       },
@@ -116,7 +111,6 @@ function planQuestion(m) {
     ],
   };
 }
-// ADR, который slice ждёт, но его ещё нет: «Р1 — ADR: <тема>».
 /** @param {Feature} m @returns {Question[]} */
 function newAdrQuestions(m) {
   return neededAdrs(m).map((x) => ({
@@ -141,7 +135,7 @@ function newAdrQuestions(m) {
   }));
 }
 /** @param {Feature} m @returns {Question[]} */
-const adrQuestions = (m) => [...newAdrQuestions(m), ...pendingAdrs(m).map((a) => artifactQuestion(m, 'adr', a.num))];
+const adrQuestions = (m) => m.flow.state ? [] : [...newAdrQuestions(m), ...pendingAdrs(m).map((a) => artifactQuestion(m, 'adr', a.num))];
 
 /** @param {Feature} m @param {string} now @returns {Question[]} */
 function completedQuestions(m, now) {
@@ -212,7 +206,6 @@ export function flowQuestions(m, now) {
   // Разбор находок и открытых вопросов идёт по одному пункту: соседние вопросы этапа — после него.
   const walk = qs.find((q) => q.walk);
   if (walk) qs = [walk];
-  // Инструменты выбора берут до 4 вопросов за раз; остальные ADR — следующим вопросом.
   return qs.slice(0, 4);
 }
 
@@ -241,9 +234,7 @@ function pendingQuestions(m, pending) {
     header: 'Работа продолжается', question: `Нерешённых вопросов: ${pending.length}. Что делаем дальше?`,
     options,
   }];
-
 }
-
 /** @typedef {import('./model.mjs').Finding} Finding */
 /** @param {Finding[]} found @param {string[]} files */
 const errorsIn = (found, files) => found.filter((x) => x.level === 'err' && files.map(rel).includes(x.file));
@@ -264,9 +255,19 @@ function slicesGate(m, found) {
   else if (!approved(m.spec.status)) return [`статус требований «${m.spec.status || '—'}»`, `Сначала одобрите spec.md: ${lintCode('approve', 'spec', dir)}`];
   else if (errorsIn(found, [m.protocolFile, m.specFile]).length)
     return ['ошибки в протоколе или требованиях', `Исправьте ошибки в протоколе или требованиях и одобрите требования заново, список: ${lintCode(dir)}`];
-  return null;
+  return bundleGate(m, found);
 }
 
+// Повторяется и при прямом gen: одобрение не отменяет новые ошибки или зависимые вопросы.
+/** @param {Feature} m @param {Finding[]} found @returns {[string, string] | null} */
+function bundleGate(m, found) {
+  if (!m.flow.state) return null;
+  const files = [m.specFile, ...scenarioFiles(m).map((d) => d.file), ...techFiles(m).map((d) => d.file)];
+  if (fileQuestionBlockers(m, files).length) return ['есть зависимые вопросы', 'Завершите обработку ответов до создания частей работы'];
+  if (flowDraftStep(m) || errorsIn(found, files).length || found.some((f) => /^(FL|QU)-/.test(f.rule)))
+    return ['комплект не готов', 'Завершите черновики и исправьте ошибки комплекта'];
+  return null;
+}
 
 /** @param {Feature} m @param {string} stage @param {Finding[]} found @returns {[string, string] | null} */
 export function planningGateClosed(m, stage, found) {

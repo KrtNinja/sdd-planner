@@ -73,6 +73,10 @@ test('T-01: tech входит в одобрение spec; отсутствие �
   fs.mkdirSync(dir, { recursive: true });
   initTestFlow(dir);
   fs.cpSync(path.join(GOOD, 'docs'), path.join(cwd, 'docs'), { recursive: true });
+  fs.appendFileSync(path.join(dir, 'spec.md'), '\n## Пользовательские сценарии\nУчастники обсуждают задачу в карточке.\n');
+  // Этот тест проверяет tech в завершённом комплекте, без нерешённого вопроса из старого ADR-fixture.
+  const adrFile = path.join(cwd, 'docs/adr/0001-mention-notifications.md');
+  fs.writeFileSync(adrFile, fs.readFileSync(adrFile, 'utf8').replace('- Срок подключения notify-service к брокеру — блокирует slice 003.', 'Нет.'));
   assert.equal(cli(cwd, 'approve', 'spec', dir).code, 3);
   write(dir, 'tech.md', simple);
   const approved = cli(cwd, 'approve', 'spec', dir);

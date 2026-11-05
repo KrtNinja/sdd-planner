@@ -1,5 +1,7 @@
 // План нарезки _work/plan.md: разбор и превью для человека в вопросе этапа. Проверки PL-* — в plan-rules.mjs.
 // @ts-check
+import crypto from 'node:crypto';
+import { approvalMds } from './approval.mjs';
 import { adrNums, adrTopic, reason } from './cut.mjs';
 import { rel, uniq, approved, scan, reqIds, depNums } from './md.mjs';
 import { layers } from './readme.mjs';
@@ -12,6 +14,14 @@ import { parseHalves } from './services.mjs';
 
 // План — временный артефакт этапа slices: агент пишет его, человек согласует, gen slices создаёт по нему файлы и удаляет его.
 export const KEYS = ['Основание', 'Зависимости', 'Половины', 'Результат', 'Почему отдельно'];
+// Выбор привязан к точному плану и комплекту; прежний ответ не применим к новой версии.
+/** @param {Feature} m */
+export function planChoiceId(m) {
+  if (!m.flow.state) return 'plan:yes';
+  const source = JSON.stringify([m.name, m.plan?.md, ...approvalMds(m, 'spec', m.specFile)]);
+  return `plan:yes:${crypto.createHash('sha256').update(source).digest('hex')}`;
+}
+
 // «## 002-comments — Комментарии в задаче», «## 002 — Комментарии в задаче», «## 002 Комментарии в задаче»
 const HEAD = /^##\s+(\d{3})(?:-(\S+))?(?:\s+(?:[—–-]\s+)?(.+?))?\s*$/u;
 const KV = /^\s*(?:[-*]\s+)?\**([А-ЯЁA-Z][^:*]{1,30}?)\**\s*:\s*\**\s*(.*)$/u;
@@ -173,6 +183,7 @@ function previewSlice(m, s) {
   const svc = parseHalves(s.halves).services;
   out.push(`  - Задействованные части системы: ${svc.length ? svc.join(' + ') : s.halves || '—'}`);
   if (s.result) out.push(`  - Результат: ${s.result}`);
+  for (const key of ['Границы', 'Приёмка']) if (s.head[key]) out.push(`  - ${key}: ${s.head[key]}`);
   if (reason(s.why)) out.push(whyLine(m, /** @type {string} */ (s.why)));
   return out;
 }
@@ -206,6 +217,17 @@ export function planPreview(m) {
   const notes = [
     ...sharedReqs(p).map(([id, ns]) => `${id} — в ${ns.join(' и ')}: объединить или описать границу`),
     ...p.slices.filter(nfrOnly).map((s) => `${s.num} — только NFR: объединить с частью работы, к которой относится требование?`),
+    ...adrPlanNotes(m, p),
+    ...(p.slices.length > 6 ? [`Частей работы: ${p.slices.length} — больше ориентира 3–6`] : []),
+  ];
+  if (notes.length) out.push('', 'Обратите внимание:', ...notes.map((x) => `- ${x}`));
+  return out.join('\n');
+}
+
+/** @param {Feature} m @param {Plan} p */
+function adrPlanNotes(m, p) {
+  if (m.flow.state) return [];
+  return [
     ...p.slices.filter((s) => reason(s.why) === '1' && adrTopic(s.why)).map((s) =>
       `${s.num} ждёт ADR «${adrTopic(s.why)}» — предложу подготовить после разбиения работы`),
     ...p.slices
@@ -213,8 +235,5 @@ export function planPreview(m) {
       .flatMap((s) => adrNums(s.why).map((num) => /** @type {const} */ ([s, m.adrs.find((a) => a.num === num)])))
       .filter(/** @returns {x is readonly [PlanSlice, import('./model.mjs').Adr]} */ (x) => !!x[1] && approved(x[1].status))
       .map(([s, a]) => `Часть ${s.num} выделена по Р1, но ADR-${a.num} уже принят — часть его не ждёт: объединить?`),
-    ...(p.slices.length > 6 ? [`Частей работы: ${p.slices.length} — больше ориентира 3–6`] : []),
   ];
-  if (notes.length) out.push('', 'Обратите внимание:', ...notes.map((x) => `- ${x}`));
-  return out.join('\n');
 }

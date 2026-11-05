@@ -78,7 +78,7 @@ const spec = (...ids) => ({ reqs: new Map(ids.map((id) => [id, { id, deleted: id
 test('plan: planPreview — slices, покрытие, общие FR, только NFR, ожидание ADR', () => {
   const plan = parsePlan(FILE, `${PLAN}\n## 005-nfr — Скорость\nОснование: NFR-1\nЗависимости: 003\nПочему отдельно: Р1 — ADR-0002\n`);
   const adrs = [{ num: '0002', status: 'принято 01.11.2026' }];
-  const out = planPreview({ plan, spec: spec('FR-1', 'FR-2', 'FR-3', 'FR-5', 'FR-9', 'FR-99', 'NFR-1'), adrs });
+  const out = planPreview({ flow: { state: null }, plan, spec: spec('FR-1', 'FR-2', 'FR-3', 'FR-5', 'FR-9', 'FR-99', 'NFR-1'), adrs });
   assert.equal(
     out,
     [
@@ -113,18 +113,18 @@ test('plan: planPreview — slices, покрытие, общие FR, тольк�
 
 test('plan: planPreview — всё покрыто; ADR не принят — заметки нет; больше шести slices — заметка', () => {
   const heads = (n) => Array.from({ length: n }, (_, i) => `## 00${i + 1}-s — S${i + 1}\nОснование: FR-${i + 1}\nПочему отдельно: Р2\n`).join('');
-  const six = planPreview({ plan: parsePlan('/x/plan.md', heads(6)), spec: spec('FR-1', 'FR-2'), adrs: [] });
+  const six = planPreview({ flow: { state: null }, plan: parsePlan('/x/plan.md', heads(6)), spec: spec('FR-1', 'FR-2'), adrs: [] });
   assert.match(six, /Покрыты все 2 требований: FR-1, FR-2\./);
   assert.doesNotMatch(six, /Обратите внимание/);
-  const seven = planPreview({ plan: parsePlan('/x/plan.md', heads(7)), spec: null, adrs: [] });
+  const seven = planPreview({ flow: { state: null }, plan: parsePlan('/x/plan.md', heads(7)), spec: null, adrs: [] });
   assert.match(seven, /\n- Частей работы: 7 — больше ориентира 3–6$/);
   assert.doesNotMatch(seven, /Покрыты|Не покрыты/);
   const waiting = parsePlan('/x/plan.md', '## 001-a — A\nОснование: FR-1\nПочему отдельно: Р1 — ADR-0003, ADR-0004\n');
   const adrs = [{ num: '0003', status: 'предложено' }];
-  assert.doesNotMatch(planPreview({ plan: waiting, spec: null, adrs }), /уже принят/);
-  assert.match(planPreview({ plan: waiting, spec: null, adrs }), /ADR-0003 «предложено»\)/);
+  assert.doesNotMatch(planPreview({ flow: { state: null }, plan: waiting, spec: null, adrs }), /уже принят/);
+  assert.match(planPreview({ flow: { state: null }, plan: waiting, spec: null, adrs }), /ADR-0003 «предложено»\)/);
   const r2 = parsePlan('/x/plan.md', '## 001-a — A\nОснование: FR-1\nПочему отдельно: Р2 — ADR-0003\n');
-  assert.doesNotMatch(planPreview({ plan: r2, spec: null, adrs: [{ num: '0003', status: 'принято' }] }), /уже принят/);
+  assert.doesNotMatch(planPreview({ flow: { state: null }, plan: r2, spec: null, adrs: [{ num: '0003', status: 'принято' }] }), /уже принят/);
 });
 
 test('plan: код и поля вне корректного раздела не создают slices; первый ключ остаётся', () => {

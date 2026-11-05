@@ -27,6 +27,8 @@ const short = (s, n = 90) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 /** @param {Feature} m @param {string | undefined} topic @returns {GateStep} */
 export function adrTopicStep(m, topic) {
   const d = rel(m.dir);
+  if (m.flow.state && !topic) return { stop: true, text: screen(
+    'ADR необязателен. Какое уже принятое решение и причины выбора вы хотите записать?', G.wait(['gate', 'adr', d, '<тема>'])) };
   const needed = neededAdrs(m);
   if (topic) {
     const by = needed.filter((x) => x.topic.toLowerCase() === topic.toLowerCase()).map((x) => x.num);
@@ -51,6 +53,11 @@ export function adrTopicStep(m, topic) {
     };
     return { stop: true, text: pickText('Тема ADR не указана.', q, ['gate', 'adr', d, '<id>']) };
   }
+  return adrCandidates(d);
+}
+
+/** @param {string} d @returns {GateStep} */
+function adrCandidates(d) {
   const question =
     'Какие технические решения нужны этой фиче и ещё не описаны в ADR: брокер, хранилище, доставка событий, порядок, кэш, лимиты? ' +
     'Каждое — тема и где в spec или slices оно нужно.';

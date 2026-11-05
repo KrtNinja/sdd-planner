@@ -262,3 +262,202 @@ test('блок 4: независимый черновик и возврат к g
   assert.ok(options.some((o) => o.id === 'questions:work:FR-2'));
   assert.ok(!options.some((o) => /sdd-grill|sdd-slices/.test(o.id)));
 });
+
+const CUT_PLAN = `# План проверки
+
+## 001-validation — Проверка названия
+Основание: FR-1
+Зависимости: нет
+Половины: только tasks-core
+Результат: пустое название не сохраняется
+Границы: проверка названия; изменение остальных полей вне этой части
+Приёмка: пустое название отклонено, запись не создана
+Почему отдельно: —
+`;
+function bundleWorkspace() {
+  const dir = setup();
+  write(dir, 'spec.md', BEHAVIOR + SCENARIOS);
+  write(dir, 'brainstorming.md', PROTOCOL);
+  write(dir, 'tech.md', TECH);
+  routeCall(['gen', 'links', dir]);
+  return dir;
+}
+const contents = (dir, file) => fs.readFileSync(path.join(dir, file), 'utf8');
+const optionsOf = (dir) => askOf(loadFeature(dir)).questions.flatMap((q) => q.options);
+const choiceOfPlan = (dir) => optionsOf(dir).find((o) => o.id.startsWith('plan:yes:'));
+
+test('блок 5: согласование требует сценарии и tech; ИИ-ревью не нужно, подтверждение комплекта одно', () => {
+  const dir = bundleWorkspace();
+  const spec = contents(dir, 'spec.md');
+  for (const missing of ['scenarios', 'tech']) {
+    if (missing === 'scenarios') write(dir, 'spec.md', BEHAVIOR + '\n## Пользовательские сценарии\n');
+    else fs.unlinkSync(path.join(dir, 'tech.md'));
+    routeCall(['approve', 'spec', dir], 3);
+    assert.equal(loadFeature(dir).approvals.length, 0);
+    write(dir, 'spec.md', spec);
+    write(dir, 'tech.md', TECH);
+  }
+  const opts = optionsOf(dir);
+  assert.equal(opts[0].id, 'approve:spec');
+  assert.ok(opts[0].recommended);
+  assert.equal(opts.filter((o) => o.id.startsWith('approve:')).length, 1);
+  assert.match(routeCall(['ask', dir]), /Проверка ИИ — по желанию/);
+  assert.equal(fs.existsSync(path.join(dir, '_work/review')), false);
+  routeCall(['choose', dir, 'approve:spec']);
+  assert.equal(loadFeature(dir).approvals.find((a) => a.kind === 'spec').state, 'ok');
+  assert.equal(contents(dir, 'tech.md'), TECH);
+  assert.equal(fs.existsSync(path.join(dir, 'scenarios.md')), false);
+  routeCall(['gate', 'slices', dir]);
+});
+
+test('блок 5: автоматические ошибки и зависимый Q нельзя обойти прямыми approve/gen', () => {
+  const dir = bundleWorkspace();
+  routeCall(['approve', 'spec', dir]);
+  write(dir, '_work/plan.md', CUT_PLAN);
+  const oldChoice = choiceOfPlan(dir).id;
+  write(dir, 'brainstorming.md', PROTOCOL.replace('| 1 |', '| 7 |'));
+  routeCall(['approve', 'spec', dir], 1);
+  routeCall(['gen', 'slices', dir, oldChoice], 1);
+  assert.equal(fs.existsSync(path.join(dir, 'slices')), false);
+  write(dir, 'brainstorming.md', PROTOCOL);
+  add(dir, 1, 'defer');
+  routeCall(['approve', 'spec', dir], 3);
+  routeCall(['gate', 'slices', dir], 3);
+  routeCall(['gen', 'slices', dir, oldChoice], 1);
+  assert.equal(fs.existsSync(path.join(dir, 'slices')), false);
+  assert.equal(contents(dir, '_work/plan.md'), CUT_PLAN);
+});
+
+test('блок 5: план обязателен после согласования; до подтверждения нет записи, старый выбор отклоняется', () => {
+  const dir = bundleWorkspace();
+  write(dir, '_work/plan.md', CUT_PLAN);
+  routeCall(['gen', 'slices', dir], 1);
+  assert.equal(choiceOfPlan(dir), undefined);
+  routeCall(['approve', 'spec', dir]);
+  routeCall(['plan', dir]);
+  const choice = choiceOfPlan(dir);
+  const preview = routeCall(['ask', dir]);
+  assert.match(preview, /Границы: проверка названия/);
+  assert.match(preview, /Приёмка: пустое название отклонено/);
+  assert.ok(preview.indexOf('Границы:') < preview.indexOf(choice.id));
+  assert.equal(fs.existsSync(path.join(dir, 'slices')), false);
+  routeCall(['gen', 'slices', dir], 1);
+  routeCall(['choose', dir, 'plan:yes'], 2);
+  routeCall(['choose', dir, 'plan:edit']);
+  write(dir, '_work/plan.md', CUT_PLAN.replace('запись не создана', 'запись не создана; можно исправить название'));
+  routeCall(['choose', dir, choice.id], 2);
+  routeCall(['gen', 'slices', dir, choice.id], 1);
+  assert.equal(fs.existsSync(path.join(dir, 'slices')), false);
+  assert.notEqual(choiceOfPlan(dir).id, choice.id);
+});
+
+test('блок 5: границы и краткая приёмка обязательны; ошибки плана не создают файлы', () => {
+  const dir = bundleWorkspace();
+  routeCall(['approve', 'spec', dir]);
+  for (const key of ['Границы', 'Приёмка']) {
+    write(dir, '_work/plan.md', CUT_PLAN.replace(new RegExp(`^${key}:.*$`, 'm'), `${key}: нет`));
+    assert.match(routeCall(['plan', dir], 1), new RegExp(`PL-02.*${key}`));
+    routeCall(['gen', 'slices', dir], 1);
+    assert.equal(choiceOfPlan(dir), undefined);
+    assert.equal(fs.existsSync(path.join(dir, 'slices')), false);
+  }
+});
+
+test('блок 5: изменение комплекта и повторное согласование не оживляют старое подтверждение плана', () => {
+  const dir = bundleWorkspace();
+  routeCall(['approve', 'spec', dir]);
+  write(dir, '_work/plan.md', CUT_PLAN);
+  const before = choiceOfPlan(dir).id;
+  write(dir, 'tech.md', TECH + '\nПри ошибке запись остаётся прежней.\n');
+  assert.equal(loadFeature(dir).approvals.find((a) => a.kind === 'spec').state, 'changed');
+  routeCall(['gen', 'slices', dir, before], 1);
+  routeCall(['approve', 'spec', dir]);
+  routeCall(['choose', dir, before], 2);
+  assert.notEqual(choiceOfPlan(dir).id, before);
+  assert.equal(fs.existsSync(path.join(dir, 'slices')), false);
+});
+
+// Содержание WHEN/THEN задаёт fixture вместо модели; проверяется сохранность принятого объёма.
+function fillGenerated(dir) {
+  const file = 'slices/001-validation.md';
+  write(dir, file, contents(dir, file)
+    .replace('- <сервис-владелец>: <контракт по смыслу> — <не меняется или МЕНЯЕТ КОНТРАКТ: что именно>',
+      '- tasks-core: проверка названия — не меняется')
+    .replace('AC-001-B? <имя>\n  WHEN <условие>\n  THEN <наблюдаемый исход>',
+      'AC-001-B? Пустое название\n  WHEN передано пустое название\n  THEN запись не сохраняется')
+    .replace('Проверяет: <FR-n>', 'Проверяет: FR-1'));
+  write(dir, 'slices/README.md', contents(dir, 'slices/README.md')
+    .replaceAll('<действие>', 'Передать пустое название').replaceAll('<ожидание>', 'Запись не сохраняется')
+    .replaceAll('<что пересекается и как разрешили>', 'Нет пересечений'));
+}
+
+test('блок 5: подтверждённый план создаёт точные файлы с условиями; заполненные AC и связи проверяются', () => {
+  const dir = bundleWorkspace();
+  routeCall(['approve', 'spec', dir]);
+  write(dir, '_work/plan.md', CUT_PLAN);
+  const id = choiceOfPlan(dir).id;
+  routeCall(['choose', dir, id]);
+  assert.deepEqual(fs.readdirSync(path.join(dir, 'slices')).sort(), ['001-validation.md', 'README.md']);
+  const md = contents(dir, 'slices/001-validation.md');
+  assert.match(md, /^# 001 — Проверка названия$/m);
+  assert.match(md, /^Условия приёмки: пустое название отклонено, запись не создана$/m);
+  assert.match(md, /^- Согласовано: проверка названия; изменение остальных полей вне этой части$/m);
+  assert.match(md, /Основание:.*FR-1/);
+  assert.match(md, /AC-001-B\?/);
+  assert.equal(fs.existsSync(path.join(dir, '_work/plan.md')), false);
+  fillGenerated(dir);
+  routeCall(['done', dir]);
+  const checked = JSON.parse(routeCall(['check', dir, '--json']));
+  assert.equal(checked.findings.filter((f) => f.level === 'err').length, 0);
+  const sl = loadFeature(dir).slices.get('001');
+  assert.deepEqual(sl.acs.map((a) => a.id), ['AC-001-B1']);
+  assert.deepEqual(sl.acs[0].refs, ['FR-1']);
+  assert.match(sl.acs[0].text, /WHEN передано пустое название\n  THEN запись не сохраняется/);
+  assert.match(contents(dir, 'slices/README.md'), /001-validation\.md/);
+  routeCall(['choose', dir, id], 2);
+  assert.equal(contents(dir, 'slices/001-validation.md'), sl.md);
+});
+
+test('блок 5: необязательный ADR после согласования не меняет комплект и не требует принятия', () => {
+  const dir = bundleWorkspace();
+  routeCall(['approve', 'spec', dir]);
+  const spec = contents(dir, 'spec.md');
+  write(dir, '../adr/0001-validation.md', '# ADR-0001 — Проверка\nФича: ' + path.basename(dir) + '/\nСтатус: предложено\n' +
+    '## Контекст\nFR-1\n## Варианты\n### A. Существующий механизм\nВыбран: уже проверяет название\n' +
+    '### B. Новая проверка\nОтложен: дублирует существующую\n## Решение\nСуществующая проверка\n' +
+    '## Последствия\nПоведение прежнее\n## Не выяснено\nНет\n');
+  assert.equal(contents(dir, 'spec.md'), spec);
+  assert.equal(loadFeature(dir).approvals.find((a) => a.kind === 'spec').state, 'ok');
+  assert.ok(!optionsOf(dir).some((o) => /adr/.test(o.id)));
+  routeCall(['gate', 'slices', dir]);
+  assert.match(routeCall(['gate', 'adr', dir]), /ADR необязателен/);
+  write(dir, '_work/plan.md', CUT_PLAN);
+  routeCall(['choose', dir, choiceOfPlan(dir).id]);
+  const adrFile = '../adr/0001-validation.md';
+  write(dir, adrFile, contents(dir, adrFile).replace('Статус:', 'Затрагивает slices: 001\nСтатус:')
+    .replace('Поведение прежнее', 'slice 001 — поведение прежнее'));
+  fillGenerated(dir);
+  routeCall(['done', dir]);
+  routeCall(['approve', 'slices', dir]);
+  routeCall(['gate', 'build', dir]);
+  assert.match(contents(dir, adrFile), /Статус: предложено/);
+  assert.ok(!optionsOf(dir).some((o) => /adr/.test(o.id)));
+});
+
+test('блок 5: отдельные сценарии входят в единую отметку; ошибка связи блокирует согласование', () => {
+  const dir = bundleWorkspace();
+  write(dir, 'spec.md', BEHAVIOR + '\n[Пользовательские сценарии](scenarios.md)\n');
+  reserveFlowId(dir, 'SC');
+  const scenarios = '# Сценарии\n## SC-1 — Проверка названия\nТребования: FR-1\nПустое название не сохраняется.\n';
+  write(dir, 'scenarios.md', scenarios.replace('FR-1', 'FR-999'));
+  routeCall(['gen', 'links', dir]);
+  routeCall(['approve', 'spec', dir], 3);
+  write(dir, 'scenarios.md', scenarios);
+  routeCall(['gen', 'links', dir]);
+  routeCall(['approve', 'spec', dir]);
+  const unchangedTech = contents(dir, 'tech.md');
+  write(dir, 'scenarios.md', scenarios + '\nМожно исправить название и повторить.\n');
+  assert.equal(loadFeature(dir).approvals.find((a) => a.kind === 'spec').state, 'changed');
+  assert.equal(contents(dir, 'tech.md'), unchangedTech);
+  routeCall(['gate', 'slices', dir], 3);
+});

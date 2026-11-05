@@ -69,7 +69,7 @@ export function gateClosed(m, stage, found) {
 function buildGate(m, found) {
   const dir = rel(m.dir);
   if (unresolvedRegistry(m).length) return ['есть нерешённые вопросы', 'Завершите обработку вопросов до передачи в разработку'];
-  const pending = pendingAdrs(m);
+  const pending = m.flow.state ? [] : pendingAdrs(m);
   const need = neededAdrs(m);
   if (!m.slices.size || !approved(m.slicesStatus)) return ['части работы не одобрены', `Сначала одобрите части работы: ${lintCode('approve', 'slices', dir)}`];
   else if (need.length)

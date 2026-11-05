@@ -56,8 +56,8 @@ const OWN_OF = {
   spec: (m) => ({
     target: rel(m.specFile),
     files: rel(m.specFile),
-    name: 'Требования',
-    of: 'требований',
+    name: m.flow.state ? 'Комплект требований, сценариев и архитектуры' : 'Требования',
+    of: m.flow.state ? 'комплекта' : 'требований',
     status: /** @type {import('./model.mjs').Spec} */ (m.spec).status,
   }),
   slices: (m, dir) => ({ target: dir, files: `каждому файлу в ${dir}/slices/`, name: 'Части работы', of: 'частей работы', status: m.slicesStatus }),
@@ -261,6 +261,19 @@ export function artifactQuestion(m, what, num) {
   const options = rv
     ? [approve, humanizeOption(x), ...(changedByReview(rv) ? [reviewOption(m, x, true)] : [])]
     : [reviewOption(m, x, false), windowOption(m, x), humanizeOption(x), approve];
+  return agreementQuestion(m, { x, rv, options, approve });
+}
+
+/** @param {Feature} m @param {{x: Artifact, rv: Review | undefined, options: Option[], approve: Option}} input */
+function agreementQuestion(m, { x, rv, options, approve }) {
+  const bundle = m.flow.state && x.what === 'spec';
+  if (bundle && !rv) {
+    options.splice(options.indexOf(approve), 1);
+    options.unshift(approve);
+  }
   options[0].recommended = true;
-  return { header: x.name, question: `${x.name} «${x.status || '—'}»${rv ? ': результаты проверки разобраны' : ''}. Что дальше?`, options };
+  const preview = bundle ? 'Автоматические проверки обязательны и выполняются при согласовании. ' +
+    'Проверка ИИ — по желанию; механика не доказывает смысловую полноту.' : undefined;
+  return { ...(preview ? { preview } : {}), header: x.name,
+    question: `${x.name} «${x.status || '—'}»${rv ? ': результаты проверки разобраны' : ''}. Что дальше?`, options };
 }

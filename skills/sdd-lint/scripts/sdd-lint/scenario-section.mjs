@@ -29,3 +29,11 @@ export function scenarioSection(md) {
 export function scenarioFiles(m) {
   return m.flow.documents.filter((d) => /[\\/]scenarios\.md$/.test(d.file));
 }
+
+// Наличие текста — механическое условие, не оценка полноты сценариев.
+/** @param {import('./model.mjs').Feature} m */
+export function hasScenarios(m) {
+  const text = scenarioFiles(m)[0]?.md || scenarioSection(m.spec?.md || '')?.text || '';
+  return scan(text).lines.some((l) => !l.inCode && l.text.trim() &&
+    !/^(?:#{1,6} |Требования:|Связи:|Статус:|\[Пользовательские сценарии\])/.test(l.text));
+}

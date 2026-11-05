@@ -283,7 +283,70 @@ function verifyRoute() {
   call(['gate', 'slices', dir]);
   assert.match(call(['ask', dir]), /window:sdd-slices/);
   assert.equal(fs.existsSync(`${dir}/slices`), false);
+  verifySlices(dir);
   console.error('ROUTE_VERIFY ' + JSON.stringify({ calls, actualModelCalls: 0, actualUserActions: 0 }));
+}
+
+// Новый успешный путь считается отдельно: исторические истории заканчивались до создания slices.
+function verifySlices(dir) {
+  const calls = [];
+  const call = (args, code = 0) => {
+    const r = run(args);
+    const text = r.chunks.map((c) => c[1]).join('');
+    calls.push({ command: args.slice(0, 3).join(' '), code: r.code, chars: text.length });
+    assert.equal(r.code, code, text);
+    return text;
+  };
+  call(['gate', 'slices', dir]);
+  call(['prompt', 'sdd-slices', 'route']);
+  const plan = '# План проверки\n\n## 001-validation — Проверка названия\n' +
+    'Основание: FR-1\nЗависимости: нет\nПоловины: только tasks-core\n' +
+    'Результат: пустое название не сохраняется\nГраницы: только проверка названия\n' +
+    'Приёмка: пустое название отклонено, запись не создана\nПочему отдельно: —\n';
+  fs.mkdirSync(`${dir}/_work`, { recursive: true });
+  fs.writeFileSync(`${dir}/_work/plan.md`, plan);
+  call(['plan', dir]);
+  const shown = call(['ask', dir]);
+  assert.match(shown, /Границы: только проверка названия/);
+  assert.match(shown, /Приёмка: пустое название отклонено, запись не создана/);
+  const id = shown.match(/plan:yes:[0-9a-f]{64}/)[0];
+  assert.ok(shown.indexOf('Приёмка:') < shown.indexOf(id));
+  assert.equal(fs.existsSync(`${dir}/slices`), false);
+  call(['gen', 'slices', dir], 1);
+  assert.equal(fs.existsSync(`${dir}/slices`), false);
+  assert.equal(fs.readFileSync(`${dir}/_work/plan.md`, 'utf8'), plan);
+  call(['choose', dir, id]);
+  assert.deepEqual(fs.readdirSync(`${dir}/slices`).sort(), ['001-validation.md', 'README.md']);
+  assert.equal(fs.existsSync(`${dir}/_work/plan.md`), false);
+  const file = `${dir}/slices/001-validation.md`;
+  const generated = fs.readFileSync(file, 'utf8');
+  assert.match(generated, /^# 001 — Проверка названия$/m);
+  assert.match(generated, /^Условия приёмки: пустое название отклонено, запись не создана$/m);
+  assert.match(generated, /^- Согласовано: только проверка названия$/m);
+  assert.match(generated, /^Зависимости: нет$/m);
+  assert.match(generated, /^Основание:.*FR-1/m);
+  // Вариант Б: модель после создания дописывает подробные AC. Здесь её заменяет фиксированный текст.
+  fs.writeFileSync(file, generated
+    .replace('- <сервис-владелец>: <контракт по смыслу> — <не меняется или МЕНЯЕТ КОНТРАКТ: что именно>',
+      '- tasks-core: проверка названия — не меняется')
+    .replace('AC-001-B? <имя>\n  WHEN <условие>\n  THEN <наблюдаемый исход>',
+      'AC-001-B? Пустое название\n  WHEN передано пустое название\n  THEN запись не сохраняется')
+    .replace('Проверяет: <FR-n>', 'Проверяет: FR-1'));
+  fs.writeFileSync(`${dir}/slices/README.md`, fs.readFileSync(`${dir}/slices/README.md`, 'utf8')
+    .replaceAll('<действие>', 'Передать пустое название').replaceAll('<ожидание>', 'Запись не сохраняется'));
+  call(['done', dir]);
+  const result = JSON.parse(call(['check', dir, '--json']));
+  assert.equal(result.findings.filter((f) => f.level === 'err').length, 0);
+  const slice = loadFeature(path.resolve(dir)).slices.get('001');
+  assert.deepEqual(slice.acs.map((a) => a.id), ['AC-001-B1']);
+  assert.deepEqual(slice.acs[0].refs, ['FR-1']);
+  assert.match(slice.acs[0].text, /WHEN передано пустое название\n  THEN запись не сохраняется/);
+  assert.match(slice.md, /^Условия приёмки: пустое название отклонено, запись не создана$/m);
+  assert.match(fs.readFileSync(`${dir}/slices/README.md`, 'utf8'), /001-validation\.md/);
+  const success = calls.filter((c) => c.code === 0);
+  console.error('SLICE_VERIFY ' + JSON.stringify({ calls, successfulPathCalls: success.length,
+    outputChars: success.reduce((n, c) => n + c.chars, 0), maxActionChars: Math.max(...success.map((c) => c.chars)),
+    requiredUserConfirmations: 1, actualUserActions: 0, actualModelCalls: 0 }));
 }
 
 if (verify) verifyRoute();

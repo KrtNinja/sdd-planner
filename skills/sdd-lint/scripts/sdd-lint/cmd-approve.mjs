@@ -4,6 +4,8 @@ import { fileQuestionBlockers, questionCard } from './registry-view.mjs';
 import fs from 'node:fs';
 import { checkTech, techFiles } from './tech.mjs';
 import { checkDocumentationFlow } from './flow.mjs';
+import { checkRegistry } from './registry-rules.mjs';
+import { flowDraftStep } from './flow-progress.mjs';
 import { scenarioFiles } from './scenario-section.mjs';
 import path from 'node:path';
 
@@ -73,10 +75,6 @@ export function cmdApprove(ctx) {
   // Статус после проверки отпечатка: «одобрено» руками или после правки — не одобрено, approve ставит заново.
   // Артефакт есть — его наличие проверено выше.
   const cur = STATUS_OF[what](m, target);
-  if (approved(cur)) {
-    ctx.io.log(`${rel(target)}: уже «${cur}».`);
-    ctx.io.exit(0);
-  }
   const date = today();
   const fp = fingerprint(approvalMds(m, what, target));
   const next = md.replace(/^Статус:.*$/m, `Статус: ${word} ${date} · ${fp}`);
@@ -99,6 +97,10 @@ export function cmdApprove(ctx) {
           `снимите новый снимок (${lintCode('snapshot', what === 'slices' ? dir : rel(target))}) и повторите одобрение.`,
       );
     ctx.io.exit(1);
+  }
+  if (approved(cur)) {
+    ctx.io.log(`${rel(target)}: уже «${cur}».`);
+    ctx.io.exit(0);
   }
   fs.writeFileSync(target, next);
   ctx.io.log(`${rel(target)}: Статус: ${word} ${date} · ${fp}`);
@@ -162,13 +164,14 @@ function approvalBlockers(m, what, target) {
 
 /** @param {Feature} m @param {(msg: string) => never} refuse */
 function checkFlowApproval(m, refuse) {
-  const errors = checkDocumentationFlow(m);
+  const errors = [...checkDocumentationFlow(m), ...checkRegistry(m)];
   if (errors.length) refuse(errors.map((f) => f.msg).join('; '));
 }
 
 /** @param {Feature} m @param {Kind} what @param {(msg: string) => never} refuse */
 function checkTechApproval(m, what, refuse) {
   if (what === 'adr') return;
+  if (flowDraftStep(m)) refuse('Завершите сценарии и архитектурное решение до согласования комплекта.');
   const tech = checkTech(m);
   if (tech.length) refuse(tech.map((f) => f.msg).join('; '));
 }
