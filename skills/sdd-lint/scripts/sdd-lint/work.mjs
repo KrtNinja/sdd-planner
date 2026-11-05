@@ -99,3 +99,16 @@ export function moveLegacy(m) {
   mv(old.plan, m.planFile);
   return moves;
 }
+
+// Временные артефакты этапа планирования: нужны, пока требования пишутся, в merge не идут. Убирает их /sdd-close.
+// Протокол лежит в папке фичи, остальное — в _work/; старые review/ и slices/plan.md close тоже убирает.
+/** @param {Feature} m @returns {string[]} */
+export function tempArtifacts(m) {
+  const old = legacyPaths(m);
+  return [
+    m.protocol ? rel(m.protocolFile) : null,
+    workFiles(m).length ? `${rel(m.workDir)}/` : null,
+    fs.existsSync(old.review) ? `${rel(old.review)}/` : null,
+    fs.existsSync(old.plan) ? rel(old.plan) : null,
+  ].filter((x) => x !== null);
+}

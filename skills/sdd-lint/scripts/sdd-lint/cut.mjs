@@ -47,6 +47,7 @@ const adrFor = (m, num) =>
 // ADR, которые надо завести: «Р1 — ADR: <тема>» в slices, и ни один ADR фичи slice не затрагивает.
 /** @param {Feature} m */
 export function neededAdrs(m) {
+  if (m.flow.state) return [];
   return [...m.slices.values()]
     .filter((s) => reason(s.why) === '1' && adrTopic(s.why) && !adrFor(m, s.num))
     .map((s) => ({ num: s.num, topic: /** @type {string} */ (adrTopic(s.why)) }));
@@ -88,7 +89,7 @@ function adrReason(sl, { m }) {
     .filter((num) => !m.adrs.some((a) => a.num === num))
     .map((num) => finding('SL-34', sl.file, whyLine, `ADR-${num} нет в docs/adr`));
   const topic = adrTopic(sl.why);
-  if (!topic) return missing;
+  if (!topic || m.flow.state) return missing;
   const a = adrFor(m, sl.num);
   const msg = a ? `«ADR: ${topic}» — ADR-${a.num} уже затрагивает slice ${sl.num}: впиши «Р1 — ждёт ADR-${a.num}»` : `нужен ADR «${topic}»`;
   return [...missing, finding('SL-38', sl.file, whyLine, msg)];

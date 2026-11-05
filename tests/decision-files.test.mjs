@@ -5,10 +5,12 @@ import path from 'node:path';
 import { tmpDir, SPEC, slice, ac } from './helpers.mjs';
 import { loadFeature } from '../skills/sdd-lint/scripts/sdd-lint/feature.mjs';
 import { decisionLinks, decisionReviews, decisionFiles } from '../skills/sdd-lint/scripts/sdd-lint/decision-files.mjs';
+import { initTestFlow } from '../skills/sdd-lint/scripts/sdd-lint/flow-state.mjs';
 import { linkSlice } from '../skills/sdd-lint/scripts/sdd-lint/gen-links.mjs';
 
 function setup() {
   const dir = tmpDir();
+  initTestFlow(dir);
   fs.mkdirSync(path.join(dir, 'slices'));
   fs.writeFileSync(path.join(dir, 'spec.md'), SPEC);
   fs.writeFileSync(path.join(dir, 'slices/001-search.md'), slice('001', {}, ...ac('AC-001-1')));
@@ -66,9 +68,41 @@ test('изменение FR без сдвига ссылок отправляе�
   const before = fs.readFileSync(file, 'utf8');
   fs.writeFileSync(file, before.replace('\n', '\nСтатус: одобрено\n'));
   const changes = decisionReviews(loadFeature(dir), [{ file: 'spec.md', before: SPEC,
-    after: SPEC.replace('Статус: черновик', 'Статус: на ревью') }]);
+    after: SPEC.replace('FR-1  Текст.', 'FR-1  Экспорт разрешён.') }]);
   const dependent = changes.find((c) => c.file === 'slices/001-search.md');
   assert.ok(dependent);
   assert.match(dependent.after, /Статус: на ревью/);
   assert.equal(fs.readFileSync(file, 'utf8'), dependent.before);
+});
+
+test('пересмотр FR затрагивает связанные SC/TECH/AC, сохраняя независимую ветку', async () => {
+  const { reserveFlowId } = await import('../skills/sdd-lint/scripts/sdd-lint/flow-state.mjs');
+  const dir = setup();
+  reserveFlowId(dir, 'SC'); reserveFlowId(dir, 'SC');
+  const scenario = (n) => `### SC-${n} — Ветка ${n}\nТребования: FR-${n}\nАнна видит результат ${n}.\n`;
+  const scenarios = '# Сценарии\nСтатус: одобрено\n' + scenario(1) + scenario(2);
+  fs.writeFileSync(path.join(dir, 'scenarios.md'), scenarios);
+  fs.writeFileSync(path.join(dir, 'tech.md'), '# Решение\nСтатус: одобрено\n## TECH — Ветка 2\nСвязи: FR-2\nПоиск.\n');
+  const independent = slice('002', { basis: 'FR-2' }, ...ac('AC-002-1', 'FR-2'));
+  fs.writeFileSync(path.join(dir, 'slices/002-independent.md'), independent);
+  const changes = decisionReviews(loadFeature(dir), [{ file: 'spec.md', before: SPEC,
+    after: SPEC.replace('FR-1  Текст.', 'FR-1  Экспорт разрешён.') }]);
+  const files = changes.map((c) => c.file);
+  assert.ok(files.includes('scenarios.md'));
+  assert.ok(files.includes('slices/001-search.md'));
+  assert.ok(files.includes('slices/README.md'));
+  assert.ok(!files.includes('tech.md'));
+  assert.ok(!files.includes('slices/002-independent.md'));
+  assert.ok(changes.find((c) => c.file === 'scenarios.md').after.includes(scenario(2)));
+  assert.equal(fs.readFileSync(path.join(dir, 'slices/002-independent.md'), 'utf8'), independent);
+});
+
+test('пересмотр объединяет прежние и новые связи, не теряет старое основание', () => {
+  const dir = setup();
+  const old = '# Решение\nСтатус: одобрено\n## TECH — Ветка\nСвязи: FR-1\nПоиск.\n';
+  fs.writeFileSync(path.join(dir, 'tech.md'), old);
+  const changes = decisionReviews(loadFeature(dir), [{ file: 'tech.md', before: old,
+    after: old.replace('Связи: FR-1', 'Связи: FR-2') }]);
+  assert.ok(changes.some((c) => c.file === 'spec.md'));
+  assert.ok(changes.some((c) => c.file === 'slices/001-search.md'));
 });

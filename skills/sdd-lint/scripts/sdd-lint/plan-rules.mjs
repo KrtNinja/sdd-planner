@@ -3,7 +3,7 @@
 import { adrNums, reason, stubLines } from './cut.mjs';
 import { finding } from './findings.mjs';
 import { dependencyCycles } from './graph.mjs';
-import { approved } from './md.mjs';
+import { approved, noneText } from './md.mjs';
 import { KEYS, sharedReqs, nfrOnly } from './plan.mjs';
 import { registry, halvesProblem } from './services.mjs';
 
@@ -60,12 +60,21 @@ function adrRefs(s, { m, f }) {
   return adrNums(s.why).flatMap((num) => {
     const a = m.adrs.find((x) => x.num === num);
     if (!a) return [finding('PL-09', f, at(s, 'Почему отдельно'), `${s.num}: ADR-${num} нет в docs/adr`)];
-    return approved(a.status) ? [finding('PL-09', f, at(s, 'Почему отдельно'), `${s.num}: ADR-${num} уже «${a.status}»`)] : [];
+    return !m.flow.state && approved(a.status) ? [finding('PL-09', f, at(s, 'Почему отдельно'), `${s.num}: ADR-${num} уже «${a.status}»`)] : [];
   });
+}
+
+// Краткие условия подтверждаются до создания файлов; подробные AC заполняются позже.
+/** @param {PlanSlice} s @param {PlanContext} c */
+function agreementFields(s, { m, f }) {
+  if (!m.flow.state) return [];
+  return ['Границы', 'Приёмка'].filter((k) => !s.head[k] || noneText(s.head[k]))
+    .map((k) => finding('PL-02', f, s.n, `${s.num}: заполните «${k}:» до подтверждения плана`));
 }
 
 /** @type {PlanSliceRule[]} */
 const PLAN_SLICE = [
+  { ids: ['PL-02'], check: agreementFields },
   { ids: ['PL-02'], check: (s, { f }) => KEYS.filter((k) => s.head[k] === undefined).map((k) => finding('PL-02', f, s.n, `${s.num}: нет строки «${k}:»`)) },
   {
     ids: ['PL-05'],

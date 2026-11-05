@@ -129,7 +129,7 @@ test('legacy не получает обязанности; ошибки разд
   assert.equal(cmd(dir, 'unknown').code, 2);
   assert.throws(() => scenarioSection(section + section), /повторён/);
   fs.unlinkSync(path.join(dir, '.sdd-flow.json'));
-  assert.match(cmd(dir, 'move').text, /legacy не меняется/);
+  assert.match(cmd(dir, 'move').text, /\.sdd-flow\.json/);
   assert.equal(fs.existsSync(path.join(dir, 'scenarios.md')), false);
 });
 

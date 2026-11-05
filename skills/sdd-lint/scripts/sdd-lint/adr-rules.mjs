@@ -114,7 +114,7 @@ const ADR = [
   {
     ids: ['AD-10'],
     check: (a, m) =>
-      approved(m.slicesStatus) && !/принят/i.test(a.status || '') ?
+      !m.flow.state && approved(m.slicesStatus) && !/принят/i.test(a.status || '') ?
         [finding('AD-10', a.file, null, `статус «${a.status || '—'}», части работы уже одобрены`)] : [],
   },
 ];

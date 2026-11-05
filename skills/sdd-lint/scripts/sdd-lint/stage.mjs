@@ -1,33 +1,22 @@
 // Текущий этап фичи и блок «Следующий шаг».
 // @ts-check
-import fs from 'node:fs';
+import { flowStage } from './flow-progress.mjs';
 
 import { pendingAdrs } from './adr.mjs';
 import { code, skill, lintCmd, tipLine } from './config.mjs';
 import { neededAdrs, stubCount } from './cut.mjs';
 import { rel, approved } from './md.mjs';
 import { openBlockers, reviewKey } from './review.mjs';
-import { legacyPaths, workFiles } from './work.mjs';
+import { tempArtifacts } from './work.mjs';
+export { tempArtifacts } from './work.mjs';
 
 /** @typedef {import('./io.mjs').Ctx} Ctx */
 /** @typedef {import('./model.mjs').Feature} Feature */
 /** @typedef {import('./model.mjs').Review} Review */
 /** @typedef {import('./model.mjs').ReviewRow} ReviewRow */
 /** Шаги для чтения и одна рекомендуемая команда для строки Tip. @typedef {{ steps: string[], tip: string | null }} Steps */
-/** Этап фичи: где она (now), что дальше (next), команда для Tip. @typedef {{ now: string, next: string[], tip: string | null }} Stage */
-
-// Временные артефакты этапа планирования: нужны, пока требования пишутся, в merge не идут. Убирает их /sdd-close.
-// Протокол лежит в папке фичи, остальное — в _work/; старые review/ и slices/plan.md close тоже убирает.
-/** @param {Feature} m @returns {string[]} */
-export function tempArtifacts(m) {
-  const old = legacyPaths(m);
-  return [
-    m.protocol ? rel(m.protocolFile) : null,
-    workFiles(m).length ? `${rel(m.workDir)}/` : null,
-    fs.existsSync(old.review) ? `${rel(old.review)}/` : null,
-    fs.existsSync(old.plan) ? rel(old.plan) : null,
-  ].filter((x) => x !== null);
-}
+/** Этап фичи: где она (now), что дальше (next), команда для Tip.
+ * @typedef {{ now: string, next: string[], tip: string | null, questions?: import('./question.mjs').Question[] }} Stage */
 
 // Рекомендуемая команда при ревью артефакта — та же очерёдность, что в вопросе этапа (ask):
 // ревью не было — ревью; открытые блокеры — их разбор; ревью разобрано — одобрить.
@@ -149,6 +138,7 @@ function protocolStage(m) {
 
 /** @param {Feature} m @returns {Stage} */
 export function stageOf(m) {
+  if (m.flow.state) return flowStage(m);
   return m.slices.size ? slicesStage(m) : specStage(m);
 }
 /** @param {Pick<Stage, 'now' | 'next'>} st */

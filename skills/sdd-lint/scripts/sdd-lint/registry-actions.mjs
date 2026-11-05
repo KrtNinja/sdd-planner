@@ -98,7 +98,7 @@ function recordAnswer(q, input) {
 export function applyQuestion(dir, verb, input) {
   validateInput(input);
   validateAction(verb, input);
-  if (!loadFeature(dir).flow.state) throw new Error('Реестр доступен только в новом процессе; миграции нет');
+  if (!loadFeature(dir).flow.state) throw new Error('Не найден .sdd-flow.json для реестра вопросов');
   return writeRegistry(dir, (md) => {
     const { records, previous, digest } = questionRequest(md, verb, input);
     if (previous) return { md, result: previous };

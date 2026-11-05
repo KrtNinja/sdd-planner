@@ -18,11 +18,11 @@ function address(m, id) {
   return m.flow.graph?.byId.get(id) || null;
 }
 
-/** @param {Feature} m @param {string[]} ids */
-export function questionContext(m, ids) {
+/** @param {Feature} m @param {string[]} ids @param {(file: string) => string | null} [readFn] */
+export function questionContext(m, ids, readFn = read) {
   return ids.map((id) => {
     const a = address(m, id);
-    const md = a ? read(a.file) : null;
+    const md = a ? readFn(a.file) : null;
     return { id, file: a ? path.relative(m.dir, a.file) : null, n: a?.n || null,
       hash: md === null ? null : questionDigest(md), text: linkedText(m, id, md) };
   });

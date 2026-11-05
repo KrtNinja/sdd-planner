@@ -8,6 +8,7 @@ import { stubLines } from './cut.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 import { item } from './findings.mjs';
 import { linkBasis } from './links.mjs';
+import { planChoiceId } from './plan.mjs';
 import { rel } from './md.mjs';
 import { genReadme } from './readme.mjs';
 import { G, screen } from './screen.mjs';
@@ -22,33 +23,21 @@ import { parseHalves, halvesLine, halfHeading } from './services.mjs';
 /** @param {string} num @param {string} side */
 const acStub = (num, side) => ['```', `AC-${num}-${side}? <имя>`, '  WHEN <условие>', '  THEN <наблюдаемый исход>', '```', 'Проверяет: <FR-n>', ''];
 
+/** @param {PlanSlice} s @param {string} key @param {string} prefix @param {string[]} [tail] */
+function planLines(s, key, prefix, tail = []) {
+  return s.head[key] ? [`${prefix}${s.head[key]}`, ...tail] : [];
+}
+
 /** @param {Feature} m @param {Plan} plan @param {PlanSlice} s */
 function sliceText(m, plan, s) {
   const prep = s.type === 'подготовка';
   const services = parseHalves(s.halves).services;
   const { outside, shared } = sliceNeighbours(plan, s);
-  const md = [
-    `# ${s.num} — ${s.title}`,
-    '',
-    `Тип: ${s.type}`,
-    '',
-    linkBasis(`Основание: ${s.basisRaw}`, path.join(m.slicesDir, `${s.num}-${s.slug}.md`), m.specFile),
-    '',
-    `Зависимости: ${s.deps.length ? s.deps.join(', ') : 'нет'}`,
-    '',
-    `Половины: ${halvesLine(services, prep)}`,
-    '',
-    `Результат: ${s.result}`,
-    '',
-    `Почему отдельно: ${(s.why || '—').replace(/^(\**\s*)P(?=[123])/u, '$1Р')}`,
-    '',
-    '## Контракты',
-    '- <сервис-владелец>: <контракт по смыслу> — <не меняется или МЕНЯЕТ КОНТРАКТ: что именно>',
-    '',
-  ];
+  const md = sliceHeader(m, s, services);
   if (!prep) md.push(...acceptanceStubs(s.num, services));
   md.push(
     '## Границы',
+    ...planLines(s, 'Границы', '- Согласовано: '),
     `- Вне slice: ${outside || 'нет'}.`,
     ...(prep ? [] : [`- Пересечения с соседями: ${shared.length ? `<что делит с ${shared.map((o) => o.num).join(', ')} и где граница>` : 'нет'}.`]),
     '',
@@ -62,6 +51,31 @@ function sliceText(m, plan, s) {
     '',
   );
   return md.join('\n');
+}
+
+/** @param {Feature} m @param {PlanSlice} s @param {string[]} services */
+function sliceHeader(m, s, services) {
+  const prep = s.type === 'подготовка';
+  return [
+    `# ${s.num} — ${s.title}`,
+    '',
+    `Тип: ${s.type}`,
+    '',
+    linkBasis(`Основание: ${s.basisRaw}`, path.join(m.slicesDir, `${s.num}-${s.slug}.md`), m.specFile),
+    '',
+    `Зависимости: ${s.deps.length ? s.deps.join(', ') : 'нет'}`,
+    '',
+    `Половины: ${halvesLine(services, prep)}`,
+    '',
+    `Результат: ${s.result}`,
+    '',
+    ...planLines(s, 'Приёмка', 'Условия приёмки: ', ['']),
+    `Почему отдельно: ${(s.why || '—').replace(/^(\**\s*)P(?=[123])/u, '$1Р')}`,
+    '',
+    '## Контракты',
+    '- <сервис-владелец>: <контракт по смыслу> — <не меняется или МЕНЯЕТ КОНТРАКТ: что именно>',
+    '',
+  ];
 }
 
 /** @param {Ctx} ctx @param {Feature} m */
@@ -80,6 +94,8 @@ export function genSlices(ctx, m) {
   if (closed) stop(`Файлы не созданы: ${closed[0]}. ${closed[1]}.`);
   const errs = findings.filter((x) => x.level === 'err' && x.rule.startsWith('PL'));
   if (errs.length) stop(screen(`${errs.map(item).join('\n')}\n\nФайлы не созданы: в плане ошибки.`, `исправь ${rel(m.planFile)}`, G.then(['plan', dir])));
+
+  requirePlanChoice(ctx, m, stop);
 
   /** @type {string[]} */
   const made = [];
@@ -128,4 +144,10 @@ function acceptanceStubs(num, services) {
   for (const svc of back) md.push(`## ${halfHeading(svc)}`, ...acStub(num, 'B'));
   if (front.length) md.push('## Frontend-половина', ...acStub(num, 'F'));
   return md;
+}
+
+/** @param {Ctx} ctx @param {Feature} m @param {(msg: string) => never} stop */
+function requirePlanChoice(ctx, m, stop) {
+  if (m.flow.state && ctx.args.pos[2] !== planChoiceId(m))
+    stop(`Файлы не созданы: подтвердите актуальный план в ask ${rel(m.dir)}; затем choose с ID показанного варианта.`);
 }

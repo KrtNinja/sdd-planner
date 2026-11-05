@@ -85,7 +85,7 @@ function validateEnvelope(value) {
 /** @param {string} dir @param {string} md */
 function validateReserved(dir, md) {
   const state = parseFlowState(read(path.join(dir, '.sdd-flow.json')));
-  if (!state) throw new Error('Восстановление требует признака нового процесса');
+  if (!state) throw new Error('Для восстановления нужен .sdd-flow.json');
   if (fs.existsSync(path.join(dir, '.sdd-flow.json.pending'))) throw new Error('Сначала восстановите счётчики');
   for (const q of registryRecords(md)) if (!reservedId(q, state)) throw new Error(`${q.id}: номер не зарезервирован`);
 }

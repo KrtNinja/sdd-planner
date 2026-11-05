@@ -2,6 +2,8 @@
 // @ts-check
 import fs from 'node:fs';
 
+import { currentFindings } from './tech.mjs';
+import { flowDraftStep } from './flow-progress.mjs';
 import { askOf } from './ask.mjs';
 import { gateClosed } from './cmd-check.mjs';
 import { closedScreen } from './guide.mjs';
@@ -94,15 +96,16 @@ export function cmdDone(ctx) {
   const { pos } = ctx.args;
   const { m, changed, notes, findings } = fixFeature(ctx, needDir(ctx, pos[0]));
   const dir = rel(m.dir);
-  const errs = findings.filter((x) => x.level === 'err');
-  const warns = findings.filter((x) => x.level === 'warn');
+  const current = currentFindings(m, findings);
+  const errs = current.filter((x) => x.level === 'err'),
+    warns = current.filter((x) => x.level === 'warn');
   const { runs, prev } = bump(m.dir, 'done');
   ctx.io.log(fixedText(changed));
   for (const n of notes) ctx.io.log(`\n${n}`);
 
   if (errs.length) {
     ctx.io.log('');
-    report(ctx, findings);
+    report(ctx, current);
     retryOrStop(ctx, {
       dir: m.dir,
       kind: 'done',
@@ -117,7 +120,7 @@ export function cmdDone(ctx) {
   if (warns.length && !prev?.warnTried) {
     mark(m.dir, 'done', { warnTried: true });
     ctx.io.log('');
-    report(ctx, findings);
+    report(ctx, current);
     const say = `Ошибок нет, предупреждений ${warns.length} — поправлю те, что можно без вашего решения.`;
     ctx.io.log(`\n${screen(say, 'исправь предупреждения, которые не требуют решения человека; остальные не трогай', G.then(['done', dir]))}`);
     ctx.io.exit(1);
@@ -128,11 +131,12 @@ export function cmdDone(ctx) {
 // Этап готов: черновики — «на ревью», снимки для guard, счётчик прогонов сброшен; дальше — вопрос этапа.
 /** @param {Ctx} ctx @param {import('./model.mjs').Feature} m @param {import('./model.mjs').Finding[]} warns @returns {never} */
 function finishDone(ctx, m, warns) {
-  const promoted = promote(m);
+  const promoted = flowDraftStep(m) ? [] : promote(m);
   const f = loadFeature(m.dir);
   for (const file of featureFiles(f)) saveSnapshot(file);
   reset(m.dir, 'done');
-  const ready = `Этап готов: ошибок 0, предупреждений ${warns.length}.${promoted.length ? ` Статус «на ревью»: ${promoted.join(', ')}.` : ''}`;
+  const result = m.flow.state ? 'Текущая работа проверена' : 'Этап готов';
+  const ready = `${result}: ошибок 0, предупреждений ${warns.length}.${promoted.length ? ` Статус «на ревью»: ${promoted.join(', ')}.` : ''}`;
   const left = warns.length
     ? `Осталось:\n${list([...warns.slice(0, 5).map((x) => line(x).replace(/^\S+\s+/, '')), ...(warns.length > 5 ? [`…и ещё ${warns.length - 5}`] : [])])}`
     : null;

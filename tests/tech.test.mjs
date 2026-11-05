@@ -73,6 +73,10 @@ test('T-01: tech входит в одобрение spec; отсутствие �
   fs.mkdirSync(dir, { recursive: true });
   initTestFlow(dir);
   fs.cpSync(path.join(GOOD, 'docs'), path.join(cwd, 'docs'), { recursive: true });
+  fs.appendFileSync(path.join(dir, 'spec.md'), '\n## Пользовательские сценарии\nУчастники обсуждают задачу в карточке.\n');
+  // Этот тест проверяет tech в завершённом комплекте, без нерешённого вопроса из старого ADR-fixture.
+  const adrFile = path.join(cwd, 'docs/adr/0001-mention-notifications.md');
+  fs.writeFileSync(adrFile, fs.readFileSync(adrFile, 'utf8').replace('- Срок подключения notify-service к брокеру — блокирует slice 003.', 'Нет.'));
   assert.equal(cli(cwd, 'approve', 'spec', dir).code, 3);
   write(dir, 'tech.md', simple);
   const approved = cli(cwd, 'approve', 'spec', dir);
@@ -117,7 +121,7 @@ for (const stage of ['tech', 'adr']) {
     question(dir, stage);
     const text = resumeQuestion(loadFeature(dir), { id: 'Q1' });
     assert.match(text, new RegExp(`Исходный этап: ${stage}`));
-    assert.match(text, /Техническое обеспечение нового процесса/);
+    assert.match(text, /Исходный скилл: sdd-/);
     assert.match(text, /tech.md/);
     applyQuestion(dir, 'answer', { key: 'answer', id: 'Q1', answer: 'Прогон подтверждает профиль', origin: 'colleague' });
     decisionAction(dir, 'prepare', proposal(dir, simple + '\nФакт: прогон подтвердил профиль — [результат](load.md).\n'));

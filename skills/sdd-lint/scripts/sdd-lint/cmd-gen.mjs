@@ -21,11 +21,15 @@ import { codePaths } from './screen.mjs';
 export function cmdTrace(ctx) {
   const { pos } = ctx.args;
   const m = loadFeature(needDir(ctx, pos[0]));
+  if (m.flow.state && pos.length > 1) {
+    const text = scenarioTrace(m, pos.slice(1));
+    ctx.io.log(ctx.args.flags.json ? JSON.stringify({ text }) : text);
+    ctx.io.exit(0);
+  }
   // trace <фича> FR-3 AC-002-B1: что держится на требовании — без поиска моделью по файлам.
   const ids = pos.slice(1).filter((x) => /^(N?FR-\d+|AC-\d{3}-[BF]?\d+|SC-\d+(?:-S\d+)?)$/.test(x));
   if (ids.length) {
     ctx.io.log(impact(m, ids.filter((id) => !id.startsWith('SC-'))));
-    if (m.flow.state) ctx.io.log(scenarioTrace(m, ids));
     ctx.io.exit(0);
   }
   const s = m.spec;

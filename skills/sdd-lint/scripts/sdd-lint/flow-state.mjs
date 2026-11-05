@@ -57,7 +57,7 @@ export function initTestFlow(dir) {
 
 /** @param {FlowState | null} state @returns {FlowState} */
 function requiredState(state) {
-  if (!state) throw new Error('Нет признака нового процесса; старые фичи не мигрируют');
+  if (!state) throw new Error('Не найден .sdd-flow.json; счётчики ID недоступны');
   return state;
 }
 

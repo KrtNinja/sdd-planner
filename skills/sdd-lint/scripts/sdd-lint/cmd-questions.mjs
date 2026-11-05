@@ -16,7 +16,7 @@ export function cmdQuestions(ctx) {
   const dir = needDir(ctx, target, 1);
   try {
     const m = loadFeature(dir);
-    if (!m.flow.state) throw new Error('Реестр доступен только в новом процессе; старый процесс не меняется');
+    if (!m.flow.state) throw new Error('Не найден .sdd-flow.json для реестра вопросов');
     const input = JSON.parse(raw);
     const text = questionOperation(m, verb, input);
     ctx.io.log(ctx.args.flags.json ? JSON.stringify({ text }) : screen(text, questionGuide(verb, input, dir)));

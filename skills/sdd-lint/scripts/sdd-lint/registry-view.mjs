@@ -46,7 +46,7 @@ function dependencyPairs(m) {
 }
 
 /** @param {Feature} m @param {string[]} ids */
-function connected(m, ids) {
+export function relatedIds(m, ids) {
   const result = new Set(ids);
   const pairs = dependencyPairs(m);
   let size;
@@ -62,7 +62,7 @@ function connected(m, ids) {
 
 /** @param {Feature} m @param {string[]} ids */
 function blockingQuestions(m, ids) {
-  const area = connected(m, ids);
+  const area = relatedIds(m, ids);
   return registryQuestions(m).filter(questionPending).filter((q) =>
     q.fields.Влияние !== 'known' || !q.refs.length || q.refs.some((r) => area.has(r.id)));
 }
