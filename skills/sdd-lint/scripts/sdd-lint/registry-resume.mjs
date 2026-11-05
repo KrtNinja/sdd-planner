@@ -54,6 +54,7 @@ function matchQuestions(m, candidates) {
 
 /** @param {string} stage */
 function sourceSkill(stage) {
+  /** @type {Record<string, string>} */
   const skills = { grill: 'sdd-grill', spec: 'sdd-spec', scenarios: 'sdd-scenarios',
     tech: 'sdd-tech', slices: 'sdd-slices', adr: 'sdd-adr',
     review: 'sdd-review', decide: 'sdd-decide' };
