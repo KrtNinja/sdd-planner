@@ -74,7 +74,15 @@ function story(name, complex = false) {
     call('ask', dir);
     call('approve', 'spec', dir);
     call('questions', 'answer', dir, '{"key":"answer","id":"Q1","answer":"Повтор запускает новое задание","origin":"analyst"}');
-    call('questions', 'resume', dir, '{"id":"Q1"}');
+    const resumedQ = call('questions', 'resume', dir, '{"id":"Q1"}');
+    if (verify) {
+      assert.match(resumedQ, /Исходный этап: grill/);
+      assert.match(resumedQ, /Повтор запускает новое задание/);
+      assert.match(resumedQ, /SC-1-S1/);
+      assert.match(resumedQ, /Исходный скилл: sdd-grill/);
+      assert.doesNotMatch(resumedQ, /name: grilling/);
+      assert.doesNotMatch(resumedQ, /# Реестр вопросов/);
+    }
     if (verify) {
       const after = fs.readFileSync(`${dir}/questions.md`, 'utf8');
       assert.match(after, /answered/);
