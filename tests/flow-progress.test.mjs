@@ -119,7 +119,7 @@ test('U-09: каждый скилл получает только контрак
   initTestFlow(dir);
   inDir(root, JSON_ENV, () => {
     const grill = text(['prompt', 'sdd-grill', 'validation']);
-    assert.match(grill, /Короткий маршрут/);
+    assert.match(grill, /Первичное обсуждение выясняет цель/);
     assert.doesNotMatch(grill, /# Техническое обеспечение|# Пользовательские сценарии/);
     const spec = text(['prompt', 'sdd-spec', 'validation']);
     assert.doesNotMatch(spec, /# Техническое обеспечение|# Пользовательские сценарии/);
