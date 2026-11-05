@@ -33,7 +33,9 @@ test('R-01/R-03/R-04: Q-ID, дословный многострочный отв
   assert.match(resumed, /Ожидание результата экспорта/);
   assert.match(resumed, /Не запускай start/);
   assert.match(resumed, /ограничения и сбои/);
-  assert.match(resumed, /name: grilling/);
+  assert.match(resumed, /Исходный скилл: sdd-grill/);
+  assert.doesNotMatch(resumed, /name: grilling/);
+  assert.doesNotMatch(resumed, /# sdd-grill — обсуждение задачи/);
   assert.equal(q(dir).fields.Статус, 'answered');
   assert.equal(run(['questions', 'resume', dir, '{"id":"Q1"}', '--json']).code, 0);
   assert.throws(() => resumeQuestion(loadFeature(dir), { id: 'Q99' }), /не найден/);
@@ -162,4 +164,26 @@ test('контракт: точный якорь, исчезнувший файл
   fs.unlinkSync(file);
   assert.equal(questionContext(loadFeature(dir), [id])[0].hash, null);
   assert.throws(() => questionContext(loadFeature(dir), ['contract:../outside.md#export']), /вне фичи/);
+});
+
+test('минимальный resume не загружает исходные скиллы и повторный registry', () => {
+  const dir = setup();
+  for (const stage of ['grill', 'spec', 'scenarios', 'tech', 'slices', 'adr', 'review', 'decide']) {
+    const file = path.join(dir, 'questions.md');
+    const initial = fs.readFileSync(file, 'utf8');
+    fs.writeFileSync(file, initial.replace('Этап: grill', `Этап: ${stage}`));
+    const out = resumeQuestion(loadFeature(dir), { id: 'Q1' });
+    assert.match(out, new RegExp(`Исходный скилл: sdd-${stage}`));
+    assert.doesNotMatch(out, /disable-model-invocation: true/);
+    assert.doesNotMatch(out, /# Реестр вопросов/);
+    fs.writeFileSync(file, initial);
+  }
+  const selection = resumeQuestion(loadFeature(dir), {});
+  assert.doesNotMatch(selection, /# Реестр вопросов/);
+  assert.match(selection, /Предложение сопоставления/);
+  assert.throws(() => {
+    const file = path.join(dir, 'questions.md');
+    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('Этап: grill', 'Этап: invalid'));
+    resumeQuestion(loadFeature(dir), { id: 'Q1' });
+  }, /Неизвестный исходный этап/);
 });
