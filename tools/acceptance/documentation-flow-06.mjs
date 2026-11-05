@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { mock } from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,6 +11,9 @@ const mod = (name) => import(`${root}/skills/sdd-lint/scripts/sdd-lint/${name}.m
 const { run } = await mod('run');
 const { initTestFlow, reserveFlowId } = await mod('flow-state');
 const { visibleLength } = await mod('read-size');
+const { loadFeature } = await mod('feature');
+const { originalAnswer } = await mod('registry-context');
+const { questionDigest } = await mod('registry-format');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-story-'));
 process.chdir(work);
 process.env.SDD_VIEW = '';
@@ -48,6 +52,8 @@ function story(name, complex = false) {
     '## Пользовательские сценарии\n### SC-1 — Основной путь\nТребования: FR-1\n#### SC-1-S1 — Отправить\n' +
     (simple ? 'Анна сохраняет пустое название; форма показывает ошибку, запись не сохраняется.\n' :
       'Анна запускает экспорт; видит «Готовим файл». После ошибки видит «Повторить»; повтор запускает новое задание.\n');
+  if (verify && !simple) spec = spec.replace('## Пользовательские сценарии',
+    '```\nFR-2  Анна читает справку.\nПример: справка открывается.\n```\nИз протокола: 1\n\n## Пользовательские сценарии');
   if (complex) spec += 'я'.repeat(10050 - visibleLength(spec));
   fs.writeFileSync(`${dir}/spec.md`, spec);
   if (!before) {
@@ -71,6 +77,12 @@ function story(name, complex = false) {
     call('questions', 'add', dir, JSON.stringify({ key: 'retry', title: 'Повтор после ошибки?', stage: 'grill',
       topic: 'экспорт', context: 'После ошибки подготовки', resume: 'Уточнить повтор', impact: 'known', refs: ['SC-1-S1'] }));
     call('questions', 'defer', dir, '{"key":"later","id":"Q1"}');
+    if (verify) {
+      assert.equal(savedQuestion(dir).fields.Статус, 'deferred');
+      const independent = call('questions', 'work', dir, '{"refs":["FR-2"]}');
+      assert.equal(outputs.at(-1).code, 0);
+      assert.match(independent, /Можно продолжить/);
+    }
     call('ask', dir);
     call('approve', 'spec', dir);
     call('questions', 'answer', dir, '{"key":"answer","id":"Q1","answer":"Повтор запускает новое задание","origin":"analyst"}');
@@ -104,6 +116,7 @@ function story(name, complex = false) {
       assert.match(done, /Этап|ошиб|предупрежден|Готов|Исправ/i);
     }
   }
+  if (verify && !simple) verifyDecision(dir, call, outputs, complex);
   if (verify) {
     const find = (cmd) => outputs.find((o) => o.args.join(' ').startsWith(cmd));
     const required = (cmd, code) => {
@@ -150,5 +163,75 @@ function story(name, complex = false) {
   result.push({ name, calls, outputChars: calls.reduce((n, c) => n + c.chars, 0),
     explicitReads: reads, repeatedExplicitReads: 0, timeMs: calls.reduce((n, c) => n + c.ms, 0) });
 }
+function savedQuestion(dir) {
+  return loadFeature(path.resolve(dir)).flow.records.find((q) => q.id === 'Q1');
+}
+
+// Сквозное проведение: состояние и точные документы проверяются после каждого шага.
+function verifyDecision(dir, call, outputs, complex) {
+  const step = (verb, input, code = 0) => {
+    const text = call('questions', verb, dir, JSON.stringify(input));
+    assert.equal(outputs.at(-1).code, code, text);
+    return text;
+  };
+  const read = (file) => fs.readFileSync(`${dir}/${file}`, 'utf8');
+  const answer = '  Повтор запускает новое задание.\n\nСтарый результат не используем.\r\n';
+  step('answer', { key: 'exact-answer', id: 'Q1', answer, origin: 'analyst' });
+  assert.equal(originalAnswer(savedQuestion(dir)), answer);
+  const resume = step('resume', { id: 'Q1' });
+  assert.match(resume, /Исходный этап: grill/);
+  assert.ok(resume.includes(JSON.stringify(answer)));
+  const input = JSON.parse(resume.match(/^Вход questions prepare .*?: (.*)$/m)[1]);
+  const spec = read('spec.md');
+  const tech = read('tech.md');
+  Object.assign(input, { summary: 'Повтор создаёт новое задание без старого результата',
+    assessment: 'Ответ полон, проверены ожидание и сбой', tradeoffs: 'Повторная подготовка',
+    remaining: 'Нет', ready: true, conflicts: [], obligations: 'changed', changes: [
+      { file: 'spec.md', before: spec, after: spec.replace('Экспорт готовится в фоне.',
+        'Экспорт готовится в фоне; повтор создаёт новое задание без старого результата.') },
+      { file: 'tech.md', before: tech, after: tech + '\nПовтор создаёт отдельное задание.\n' },
+    ] });
+  step('prepare', input);
+  assert.equal(read('spec.md'), spec);
+  assert.equal(savedQuestion(dir).fields.Согласование, undefined);
+  const packageHash = questionDigest(savedQuestion(dir).fields.Пакет);
+  const apply = { key: 'verified-apply', id: 'Q1', packageHash };
+  step('apply', apply, 2);
+  step('accept', { key: 'verified-accept', id: 'Q1', packageHash, origin: 'analyst', decision: 'Согласен с этим пакетом' });
+  assert.equal(read('spec.md'), spec);
+  assert.equal(savedQuestion(dir).fields.Статус, 'answered');
+  fs.appendFileSync(`${dir}/spec.md`, '\nИзменение после согласования\n');
+  step('apply', apply, 2);
+  assert.equal(read('tech.md'), tech);
+  assert.equal(originalAnswer(savedQuestion(dir)), answer);
+  assert.match(read('spec.md'), /Изменение после согласования/);
+  fs.writeFileSync(`${dir}/spec.md`, spec);
+  const rename = fs.renameSync;
+  const failure = mock.method(fs, 'renameSync', (from, to) => {
+    if (String(to).endsWith('/tech.md')) throw new Error('Проверяемый сбой записи');
+    return rename(from, to);
+  });
+  try { step('apply', apply, 2); } finally { failure.mock.restore(); }
+  assert.equal(savedQuestion(dir).fields.Статус, 'answered');
+  assert.equal(originalAnswer(savedQuestion(dir)), answer);
+  assert.equal(read('tech.md'), tech);
+  step('apply', apply);
+  assert.equal(savedQuestion(dir).fields.Статус, 'resolved');
+  assert.equal(originalAnswer(savedQuestion(dir)), answer);
+  assert.match(read('spec.md'), /FR-2  Анна читает справку/);
+  assert.match(read('tech.md'), /Повтор создаёт отдельное задание/);
+  const applied = read('spec.md');
+  step('apply', apply);
+  assert.equal(read('spec.md'), applied);
+  step('apply', { ...apply, key: 'another-apply' }, 2);
+  if (complex) {
+    call('approve', 'adr', dir, '0001');
+    assert.equal(outputs.at(-1).code, 0);
+  }
+  call('approve', 'spec', dir);
+  assert.equal(outputs.at(-1).code, 0, outputs.at(-1).text);
+  assert.equal(savedQuestion(dir).fields.Статус, 'resolved');
+}
+
 story('validation'); story('export'); story('complex', true);
 console.log(JSON.stringify(result, null, 2));

@@ -32,7 +32,7 @@ test('R-01/R-03/R-04: Q-ID, дословный многострочный отв
   assert.match(resumed, /Роли уже согласованы/);
   assert.match(resumed, /Ожидание результата экспорта/);
   assert.match(resumed, /не запускай заново start/);
-  assert.match(resumed, /ограничения и сбои/);
+  assert.match(resumed, /Предполагаемые уточнения: Ограничения и сбои/);
   assert.match(resumed, /Исходный скилл: sdd-grill/);
   assert.doesNotMatch(resumed, /name: grilling/);
   assert.doesNotMatch(resumed, /# sdd-grill — обсуждение задачи/);
@@ -175,11 +175,11 @@ test('минимальный resume не загружает исходные с�
     const out = resumeQuestion(loadFeature(dir), { id: 'Q1' });
     assert.match(out, new RegExp(`Исходный скилл: sdd-${stage}`));
     assert.doesNotMatch(out, /disable-model-invocation: true/);
-    assert.doesNotMatch(out, /# Реестр вопросов/);
+    assert.doesNotMatch(out, /# Нерешённые вопросы/);
     fs.writeFileSync(file, initial);
   }
   const selection = resumeQuestion(loadFeature(dir), {});
-  assert.doesNotMatch(selection, /# Реестр вопросов/);
+  assert.doesNotMatch(selection, /# Нерешённые вопросы/);
   assert.match(selection, /Предложение сопоставления/);
   assert.throws(() => {
     const file = path.join(dir, 'questions.md');

@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { read } from './md.mjs';
 import { registryQuestions, questionCard, relatedIds } from './registry-view.mjs';
 import { contextChanges, originalAnswer } from './registry-context.mjs';
+import { decisionQuestion } from './decision-view.mjs';
+import { questionActions } from './registry-format.mjs';
 import { git, gitInfo, gitShow } from './git.mjs';
 
 const SKILLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -33,7 +35,7 @@ export function resumeQuestion(m, input) {
       'Структурные связи не доказывают смысловую полноту; дополнительные фрагменты читай по необходимости через trace.',
     `Актуальные связанные элементы: ${JSON.stringify(context.current)}`,
     q.fields.Влияние === 'unknown' ? 'Область неизвестна: явно расширь контекст до выяснения влияния.' : '',
-    q.fields.Пакет ? `Сохранённый пакет: ${q.fields.Пакет}\nНе создавай заново FR, строки протокола или Q; продолжи apply.` : '',
+    continuation(m, q, context.current),
     `Исходный скилл: ${sourceSkill(q.fields.Этап)}. Полный текст не загружен: ` +
       'если не хватает смысловых правил, запроси его через sdd_lint prompt или прямо в GigaCode CLI.',
     requiredRules('sdd-grill/references/resume.md')].join('\n\n');
@@ -90,3 +92,27 @@ function answerDetails(q) {
     `История ответов (JSON): ${q.fields.ОтветыJSON || '[]'}`, exclusionText(q)].join('\n');
 }
 
+/** @param {Feature} m @param {import('./flow-format.mjs').FlowRecord} q
+ * @param {ReturnType<typeof contextChanges>['current']} current */
+function continuation(m, q, current) {
+  if (q.fields.Пакет) return `Сохранённый пакет: ${q.fields.Пакет}\n` +
+    `Продолжение сохранённого пакета: ${JSON.stringify(decisionQuestion(m.dir, q))}`;
+  if (q.fields.Влияние !== 'known' || !q.refs.length)
+    return 'До подготовки пакета уточни область через questions scope: {key,id,impact:"known",refs:[существующие ID]}.';
+  if (q.fields.Статус !== 'answered') return 'Сначала сохрани дословный ответ через questions answer: {key,id,answer,origin}.';
+  return prepareInput(q, current);
+}
+
+/** @param {import('./flow-format.mjs').FlowRecord} q
+ * @param {ReturnType<typeof contextChanges>['current']} current */
+function prepareInput(q, current) {
+  const input = { key: `prepare-${q.id}-${Object.keys(questionActions(q)).length}`, id: q.id,
+    summary: '', assessment: '', tradeoffs: '', remaining: '', ready: false, conflicts: [], obligations: 'changed',
+    context: current.map(({ id, file, hash }) => ({ id, file, hash })), changes: [] };
+  return 'Вход questions prepare (заполни содержательные поля): ' + JSON.stringify(input) + '\n' +
+    'summary — что и почему; assessment — полнота ответа; tradeoffs — компромиссы; remaining — оставшиеся вопросы. ' +
+    'ready:true только при достаточном ответе без conflicts; obligations:changed при изменении поведения, иначе unchanged. ' +
+    'changes:[{file,before,after}]: полные точные тексты файлов, before:null только для нового файла. ' +
+    'Для уже согласованного именно этого пакета добавь origin:"analyst", agreement:дословное согласие. ' +
+    'После сбоя повтори тот же вход с тем же key; новый пакет готовь только после revise.';
+}

@@ -6,6 +6,8 @@ import path from 'node:path';
 import { read } from './md.mjs';
 import { publishQuestionDocument } from './registry-store.mjs';
 import { linkSpec, linkSlice } from './gen-links.mjs';
+import { relatedIds } from './registry-view.mjs';
+import { questionContext } from './registry-context.mjs';
 import { loadFeature, runChecks } from './feature.mjs';
 
 /** @typedef {{file: string, before: string | null, after: string}} Change */
@@ -52,19 +54,44 @@ function reviewStatus(md) {
   return md.replace(/^(# [^\n]*\n)/, '$1Статус: на ревью\n');
 }
 
-/** @param {Feature} m @param {Change[]} changes */
-export function decisionReviews(m, changes) {
-  const changed = new Set(changes.map((c) => path.resolve(m.dir, c.file)));
-  const dependencies = [...m.featureAdrs.map((a) => a.file), ...[...m.slices.values()].map((s) => s.file), m.readmeFile,
-    path.join(m.dir, 'tech.md'), path.join(m.dir, 'scenarios.md')];
+/** @param {Feature} m @param {Change[]} changes @param {string[]} [scope] */
+export function decisionReviews(m, changes, scope = []) {
   if (!changes.some((c) => c.file !== 'brainstorming.md')) return changes;
-  const extra = dependencies.filter((f) => !changed.has(f)).flatMap((file) => {
+  const changed = new Set(changes.map((c) => path.resolve(m.dir, c.file)));
+  const dependencies = reviewFiles(m, changes, scope);
+  const extra = [...dependencies].filter((f) => !changed.has(f)).flatMap((file) => {
     const before = read(file);
     if (before === null) return [];
     const after = reviewStatus(before);
     return before === after ? [] : [{ file: path.relative(m.dir, file), before, after }];
   });
   return [...changes, ...extra].map((c) => ({ ...c, after: c.file === 'brainstorming.md' ? c.after : reviewStatus(c.after) }));
+}
+
+// Старые и новые связи: удаление связи не скрывает ранее зависевший документ.
+/** @param {Feature} m @param {Change[]} changes @param {string[]} scope */
+function reviewFiles(m, changes, scope) {
+  const candidate = candidateFeature(m.dir, changes);
+  const ids = [...new Set([...m.flow.graph?.byId.keys() || [], ...candidate.flow.graph?.byId.keys() || []])]
+    .filter((id) => !id.startsWith('Q'));
+  const overrides = new Map(changes.map((c) => [path.resolve(m.dir, c.file), c.after]));
+  const before = questionContext(m, ids);
+  const after = questionContext(candidate, ids, (file) => overrides.get(file) ?? read(file));
+  const touched = ids.filter((id, i) => before[i].text !== after[i].text);
+  const seeds = [...scope, ...touched];
+  const files = new Set([...linkedFiles(m, seeds), ...linkedFiles(candidate, seeds)]);
+  const changed = new Set(changes.map((c) => path.resolve(m.dir, c.file)));
+  const slices = [...m.slices.values()].some((s) => files.has(s.file) || changed.has(s.file));
+  if (slices) files.add(m.readmeFile);
+  return files;
+}
+
+/** @param {Feature} m @param {string[]} seeds */
+function linkedFiles(m, seeds) {
+  return [...relatedIds(m, seeds)].flatMap((id) => {
+    const address = m.flow.graph?.byId.get(id);
+    return address ? [address.file] : [];
+  });
 }
 
 /** @param {string} dir @param {Change[]} changes */

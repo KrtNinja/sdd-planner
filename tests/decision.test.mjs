@@ -257,3 +257,83 @@ test('R-04/R-09: уже согласованное решение не треб�
   act(dir, 'apply', { packageHash: hash(dir) });
   assert.equal(question(dir).fields.Статус, 'resolved');
 });
+
+test('неизвестная область запрещает пакет, но сохраняет ответ до уточнения scope', () => {
+  const dir = setup();
+  applyQuestion(dir, 'scope', { key: 'unknown', id: 'Q1', impact: 'unknown', refs: [] });
+  const saved = read(dir, 'questions.md');
+  assert.throws(() => act(dir, 'prepare', proposal(dir, { context: [] })), /уточните область влияния/);
+  assert.equal(read(dir, 'questions.md'), saved);
+  assert.equal(read(dir, 'spec.md'), SPEC);
+  assert.throws(() => draftWork(loadFeature(dir), ['FR-2']), /Q1/);
+  applyQuestion(dir, 'scope', { key: 'known', id: 'Q1', impact: 'known', refs: ['FR-1'] });
+  assert.equal(question(dir).fields.Ответ, 'разрешаем');
+  assert.match(draftWork(loadFeature(dir), ['FR-2']), /Можно продолжить/);
+  assert.throws(() => draftWork(loadFeature(dir), ['FR-1']), /Q1/);
+  act(dir, 'prepare', proposal(dir));
+  assert.ok(question(dir).fields.Пакет);
+});
+
+test('resume передаёт исполнимый вход и различает согласование, проведение и доработку', async () => {
+  const { resumeQuestion } = await import('../skills/sdd-lint/scripts/sdd-lint/registry-resume.mjs');
+  const dir = setup();
+  const resume = () => resumeQuestion(loadFeature(dir), { id: 'Q1' });
+  const template = () => JSON.parse(resume().match(/^Вход questions prepare .*?: (.*)$/m)[1]);
+  const input = template();
+  assert.equal(input.id, 'Q1');
+  assert.equal(input.ready, false);
+  assert.deepEqual(input.context, proposal(dir).context);
+  decisionAction(dir, 'prepare', { ...input, ...proposal(dir) });
+  const choices = () => JSON.parse(resume().match(/^Продолжение сохранённого пакета: (.*)$/m)[1]);
+  assert.equal(choices().options[0].label, 'Согласовать пакет');
+  assert.doesNotMatch(resume(), /продолжи apply/);
+  accept(dir);
+  assert.equal(choices().options[0].label, 'Завершить проведение');
+  act(dir, 'revise', { packageHash: hash(dir) });
+  assert.notEqual(template().key, input.key);
+  decisionAction(dir, 'prepare', { ...template(), ...proposal(dir) });
+  assert.equal(question(dir).fields.Согласование, undefined);
+});
+
+test('пакет FR пересматривает SC/TECH/ADR/AC по связям, независимые документы не меняет', async () => {
+  const { reserveFlowId } = await import('../skills/sdd-lint/scripts/sdd-lint/flow-state.mjs');
+  const { slice, ac } = await import('./helpers.mjs');
+  const { run } = await import('../skills/sdd-lint/scripts/sdd-lint/run.mjs');
+  const dir = path.join(tmpDir(), 'docs', 'export');
+  fs.mkdirSync(dir, { recursive: true });
+  initTestFlow(dir); reserveFlowId(dir, 'SC');
+  const spec = '# Требования\nСтатус: черновик\n' +
+    ['FR-1', 'FR-2'].map((id) => `\n\`\`\`\n${id}  Текст.\nПример: Анна.\n\`\`\`\n`).join('') + '\n## Пользовательские сценарии\n### SC-1 — Экспорт\nТребования: FR-1\nАнна видит файл.\n';
+  fs.writeFileSync(path.join(dir, 'spec.md'), spec);
+  fs.writeFileSync(path.join(dir, 'tech.md'), '# Решение\nСтатус: одобрено\n## TECH — Экспорт\nСвязи: SC-1\nСуществующий сервис.\n');
+  fs.mkdirSync(path.join(dir, 'slices'));
+  fs.writeFileSync(path.join(dir, 'slices/001-export.md'), slice('001', { why: 'Р1 ADR-0001' }, '## Общая приёмка', ...ac('AC-001-1')));
+  fs.writeFileSync(path.join(dir, 'slices/002-other.md'),
+    slice('002', { basis: 'FR-2', why: 'Р1 ADR-0002' }, '## Общая приёмка', ...ac('AC-002-1', 'FR-2')));
+  fs.mkdirSync(path.join(dir, '../adr'));
+  const adr = (n, basis) => `# ADR-${n} — Решение\nФича: export/\nСтатус: предложено\nЗатрагивает slices: ${n.slice(1)}\n` +
+    `## Контекст\n${basis}\n## Варианты\n### A. Использовать сервис\nВыбран: уже работает\n` +
+    `### B. Новый сервис\nОтложен: дороже\n## Решение\nСуществующий сервис\n## Последствия\nslice ${n.slice(1)} сохраняет ограничения\n## Не выяснено\nНет\n`;
+  fs.writeFileSync(path.join(dir, '../adr/0001-export.md'), adr('0001', 'SC-1'));
+  const unrelated = adr('0002', 'FR-2');
+  fs.writeFileSync(path.join(dir, '../adr/0002-other.md'), unrelated);
+  assert.equal(run(['gen', 'links', dir]).code, 0);
+  const independentSlice = read(dir, 'slices/002-other.md');
+  applyQuestion(dir, 'add', { key: 'q', title: 'Повтор?', stage: 'grill', topic: 'экспорт',
+    context: 'Повтор после сбоя', resume: 'Повтор', impact: 'known', refs: ['FR-1'] });
+  applyQuestion(dir, 'answer', { key: 'a', id: 'Q1', answer: 'Повтор разрешён', origin: 'analyst' });
+  act(dir, 'prepare', proposal(dir, { changes: [{ file: 'spec.md', before: spec,
+    after: spec.replace('FR-1  Текст.', 'FR-1  Повтор разрешён.').replace('Анна видит файл.', 'Анна повторяет запрос и видит файл.') }] }));
+  const files = JSON.parse(question(dir).fields.Пакет).changes.map((c) => c.file);
+  for (const file of ['spec.md', 'tech.md', '../adr/0001-export.md', 'slices/001-export.md']) assert.ok(files.includes(file), file);
+  assert.ok(!files.includes('../adr/0002-other.md'));
+  accept(dir);
+  act(dir, 'apply', { packageHash: hash(dir) });
+  assert.equal(question(dir).fields.Статус, 'resolved');
+  assert.match(read(dir, 'spec.md'), /Анна повторяет запрос/);
+  assert.match(read(dir, 'tech.md'), /Статус: на ревью/);
+  assert.match(read(dir, '../adr/0001-export.md'), /Статус: на ревью/);
+  assert.match(read(dir, 'slices/001-export.md'), /AC-001-1/);
+  assert.equal(read(dir, '../adr/0002-other.md'), unrelated);
+  assert.equal(read(dir, 'slices/002-other.md'), independentSlice);
+});

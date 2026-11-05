@@ -58,13 +58,15 @@ function requireAssessment(input) {
 /** @param {string} dir @param {Question} q @param {Input} input */
 function prepareDecision(dir, q, input) {
   if (q.fields.Пакет) throw new Error('Пакет уже сохранён: продолжите его, не создавайте дубликат');
+  if (q.fields.Влияние !== 'known' || !q.refs.length)
+    throw new Error('Сначала уточните область влияния через questions scope; ответ сохранён');
   requireAssessment(input);
   const m = unlockedFeature(dir);
   requireDocumentationFlow(m);
   const { current } = contextChanges(m, q);
   requireContext(current, input.context);
   const files = decisionFiles(m, /** @type {import('./decision-files.mjs').Change[]} */ (input.changes));
-  const changes = decisionReviews(m, decisionLinks(dir, files));
+  const changes = decisionReviews(m, decisionLinks(dir, files), q.refs.map((r) => r.id));
   const candidate = candidateFeature(dir, changes);
   checkDecisionMeaning(m, candidate, /** @type {string} */ (input.obligations));
   checkDecision(candidate);
